@@ -51,5 +51,19 @@ def square(n:int)->int:
     """Calculate square of a number."""
     return n*n
 
+@mcp.tool()
+async  def get_jokes() -> str:
+    """get random jokes"""
+    url = "https://official-joke-api.appspot.com/random_joke"
+    async with https.AsyncClient() as client:
+        response = await client.get(url)
+        data = response.json()
+    
+    setup = data["setup"]
+    punchline = data["punchline"]
+
+    return f"{setup} - {punchline}"
+
+    
 if __name__ == "__main__":
     mcp.run()

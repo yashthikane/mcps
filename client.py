@@ -39,8 +39,10 @@ async def run():
 
             print("Available tools:", [t["function"]["name"] for t in tools])
 
+            from datetime import datetime
+            current_time = datetime.now().strftime("%A, %Y-%m-%d %H:%M:%S")
             messages = [
-                {"role": "system", "content": "You are a helpful assistant. When calling tools, strictly pass arguments as a single JSON object (e.g. {\"n\": 33}), not as an array."}
+                {"role": "system", "content": f"You are a helpful assistant. The current date and time is {current_time}. When calling tools, strictly pass arguments as a single JSON object (e.g. {{\"n\": 33}}), not as an array."}
             ]
 
             while True:

@@ -7,6 +7,7 @@ A modular, local-first AI assistant built using Python, FastMCP, and the Groq AP
 - **Interactive Agent Loop:** Talk directly to the `llama-3.3-70b-versatile` model via Groq, which uses a tool-calling agentic loop to dynamically perform actions.
 - **Context-Aware:** The assistant is injected with the current system date and time, meaning it perfectly understands relative time references like "tomorrow" or "next week".
 - **Notion Integration:** Full workspace management — list pages, read content, create/update/delete pages using the official Notion API.
+- **Gmail Integration:** Full inbox management — list, read, search, compose, send, and delete emails via the Gmail API.
 - **Google Calendar Integration:** Uses OAuth to seamlessly read your upcoming events and schedule new events on your Google Calendar.
 - **Weather API:** Checks real-time weather and temperature for any city using the Open-Meteo API.
 - **Utility Tools:** Includes simple tools like calculating squares and fetching random jokes.
@@ -21,11 +22,13 @@ mcp/
 ├── server.py               # Entry point — imports all tools, runs server
 ├── client.py               # LLM client (Groq + MCP)
 ├── credentials.json        # Google OAuth credentials (not tracked)
-├── token.json              # Google OAuth token (not tracked)
+├── token.json              # Google Calendar OAuth token (not tracked)
+├── gmail_token.json        # Gmail OAuth token (not tracked)
 ├── requirements.txt        # Python dependencies
 └── tools/
     ├── __init__.py
     ├── notion_tools.py     # List, read, create, update, delete Notion pages
+    ├── gmail_tools.py      # List, read, send, search, delete emails
     ├── calendar_tools.py   # Get events, create events on Google Calendar
     ├── weather_tools.py    # Real-time weather by city
     └── misc_tools.py       # Square calculator, random jokes
@@ -59,8 +62,10 @@ mcp/
    - Copy the **Internal Integration Secret** and add it to `.env` as `INTERNAL_INTERGRATION_TOKEN`.
    - Share any Notion pages/databases you want Donna to access with the integration via the **"Add connections"** menu on each page.
 
-5. **Google Calendar Auth:**
-   Place a `credentials.json` file from Google Cloud Console in the root directory. On first run, it will open your browser to authenticate and create a local `token.json`.
+5. **Google Calendar & Gmail Auth:**
+   Place a `credentials.json` file from Google Cloud Console in the root directory. Make sure to enable the **Gmail API** and **Google Calendar API** in your Google Cloud project.
+   - On first run of Calendar tools, it will open your browser to authenticate and create `token.json`.
+   - On first run of Gmail tools, it will open your browser to authenticate and create `gmail_token.json`.
 
 ## Usage
 
@@ -80,6 +85,12 @@ mcp/
 | `update_page_title` | Update a Notion page title |
 | `append_text_to_page` | Append text blocks to a Notion page |
 | `delete_page` | Archive/delete a Notion page |
+| `list_emails` | List/search emails with Gmail search syntax |
+| `read_email` | Read full content of a specific email |
+| `send_email` | Compose and send an email |
+| `get_unread_emails` | Get latest unread emails |
+| `search_emails` | Search emails by query |
+| `delete_email` | Move an email to trash |
 | `get_events` | Get upcoming 5 Google Calendar events |
 | `create_event` | Create a new Google Calendar event |
 | `get_weather` | Get current weather for any city |

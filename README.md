@@ -1,4 +1,4 @@
-# Omni MCP Assistant
+# Donna MCP Assistant
 
 A modular, local-first AI assistant built using Python, FastMCP, and the Groq API. The assistant operates as an interactive terminal CLI where you can ask it to perform various agentic tasks using tools.
 

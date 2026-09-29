@@ -22,3 +22,9 @@ __pycache__/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Donna web app
+data/
+web/node_modules/
+web/dist/
+.pytest_cache/

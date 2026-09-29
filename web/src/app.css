@@ -1,0 +1,58 @@
+/* App-specific additions on top of the Neon Dusk tokens (neon-dusk.css, ported from the accepted demo). */
+
+/* The shell uses #view-chat for the chat grid; the other views scroll. */
+.view.scroll{overflow:auto}
+.logo{display:grid;place-items:center}
+
+/* Markdown replies */
+.md{display:flex;flex-direction:column;gap:8px;line-height:1.6}
+.md > *{margin:0}
+.md ul,.md ol{padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.md li > p{margin:0}
+.md a{color:var(--violet-bright);text-underline-offset:3px}
+.md code{font-family:var(--font-mono);font-size:.88em;background:var(--surface-soft);border:1px solid var(--border-subtle);padding:1px 5px;border-radius:5px}
+.md pre{background:var(--input);border:1px solid var(--border-subtle);border-radius:10px;padding:10px 12px;overflow:auto}
+.md pre code{background:none;border:0;padding:0}
+.md h1,.md h2,.md h3{font-size:14px;font-weight:600;margin-top:4px}
+.md blockquote{border-left:2px solid var(--border-active);padding-left:10px;color:var(--foreground-secondary)}
+.md table{border-collapse:collapse;font-size:12.5px;display:block;overflow-x:auto}
+.md th,.md td{border:1px solid var(--border-subtle);padding:5px 8px;text-align:left}
+.md th{background:var(--surface-soft);font-weight:600}
+.md hr{border:0;border-top:1px solid var(--border-subtle)}
+
+/* Inline tool-call cards in the thread */
+.toollist{display:flex;flex-direction:column;gap:6px}
+.toolcall{border:1px solid var(--border);border-radius:10px;background:rgba(27,27,57,.55);overflow:hidden;animation:rise .2s var(--ease)}
+.toolcall.s-error{border-color:rgba(248,113,113,.3)}
+.tc-row{width:100%;display:flex;align-items:center;gap:8px;padding:7px 10px;border:0;background:none;cursor:pointer;text-align:left;color:inherit}
+.tc-row:hover{background:rgba(255,255,255,.03)}
+.tc-ic{width:22px;height:22px;flex:none;border-radius:6px;display:grid;place-items:center;background:rgba(139,92,246,.12);color:var(--violet-bright)}
+.tc-name{font-size:12px;color:var(--foreground);white-space:nowrap}
+.tc-args{flex:1;min-width:0;font:11px var(--font-mono);color:var(--subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-row .i.rot{transform:rotate(90deg)}
+.tc-row .i{transition:transform .15s var(--ease);color:var(--subtle)}
+.tc-body{padding:0 10px 10px 40px;display:flex;flex-direction:column;gap:6px}
+.tc-body pre,.nres pre{margin:0;max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11.5px/1.5 var(--font-mono);color:var(--foreground-secondary);background:var(--input);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 10px}
+.tc-body .linkbtn{align-self:flex-start;font-size:12px}
+.nres summary{cursor:pointer;list-style:none}
+.nres summary::before{content:"▸ ";color:var(--violet-bright)}
+.nres[open] summary::before{content:"▾ "}
+.nres pre{margin-top:4px;max-height:200px}
+
+/* Palette dialog sizing (the demo styled #palette) */
+dialog.palette-dlg{width:min(520px,calc(100vw - 32px));margin-top:12vh}
+
+/* Buttons rendered as links */
+a.btn{text-decoration:none}
+
+/* The composer's disabled state while offline / no key */
+.composer textarea:disabled{cursor:not-allowed;opacity:.7}
+
+@media (max-width:760px){
+  .tc-args{display:none}
+}
+
+/* Saved messages render without an entrance animation (they replace the live turn in place);
+   only the live turn and a freshly sent message animate. */
+.thread-inner > .msg-bot{animation:none}
+.thread-inner > .msg-bot.live-turn{animation:rise .22s var(--ease)}

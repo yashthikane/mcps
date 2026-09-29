@@ -1,98 +1,90 @@
 # Donna MCP Assistant
 
-A modular, local-first AI assistant built using Python, FastMCP, and the Groq API. Donna operates as an interactive terminal CLI where you can ask it to perform various agentic tasks using tools — from managing your Notion workspace to scheduling Google Calendar events.
+A local, free AI assistant with a web interface. Donna chats through Groq's free tier
+(`openai/gpt-oss-120b`) and acts on your Gmail, Google Calendar and Notion, plus any
+MCP server you add. Everything runs on your computer: conversations are stored in a
+local SQLite file, and keys and sign-ins are kept in Windows Credential Manager.
 
 ## Features
 
-- **Interactive Agent Loop:** Talk directly to the `llama-3.3-70b-versatile` model via Groq, which uses a tool-calling agentic loop to dynamically perform actions.
-- **Context-Aware:** The assistant is injected with the current system date and time, meaning it perfectly understands relative time references like "tomorrow" or "next week".
-- **Notion Integration:** Full workspace management — list pages, read content, create/update/delete pages using the official Notion API.
-- **Gmail Integration:** Full inbox management — list, read, search, compose, send, and delete emails via the Gmail API.
-- **Google Calendar Integration:** Uses OAuth to seamlessly read your upcoming events and schedule new events on your Google Calendar.
-- **Weather API:** Checks real-time weather and temperature for any city using the Open-Meteo API.
-- **Utility Tools:** Includes simple tools like calculating squares and fetching random jokes.
+- **Chat with streaming replies.** Live tool-call cards show the arguments, result and timing of each step, and an activity panel lists every tool call.
+- **Approval before side effects.** Sending, replying, forwarding, deleting and calendar changes pause for your **Approve / Reject**.
+- **Saved conversations** with full-text search, pin, rename and delete.
+- **Connections page** with guided setup:
+  - **Google** (Gmail + Calendar): upload `credentials.json`, sign in once, one-click **Re-authorize** when the 7-day testing token expires.
+  - **Notion**: paste the integration secret, and Donna checks it and lists your shared pages.
+  - **Any MCP server**: presets for Filesystem, Fetch, Git and Memory, or a custom command/URL. Donna tests the server, lists its tools, and lets you switch each one on or off.
+- **Settings**: Groq key (tested before saving), model, reasoning effort, timezone, pixel grid and reduced motion, **Export** (JSON download) and **Wipe**.
+- **Command palette** (Ctrl+K), `/` commands in the composer, an **offline banner**, first-time setup, and a layout that works on phones.
 
-## Project Structure
+## Quick start (Windows)
 
-```
-mcp/
-├── .env                    # API keys (Groq, Google, Notion)
-├── .gitignore
-├── mcp_instance.py         # Shared FastMCP server instance
-├── server.py               # Entry point — imports all tools, runs server
-├── client.py               # LLM client (Groq + MCP)
-├── credentials.json        # Google OAuth credentials (not tracked)
-├── token.json              # Google Calendar OAuth token (not tracked)
-├── gmail_token.json        # Gmail OAuth token (not tracked)
-├── requirements.txt        # Python dependencies
-└── tools/
-    ├── __init__.py
-    ├── notion_tools.py     # List, read, create, update, delete Notion pages
-    ├── gmail_tools.py      # List, read, send, search, delete emails
-    ├── calendar_tools.py   # Get events, create events on Google Calendar
-    ├── weather_tools.py    # Real-time weather by city
-    └── misc_tools.py       # Square calculator, random jokes
+```powershell
+git clone https://github.com/yashthikane/mcps.git
+cd mcps
+scripts\start.ps1          # creates the venv, builds the UI on first run, opens http://127.0.0.1:8765
 ```
 
-## Setup
+Requirements: Python 3.12, Node.js 20+, and a free Groq API key from https://console.groq.com/keys.
+First-time setup asks for the key. If `GROQ_API_KEY` is in `.env`, it is imported automatically.
 
-1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/<your-username>/mcp.git
-   cd mcp
-   ```
+To start again later: `scripts\start.ps1`, or `venv\Scripts\python -m donna`.
 
-2. **Create a virtual environment and install dependencies:**
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate        # Windows
-   # source venv/bin/activate   # macOS/Linux
-   pip install -r requirements.txt
-   ```
+### Connecting your apps
 
-3. **Configure API Keys:**
-   Create a `.env` file in the root directory:
-   ```env
-   GROQ_API_KEY=your_groq_api_key
-   INTERNAL_INTERGRATION_TOKEN=your_notion_integration_token
-   ```
+Open **Connections** and follow the wizards. Links and exact clicks are shown inside each step.
 
-4. **Notion Setup:**
-   - Go to [https://www.notion.so/my-integrations](https://www.notion.so/my-integrations) and create a new integration.
-   - Copy the **Internal Integration Secret** and add it to `.env` as `INTERNAL_INTERGRATION_TOKEN`.
-   - Share any Notion pages/databases you want Donna to access with the integration via the **"Add connections"** menu on each page.
+| Connection | What you need | Time |
+|---|---|---|
+| Gmail + Calendar | A free Google Cloud project with the Gmail and Calendar APIs enabled, an OAuth client of type **Desktop app**, and yourself as a test user | ~5 min |
+| Notion | An internal integration at notion.so/profile/integrations, shared with the pages Donna may use | ~2 min |
+| MCP servers | The server's command (`npx …` needs Node.js; `uvx …` needs [uv](https://docs.astral.sh/uv/)) or its HTTP URL | ~1 min |
 
-5. **Google Calendar & Gmail Auth:**
-   Place a `credentials.json` file from Google Cloud Console in the root directory. Make sure to enable the **Gmail API** and **Google Calendar API** in your Google Cloud project.
-   - On first run of Calendar tools, it will open your browser to authenticate and create `token.json`.
-   - On first run of Gmail tools, it will open your browser to authenticate and create `gmail_token.json`.
+## Tools
 
-## Usage
-
-1. **Run the Client:**
-   ```bash
-   python client.py
-   ```
-2. Type your requests when prompted with `You:` and enjoy!
-
-## Available Tools
-
-| Tool | Description |
+| Connection | Tools (✋ = asks for approval) |
 |---|---|
-| `list_pages` | List all Notion pages & databases |
-| `read_page_content` | Read properties & blocks of a Notion page |
-| `create_page` | Create a new Notion page |
-| `update_page_title` | Update a Notion page title |
-| `append_text_to_page` | Append text blocks to a Notion page |
-| `delete_page` | Archive/delete a Notion page |
-| `list_emails` | List/search emails with Gmail search syntax |
-| `read_email` | Read full content of a specific email |
-| `send_email` | Compose and send an email |
-| `get_unread_emails` | Get latest unread emails |
-| `search_emails` | Search emails by query |
-| `delete_email` | Move an email to trash |
-| `get_events` | Get upcoming 5 Google Calendar events |
-| `create_event` | Create a new Google Calendar event |
-| `get_weather` | Get current weather for any city |
-| `square` | Calculate the square of a number |
-| `get_jokes` | Fetch a random joke |
+| Gmail (12) | `list_emails`, `read_email`, `search_emails`, `get_unread_emails`, `send_email` ✋, `reply_email` ✋, `forward_email` ✋, `mark_email`, `delete_email` ✋, `create_draft`, `list_drafts`, `send_draft` ✋ |
+| Calendar (5) | `get_events`, `list_events` (date range), `create_event` ✋, `update_event` ✋, `delete_event` ✋ |
+| Notion (8) | `search_notion`, `list_pages`, `read_page_content`, `create_page` (with content), `update_page_title`, `append_text_to_page`, `delete_page` ✋, `query_database` |
+| Weather (1) | `get_weather` |
+| Utilities (2) | `square`, `get_jokes` |
+| Your MCP servers | Every tool the server exposes. Tools whose names look like writes (write, delete, move, commit, …) ask first. |
+
+## How it works
+
+```
+Browser (React + Vite) ──REST + Server-Sent Events──► FastAPI on 127.0.0.1:8765 (python -m donna)
+                                                      ├─ agent   Groq streaming tool loop, approvals, Stop
+                                                      ├─ hub     MCP clients: built-in tools (in-process) + your servers (stdio/HTTP)
+                                                      ├─ store   SQLite data/donna.db (conversations, FTS search, servers, settings)
+                                                      └─ vault   Windows Credential Manager (Groq key, Notion secret, Google sign-in)
+```
+
+- `donna/`: the backend (`app.py` API, `agent.py` chat loop, `hub.py` MCP connections, `llm.py` Groq, `store.py`, `vault.py`).
+- `tools/`: the built-in MCP tools, served by `server.py` / `mcp_instance.py` (also usable from the terminal with `python client.py`).
+- `web/`: the React UI (Neon Dusk design).
+- `docs/ROADMAP.md`: the plan. `docs/design/`: design explorations.
+
+To stay within Groq's free tier (8K tokens/min), Donna only sends the tools that match your
+message, for example Gmail tools when you mention email, and falls back to all tools when nothing matches.
+
+## Development
+
+```powershell
+scripts\dev.ps1             # backend with auto-reload (:8765) + Vite dev server (:5173)
+scripts\check.ps1           # pytest + TypeScript check + production build
+venv\Scripts\python -m pytest -q
+```
+
+### Testing the UI end to end
+
+The browser test drives the real app with a scripted model (`DONNA_FAKE_LLM=1`), a throwaway
+data folder and a separate keyring service, so your real data and keys are never touched:
+
+```powershell
+$env:DONNA_FAKE_LLM="1"; $env:DONNA_DATA_DIR="$env:TEMP\donna-e2e-data"; $env:DONNA_KEYRING_SERVICE="donna-e2e"
+venv\Scripts\python -m donna --no-browser --port 8799      # in one terminal
+python tests\e2e_ui.py http://127.0.0.1:8799                # in another (needs: pip install playwright)
+python tests\e2e_reset.py                                   # clean up afterwards
+```

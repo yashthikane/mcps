@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aurora Palettes</title>
+<!-- Fontshare: Switzer (same font as Aurora Mint) -->
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600&display=swap">
+<style>
+/* Registered color properties so palette switches cross-fade smoothly */
+@property --accent{syntax:"<color>";inherits:true;initial-value:#0F9580}
+@property --a1{syntax:"<color>";inherits:true;initial-value:#12B5A0}
+@property --a2{syntax:"<color>";inherits:true;initial-value:#1C9AD6}
+@property --ink{syntax:"<color>";inherits:true;initial-value:#0E2A29}
+@property --ink-2{syntax:"<color>";inherits:true;initial-value:#2E4C4A}
+@property --muted{syntax:"<color>";inherits:true;initial-value:#5E7C79}
+@property --c1{syntax:"<color>";inherits:true;initial-value:#9FF3D4}
+@property --c2{syntax:"<color>";inherits:true;initial-value:#8ED8FF}
+@property --c3{syntax:"<color>";inherits:true;initial-value:#C8F7E6}
+@property --c4{syntax:"<color>";inherits:true;initial-value:#E4FFB8}
+@property --base{syntax:"<color>";inherits:true;initial-value:#EAF7F4}
+
+/* ---------- Showcase page (neutral frame) ---------- */
+:root{--page:#EFEFEC;--page-ink:#1B1B1A;--page-muted:#6A6A66;--page-line:#DADAD5;--page-card:#F7F7F5;--ease:cubic-bezier(.2,.8,.2,1)}
+@media (prefers-color-scheme:dark){:root{--page:#131312;--page-ink:#EDEDEA;--page-muted:#9A9A95;--page-line:#2A2A28;--page-card:#1B1B1A}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--page-ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.page{max-width:1200px;margin:0 auto;padding:48px 20px 96px;display:flex;flex-direction:column;gap:24px}
+.intro{display:flex;flex-direction:column;gap:12px;max-width:760px}
+.intro h1{margin:0;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-.02em;font-weight:650}
+.intro p{margin:0;color:var(--page-muted)}
+.eyebrow{font:500 12px/1 ui-monospace,"Cascadia Mono",Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--page-muted)}
+
+/* Picker */
+.picker{position:sticky;top:0;z-index:5;background:var(--page);padding:12px 0;border-bottom:1px solid var(--page-line);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.swatch{font:inherit;font-size:13px;color:var(--page-ink);display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 6px;border-radius:999px;border:1px solid var(--page-line);background:transparent;cursor:pointer;transition:border-color .15s,background .15s,transform .15s var(--ease)}
+.swatch:hover{border-color:var(--page-muted)}
+.swatch:active{transform:scale(.97)}
+.swatch[aria-pressed="true"]{background:var(--page-ink);color:var(--page);border-color:var(--page-ink)}
+.swatch:focus-visible,.pcard:focus-visible{outline:2px solid var(--page-ink);outline-offset:2px}
+.dot{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+.hint{margin-left:auto;font-size:12px;color:var(--page-muted)}
+
+/* Current palette header */
+.current{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+.current h2{margin:6px 0 2px;font-size:26px;letter-spacing:-.015em;font-weight:650}
+.current p{margin:0;color:var(--page-muted);font-size:14px;max-width:62ch}
+.hexes{display:flex;gap:8px;flex-wrap:wrap}
+.hex{display:inline-flex;align-items:center;gap:6px;font:12px ui-monospace,"Cascadia Mono",Consolas,monospace;padding:4px 10px 4px 4px;border-radius:999px;background:color-mix(in srgb,var(--page-ink) 7%,transparent)}
+.hex i{width:16px;height:16px;border-radius:50%;display:inline-block}
+
+/* ---------- Preview stage ---------- */
+.stage{position:relative;isolation:isolate;border-radius:18px;padding:clamp(12px,3vw,36px);overflow:hidden;
+  background:
+    radial-gradient(45% 55% at 12% 18%,var(--c1) 0,transparent 70%),
+    radial-gradient(45% 60% at 88% 12%,var(--c2) 0,transparent 70%),
+    radial-gradient(50% 60% at 75% 95%,var(--c3) 0,transparent 70%),
+    radial-gradient(40% 50% at 15% 92%,var(--c4) 0,transparent 70%),var(--base);
+  transition:--accent .6s var(--ease),--a1 .6s var(--ease),--a2 .6s var(--ease),--ink .6s var(--ease),--ink-2 .6s var(--ease),--muted .6s var(--ease),
+             --c1 .6s var(--ease),--c2 .6s var(--ease),--c3 .6s var(--ease),--c4 .6s var(--ease),--base .6s var(--ease)}
+.stage::before,.stage::after{content:"";position:absolute;z-index:0;width:55%;aspect-ratio:1;border-radius:50%;filter:blur(40px);opacity:.8;pointer-events:none}
+.stage::before{background:radial-gradient(circle,color-mix(in srgb,var(--c1) 75%,var(--accent)) 0,transparent 65%);top:-15%;left:-10%;animation:driftA 22s ease-in-out infinite alternate}
+.stage::after{background:radial-gradient(circle,color-mix(in srgb,var(--c2) 75%,var(--accent)) 0,transparent 65%);bottom:-20%;right:-10%;animation:driftB 26s ease-in-out infinite alternate}
+@keyframes driftA{to{transform:translate(35%,25%) scale(1.15)}}
+@keyframes driftB{to{transform:translate(-30%,-20%) scale(.9)}}
+.stage > .app{position:relative;z-index:1}
+
+/* ---------- Icons ---------- */
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- Shared app structure (identical to the other demo pages) ---------- */
+.app{
+  --bw:1px;--r-sm:6px;--r:8px;--r-lg:12px;--frame-r:14px;
+  display:grid;grid-template-columns:236px minmax(0,1fr);height:680px;
+  font-family:var(--font);color:var(--ink);background:var(--bg);
+  border:var(--bw) solid var(--frame-line,var(--line));border-radius:var(--frame-r);overflow:hidden;box-shadow:var(--frame-shadow,none);
+  font-size:14px;line-height:1.55;
+}
+.side{background:var(--side);border-right:var(--bw) solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:6px;min-height:0}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 6px 10px}
+.logo{width:24px;height:24px;border-radius:var(--r-sm);display:grid;place-items:center;font-weight:600;font-size:13px;background:var(--logo-bg,var(--accent));color:var(--logo-ink,var(--accent-ink))}
+.bname{font-weight:600;flex:1}
+kbd{font-family:var(--mono,inherit);font-size:11px;color:var(--muted);border:var(--bw) solid var(--line);border-radius:var(--r-sm);padding:1px 6px}
+.side .new{width:100%;justify-content:center}
+.search{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;color:var(--muted);border-radius:var(--r);background:var(--input);border:var(--bw) solid var(--input-line,transparent);margin-bottom:6px;font-size:13px}
+.grp{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 8px 4px}
+.convs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.convs li{padding:6px 10px;border-radius:var(--r);color:var(--ink-2);cursor:default;transition:background .15s,color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.convs li:hover{background:var(--hover);color:var(--ink)}
+.convs li.active{background:var(--active);color:var(--ink);font-weight:500}
+.conns{margin-top:auto;display:flex;flex-direction:column;gap:2px}
+.conn{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--r);color:var(--ink-2)}
+.conn .cdot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.conn .setup{margin-left:auto;font-size:11px;font-weight:500;color:var(--warn);padding:1px 8px;border-radius:999px;background:var(--warn-bg)}
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--main)}
+.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-bottom:var(--bw) solid var(--line)}
+.chat-head h4{margin:0;font-size:14px;font-weight:600}
+.chat-head p{margin:0;font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;font-size:12px;border-radius:999px;background:var(--chip);color:var(--ink-2);border:var(--bw) solid var(--chip-line,transparent)}
+.mono{font-family:var(--mono,inherit)}
+.thread{flex:1;min-height:0;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:16px;width:100%;max-width:720px;margin:0 auto}
+.msg.user{align-self:flex-end;max-width:78%;background:var(--user-bg);color:var(--user-ink);padding:10px 14px;border-radius:var(--r-lg);border:var(--bw) solid var(--user-line,transparent)}
+.msg.bot{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start}
+.msg.bot p{margin:0;color:var(--ink)}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--logo-bg,var(--accent));color:var(--logo-ink,var(--accent-ink))}
+.caret{display:inline-block;width:2px;height:1.05em;margin-left:3px;vertical-align:-3px;background:var(--accent);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.run{border:var(--bw) solid var(--line);background:var(--card);border-radius:var(--r-lg);padding:12px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--card-shadow,none)}
+.run-head{display:flex;align-items:center;gap:8px;padding:2px 6px 6px;font-weight:500;font-size:13px}
+.run-head .i{color:var(--accent)}
+.run-meta{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.steps li{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;padding:6px;border-radius:var(--r);transition:background .15s}
+.steps li:hover{background:var(--hover)}
+.ico{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-sm);background:var(--ico-bg);color:var(--ico-ink)}
+.st{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.state{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.done .state{color:var(--ok)}
+.wait .state{color:var(--warn)}
+.wait .state::before{animation:pulse 1.4s var(--ease) infinite}
+.skip .state{color:var(--muted)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.confirm{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:4px;padding:10px 12px;border-radius:var(--r);background:var(--confirm-bg);border:var(--bw) solid var(--confirm-line,transparent)}
+.confirm p{margin:0;font-size:13px;display:flex;align-items:center;gap:8px}
+.confirm.resolved{animation:settle .35s var(--ease)}
+@keyframes settle{from{opacity:0;transform:translateY(4px)}}
+.actions{display:flex;gap:8px}
+.btn{font:inherit;font-size:13px;font-weight:500;height:32px;padding:0 12px;border-radius:var(--btn-r,var(--r));border:var(--bw) solid transparent;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:transform .15s var(--ease),background .15s,box-shadow .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn:focus-visible,.convs li:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:var(--btn-shadow,none)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+.composer{width:calc(100% - 48px);max-width:672px;margin:0 auto 20px;border:var(--bw) solid var(--line-strong);border-radius:var(--r-lg);background:var(--card);padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--card-shadow,none);transition:border-color .15s}
+.composer:hover{border-color:var(--accent)}
+.field{color:var(--muted);padding:2px 4px}
+.comp-row{display:flex;align-items:center;gap:6px}
+.send{margin-left:auto;width:32px;padding:0;justify-content:center}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;height:auto}
+  .side{display:none}
+  .thread{padding:16px}
+  .composer{width:calc(100% - 32px)}
+  .msg.user{max-width:92%}
+}
+
+/* ---------- Aurora glass tokens (palette-driven) ---------- */
+.aurora .app{
+  --font:"Switzer",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(255,255,255,.42);--main:rgba(255,255,255,.55);
+  --card:rgba(255,255,255,.68);--input:rgba(255,255,255,.6);--input-line:rgba(255,255,255,.8);
+  --line:rgba(255,255,255,.7);--line-strong:rgba(255,255,255,.9);
+  --hover:rgba(255,255,255,.55);--active:rgba(255,255,255,.8);--chip:rgba(255,255,255,.65);
+  --accent-ink:#fff;--ok:#15803D;--warn:#B45309;--warn-bg:rgba(253,210,140,.45);
+  --user-bg:linear-gradient(135deg,var(--a1),var(--a2));--user-ink:#fff;
+  --ico-bg:rgba(255,255,255,.8);--ico-ink:color-mix(in srgb,var(--accent) 80%,var(--ink));
+  --confirm-bg:rgba(255,255,255,.72);--confirm-line:rgba(255,255,255,.95);
+  --frame-line:rgba(255,255,255,.75);
+  --frame-shadow:0 30px 80px -30px color-mix(in srgb,var(--accent) 45%,transparent),inset 0 1px 0 rgba(255,255,255,.85);
+  --card-shadow:0 8px 24px -14px color-mix(in srgb,var(--accent) 35%,transparent);
+  --btn-shadow:0 6px 16px -6px color-mix(in srgb,var(--accent) 60%,transparent);
+  --r:10px;--r-lg:14px;--frame-r:20px;--btn-r:10px;
+  backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
+}
+.aurora .btn-primary:hover{background:color-mix(in srgb,var(--accent) 88%,#000)}
+
+/* ---------- Compare grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+@media (min-width:1100px){.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.pcard{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:16px;border:1px solid var(--page-line);background:var(--page-card);cursor:pointer;text-align:left;font:inherit;color:inherit;transition:transform .2s var(--ease),border-color .15s,box-shadow .2s}
+.pcard:hover{transform:translateY(-2px);border-color:var(--page-muted)}
+.pcard[aria-pressed="true"]{border-color:var(--page-ink);box-shadow:0 0 0 1px var(--page-ink)}
+.mini{position:relative;height:150px;border-radius:12px;overflow:hidden;padding:14px;display:flex;flex-direction:column;justify-content:flex-end;
+  background:
+    radial-gradient(55% 65% at 10% 15%,var(--c1) 0,transparent 70%),
+    radial-gradient(55% 70% at 90% 10%,var(--c2) 0,transparent 70%),
+    radial-gradient(60% 70% at 80% 100%,var(--c3) 0,transparent 70%),
+    radial-gradient(50% 60% at 10% 100%,var(--c4) 0,transparent 70%),var(--base)}
+.mini .glass{font-family:"Switzer",system-ui,sans-serif;color:var(--ink);background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.85);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;
+  backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%);box-shadow:0 10px 24px -14px color-mix(in srgb,var(--accent) 45%,transparent)}
+.mini .bub{align-self:flex-end;font-size:12px;color:#fff;padding:5px 10px;border-radius:10px;background:linear-gradient(135deg,var(--a1),var(--a2))}
+.mini .row{display:flex;align-items:center;gap:8px;font-size:12px}
+.mini .ok{color:#15803D;display:inline-flex;align-items:center;gap:5px}
+.mini .ok::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.mini .b{margin-left:auto;font-size:12px;font-weight:500;color:#fff;background:var(--accent);padding:4px 10px;border-radius:8px}
+.pmeta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pmeta b{font-weight:600}
+.pmeta small{display:block;color:var(--page-muted);font-size:12px}
+.pdots{display:flex}
+.pdots i{width:14px;height:14px;border-radius:50%;margin-left:-4px;box-shadow:0 0 0 2px var(--page-card)}
+.tag{position:absolute;top:22px;left:22px;z-index:1;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.85);color:#1B1B1A}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+</svg>
+
+<div class="page">
+  <header class="intro">
+    <span class="eyebrow">Glass 2 · color options</span>
+    <h1>Aurora palettes</h1>
+    <p>This is Aurora Mint's glass, font, shapes and motion with ten color palettes. The first is the original teal, unchanged; the other nine are new. Pick a palette to see it on the full screen, or compare them all in the grid below. The ← and → keys also switch palettes.</p>
+  </header>
+
+  <nav class="picker" id="picker" aria-label="Palettes"></nav>
+
+  <div class="current">
+    <div>
+      <span class="eyebrow" id="cur-tag">Original</span>
+      <h2 id="cur-name">Aurora Mint</h2>
+      <p id="cur-note"></p>
+    </div>
+    <div class="hexes" id="cur-hex"></div>
+  </div>
+
+  <div class="stage aurora" id="stage">
+    <div class="app">
+      <aside class="side">
+        <div class="brand"><span class="logo">D</span><span class="bname">Donna</span><kbd>⌘K</kbd></div>
+        <button class="btn btn-primary new"><svg class="i"><use href="#i-plus"/></svg>New chat</button>
+        <div class="search"><svg class="i"><use href="#i-search"/></svg>Search chats</div>
+        <div class="grp">Today</div>
+        <ul class="convs"><li class="active" tabindex="0">Morning briefing</li><li tabindex="0">Trip to Pune</li></ul>
+        <div class="grp">This week</div>
+        <ul class="convs"><li tabindex="0">Notion cleanup</li><li tabindex="0">Invoices from September</li></ul>
+        <div class="conns">
+          <div class="grp">Connections</div>
+          <div class="conn"><svg class="i"><use href="#i-mail"/></svg>Gmail<span class="cdot"></span></div>
+          <div class="conn"><svg class="i"><use href="#i-cal"/></svg>Calendar<span class="cdot"></span></div>
+          <div class="conn"><svg class="i"><use href="#i-doc"/></svg>Notion<span class="setup">Set up</span></div>
+        </div>
+      </aside>
+      <main class="chat">
+        <header class="chat-head">
+          <div><h4>Morning briefing</h4><p>3 agents · finished in 1.6 s</p></div>
+          <span class="chip mono">gpt-oss-120b</span>
+        </header>
+        <div class="thread" id="thread"></div>
+        <div class="composer">
+          <div class="field">Ask Donna anything…</div>
+          <div class="comp-row"><span class="chip">@gmail</span><span class="chip">@calendar</span>
+            <button class="btn btn-primary send" aria-label="Send"><svg class="i"><use href="#i-send"/></svg></button></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="intro" style="margin-top:24px">
+    <span class="eyebrow">Compare</span>
+    <h2 style="margin:0;font-size:22px;letter-spacing:-.01em">All ten side by side</h2>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<template id="thread-tpl">
+  <div class="msg user">Summarize my unread emails, check tomorrow's weather in Pune, and add a 30-min prep block before my first meeting.</div>
+  <div class="run">
+    <div class="run-head"><svg class="i"><use href="#i-spark"/></svg>Plan · 3 tasks in parallel<span class="run-meta mono">1.6 s</span></div>
+    <ol class="steps">
+      <li class="done"><span class="ico"><svg class="i"><use href="#i-mail"/></svg></span><span class="st">Summarize 6 unread emails</span><span class="state mono">done · 1.2s</span></li>
+      <li class="done"><span class="ico"><svg class="i"><use href="#i-sun"/></svg></span><span class="st">Weather in Pune tomorrow</span><span class="state mono">done · 0.4s</span></li>
+      <li class="wait"><span class="ico"><svg class="i"><use href="#i-cal"/></svg></span><span class="st">Add “Prep” 09:00–09:30</span><span class="state mono">needs approval</span></li>
+    </ol>
+    <div class="confirm">
+      <p>Create event <b>Prep</b> tomorrow, 09:00–09:30?</p>
+      <div class="actions"><button class="btn btn-ghost reject">Reject</button><button class="btn btn-primary approve">Approve</button></div>
+    </div>
+  </div>
+  <div class="msg bot"><span class="avatar">D</span>
+    <p>You have <b>6 unread emails</b>. Two need a reply today: the Acme invoice and Priya's design review. Tomorrow in Pune it will be <b>24°C and clear</b>. Your first meeting is at 09:30, so Prep goes in at 09:00 once you approve.<span class="caret"></span></p>
+  </div>
+</template>
+
+<script>
+(function () {
+  // Each palette: accent (buttons, links), a1→a2 (your message bubble),
+  // ink / ink-2 / muted (text), c1–c4 + base (the background glow behind the glass).
+  var P = [
+    { id:"mint", name:"Aurora Mint", tag:"Original", note:"The current version: teal accent over mint and sky.",
+      accent:"#0F9580", a1:"#12B5A0", a2:"#1C9AD6", ink:"#0E2A29", ink2:"#2E4C4A", muted:"#5E7C79",
+      c1:"#9FF3D4", c2:"#8ED8FF", c3:"#C8F7E6", c4:"#E4FFB8", base:"#EAF7F4" },
+    { id:"ocean", name:"Ocean Blue", note:"Clear, dependable blue over sky and ice. The most familiar, safe choice.",
+      accent:"#1D6FE0", a1:"#2D8CFF", a2:"#1E5BD8", ink:"#0D2140", ink2:"#2E4462", muted:"#5F7493",
+      c1:"#A9D4FF", c2:"#9FE7F5", c3:"#C9DDFF", c4:"#D8F3FF", base:"#EEF5FC" },
+    { id:"indigo", name:"Indigo Ink", note:"Deep indigo over periwinkle. Focused and a little more serious.",
+      accent:"#3F3FBF", a1:"#5156E8", a2:"#3538B8", ink:"#14163A", ink2:"#34375E", muted:"#63668C",
+      c1:"#C7CCFF", c2:"#B9E0FF", c3:"#DCD3FF", c4:"#E7ECFF", base:"#F1F2FB" },
+    { id:"berry", name:"Berry Plum", note:"Rich plum over orchid and lilac. Creative and distinctive.",
+      accent:"#8E3FA8", a1:"#B04FD0", a2:"#7B3AA8", ink:"#2A1233", ink2:"#4E3357", muted:"#7E6286",
+      c1:"#F0C9F5", c2:"#D9C4FF", c3:"#FFD1E6", c4:"#EAD9F2", base:"#F8F0FA" },
+    { id:"rose", name:"Rose Quartz", note:"Soft pink glass with a raspberry accent. Warm and personal.",
+      accent:"#C23A6C", a1:"#E0508A", a2:"#C23A6C", ink:"#33121F", ink2:"#573443", muted:"#876271",
+      c1:"#FFC7DA", c2:"#FFD9E8", c3:"#E9D5FF", c4:"#FFE4D6", base:"#FFF3F7" },
+    { id:"coral", name:"Coral Reef", note:"Coral accent with a hint of aqua in the background. Lively without being loud.",
+      accent:"#C8452E", a1:"#F0664A", a2:"#C8452E", ink:"#2E150F", ink2:"#553830", muted:"#85655B",
+      c1:"#FFC4B3", c2:"#FFE1C7", c3:"#B8F0E8", c4:"#FFD6E0", base:"#FFF4EF" },
+    { id:"amber", name:"Amber Honey", note:"Golden amber over cream and apricot. Sunny and optimistic.",
+      accent:"#A85A00", a1:"#D98200", a2:"#A85A00", ink:"#2E1D05", ink2:"#55412A", muted:"#857056",
+      c1:"#FFE0A3", c2:"#FFD0B0", c3:"#FFF1C2", c4:"#F9E6D0", base:"#FFF8EC" },
+    { id:"lime", name:"Citrus Lime", note:"Fresh leaf green over lime and lemon. Energetic, close to nature.",
+      accent:"#3F7A0E", a1:"#5FA01F", a2:"#3F7A0E", ink:"#1C2A0E", ink2:"#3C4B2D", muted:"#69785A",
+      c1:"#E4FF9E", c2:"#C8F5B0", c3:"#FFF3A6", c4:"#D5F7E5", base:"#F6FBEA" },
+    { id:"sage", name:"Sage Stone", note:"Muted sage over stone and linen. The calmest, most understated option.",
+      accent:"#4F7A5E", a1:"#6A957A", a2:"#4F7A5E", ink:"#1D2A22", ink2:"#3D4B42", muted:"#6A776E",
+      c1:"#D6E8DA", c2:"#E8E3D3", c3:"#C9DDD9", c4:"#EEF0E2", base:"#F4F5EF" },
+    { id:"graphite", name:"Graphite", note:"Neutral charcoal over soft greys. Lets the content carry all the color.",
+      accent:"#2B2F36", a1:"#4A505B", a2:"#1F2329", ink:"#16181D", ink2:"#3A3D44", muted:"#6A6D74",
+      c1:"#E3E6EC", c2:"#D9E2EA", c3:"#EDE9E3", c4:"#E0E4F0", base:"#F3F4F6" }
+  ];
+
+  var stage = document.getElementById("stage");
+  var picker = document.getElementById("picker");
+  var grid = document.getElementById("grid");
+  var thread = document.getElementById("thread");
+  var tpl = document.getElementById("thread-tpl");
+  var current = 0;
+
+  function vars(el, p) {
+    el.style.setProperty("--accent", p.accent);
+    el.style.setProperty("--a1", p.a1);
+    el.style.setProperty("--a2", p.a2);
+    el.style.setProperty("--ink", p.ink);
+    el.style.setProperty("--ink-2", p.ink2);
+    el.style.setProperty("--muted", p.muted);
+    el.style.setProperty("--c1", p.c1);
+    el.style.setProperty("--c2", p.c2);
+    el.style.setProperty("--c3", p.c3);
+    el.style.setProperty("--c4", p.c4);
+    el.style.setProperty("--base", p.base);
+  }
+
+  function resetThread() { thread.replaceChildren(tpl.content.cloneNode(true)); }
+
+  // Picker chips and compare cards
+  P.forEach(function (p, i) {
+    var b = document.createElement("button");
+    b.className = "swatch";
+    b.type = "button";
+    b.innerHTML = '<span class="dot" style="background:linear-gradient(135deg,' + p.a1 + "," + p.accent + ')"></span>' + p.name;
+    b.addEventListener("click", function () { select(i); });
+    picker.appendChild(b);
+
+    var c = document.createElement("button");
+    c.className = "pcard";
+    c.type = "button";
+    vars(c, p);
+    c.innerHTML =
+      (p.tag ? '<span class="tag">' + p.tag + "</span>" : "") +
+      '<div class="mini"><div class="glass"><span class="bub">Summarize my inbox</span>' +
+      '<div class="row"><span class="ok">done · 1.2s</span><span class="b">Approve</span></div></div></div>' +
+      '<div class="pmeta"><div><b>' + p.name + "</b><small>" + p.accent + "</small></div>" +
+      '<div class="pdots"><i style="background:' + p.accent + '"></i><i style="background:' + p.a1 + '"></i><i style="background:' + p.c1 + '"></i><i style="background:' + p.c2 + '"></i></div></div>';
+    c.addEventListener("click", function () {
+      select(i);
+      stage.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    grid.appendChild(c);
+  });
+  var hint = document.createElement("span");
+  hint.className = "hint";
+  hint.textContent = "← → to switch";
+  picker.appendChild(hint);
+
+  function select(i) {
+    current = (i + P.length) % P.length;
+    var p = P[current];
+    vars(stage, p);
+    picker.querySelectorAll(".swatch").forEach(function (b, k) { b.setAttribute("aria-pressed", String(k === current)); });
+    grid.querySelectorAll(".pcard").forEach(function (c, k) { c.setAttribute("aria-pressed", String(k === current)); });
+    document.getElementById("cur-tag").textContent = p.tag || "Option " + current;
+    document.getElementById("cur-name").textContent = p.name;
+    document.getElementById("cur-note").textContent = p.note;
+    document.getElementById("cur-hex").innerHTML = [["Accent", p.accent], ["Bubble", p.a1 + " → " + p.a2], ["Glow", p.c1], ["Text", p.ink]]
+      .map(function (h) { return '<span class="hex"><i style="background:' + h[1].split(" ")[0] + '"></i>' + h[0] + " " + h[1] + "</span>"; }).join("");
+    resetThread();
+    try { history.replaceState(null, "", "#" + p.id); } catch (e) {}
+  }
+
+  // Keyboard: ← / → cycle palettes
+  document.addEventListener("keydown", function (e) {
+    if (e.target.closest && e.target.closest("input,textarea")) return;
+    if (e.key === "ArrowRight") { select(current + 1); e.preventDefault(); }
+    if (e.key === "ArrowLeft") { select(current - 1); e.preventDefault(); }
+  });
+
+  // Approve / Reject in the preview
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".approve, .reject");
+    if (!btn) return;
+    var app = btn.closest(".app");
+    var step = app.querySelector(".steps li.wait");
+    var confirm = app.querySelector(".confirm");
+    var approved = btn.classList.contains("approve");
+    step.classList.remove("wait");
+    step.classList.add(approved ? "done" : "skip");
+    step.querySelector(".state").textContent = approved ? "done · approved" : "skipped";
+    confirm.classList.add("resolved");
+    confirm.innerHTML = approved
+      ? '<p><svg class="i"><use href="#i-check"/></svg>Added “Prep” to your calendar, 09:00–09:30.</p>'
+      : "<p>Skipped. Nothing was added to your calendar.</p>";
+    var caret = app.querySelector(".caret");
+    if (caret) caret.remove();
+  });
+
+  // Start on the palette named in the link (#ocean etc.), else the original.
+  var start = P.findIndex(function (p) { return "#" + p.id === location.hash; });
+  select(start < 0 ? 0 : start);
+})();
+</script>
+</body>
+</html>

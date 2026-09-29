@@ -1,0 +1,1862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Donna · Neon Dusk Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-pixel/GeistPixel-Circle.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Geist Pixel "Circle": every pixel is a separate dot, so the pixel structure stays visible at heading sizes */
+@font-face{font-family:"Geist Pixel";src:url("https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-pixel/GeistPixel-Circle.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+
+/* =====================================================================
+   Neon Dusk tokens (Neon_Dusk_Pixel_Modern_Design_System.md §25)
+   ===================================================================== */
+:root{
+  color-scheme:dark;
+  --background:#0E0E20; --background-deep:#090918;
+  --surface:#1B1B39; --surface-elevated:#222247; --surface-soft:rgba(255,255,255,.025);
+  --glass:rgba(27,27,57,.80); --input:rgba(5,5,16,.55);
+  --foreground:#F6F3FF; --foreground-secondary:#D8D5E8; --muted:#AAA8C9; --subtle:#74718E;
+  --violet:#8B5CF6; --violet-bright:#A78BFA; --violet-deep:#6D5DFC;
+  /* Slightly deeper stops for filled buttons so white labels keep 4.5:1 */
+  --violet-fill-a:#7A4BEB; --violet-fill-b:#5F52F0;
+  --cyan:#67E8F9; --cyan-bright:#22D3EE; --cyan-soft:#A5F3FC;
+  --amber:#FBBF24; --red:#F87171;
+  --border:rgba(167,139,250,.22); --border-hover:rgba(167,139,250,.35); --border-active:rgba(167,139,250,.50); --border-subtle:rgba(255,255,255,.06);
+  --radius-sm:8px; --radius-btn:9px; --radius-md:12px; --radius-lg:18px; --radius-xl:24px;
+  --font-pixel:"Geist Pixel","Geist Mono",ui-monospace,monospace;
+  --font-ui:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --glow-violet:0 0 28px rgba(139,92,246,.20);
+  --glow-cyan:0 0 20px rgba(103,232,249,.14);
+  --nav-h:48px;
+  --chat-bg:#08081A;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;color:var(--foreground);font:13px/1.55 var(--font-ui);-webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(55% 45% at 0% 0%,rgba(139,92,246,.10),transparent 60%),
+    radial-gradient(45% 40% at 100% 100%,rgba(103,232,249,.05),transparent 60%),
+    var(--background);
+  overflow:hidden}
+body.grid-on::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(167,139,250,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(167,139,250,.025) 1px,transparent 1px);
+  background-size:24px 24px}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--violet-bright)}
+:focus-visible{outline:3px solid rgba(139,92,246,.45);outline-offset:3px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--font-mono)}
+.pixel{font-family:var(--font-pixel);font-weight:400;letter-spacing:.01em}
+svg.i{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i-lg{width:18px;height:18px}
+
+/* Labels & text */
+.eyebrow{font:500 10px/1.2 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.eyebrow .sq{color:var(--violet-bright)}
+.meta{font:400 11px/1.4 var(--font-mono);color:var(--subtle);letter-spacing:.02em}
+kbd{font:500 10px/1 var(--font-mono);color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--surface-soft)}
+
+/* =====================================================================
+   Primitives: Button, Input, Card, Pill, Switch, Meter
+   ===================================================================== */
+.btn{height:32px;padding:0 12px;border-radius:var(--radius-btn);border:1px solid transparent;background:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-size:12.5px;font-weight:500;line-height:1;cursor:pointer;white-space:nowrap;color:var(--foreground);
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease,color .18s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary{background:linear-gradient(135deg,var(--violet-fill-a),var(--violet-fill-b));color:#fff;font-weight:600;box-shadow:0 0 28px rgba(139,92,246,.22)}
+.btn-primary:hover{background:linear-gradient(135deg,#8657EF,#6A5DF4);box-shadow:0 0 32px rgba(139,92,246,.30)}
+.btn-secondary{background:var(--surface-soft);border-color:rgba(167,139,250,.24)}
+.btn-secondary:hover{background:rgba(255,255,255,.05);border-color:var(--border-hover)}
+.btn-ghost{color:var(--muted)}
+.btn-ghost:hover{color:var(--foreground);background:rgba(255,255,255,.04)}
+.btn-danger{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.35);color:#FECACA}
+.btn-danger:hover{background:rgba(248,113,113,.18)}
+.btn-sm{height:26px;padding:0 9px;font-size:11.5px;border-radius:var(--radius-sm)}
+.btn-icon{width:28px;height:28px;padding:0}
+.linkbtn{background:none;border:0;padding:0;color:var(--violet-bright);font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field label,.label{font-size:11.5px;font-weight:500;color:var(--foreground-secondary)}
+.input,.select{height:32px;font-size:12.5px;width:100%;background:var(--input);border:1px solid rgba(167,139,250,.28);border-radius:var(--radius-sm);color:var(--foreground);padding:0 12px;
+  transition:border-color .18s ease,box-shadow .18s ease}
+.input::placeholder,textarea::placeholder{color:var(--subtle)}
+.input:focus,.select:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,92,246,.14)}
+.select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 17px) 13px,calc(100% - 12px) 13px;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+.select option{background:var(--surface)}
+.help{font-size:11.5px;color:var(--muted)}
+
+.card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 24px 80px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.04)}
+
+.pill{display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 7px;border-radius:999px;border:1px solid;font:500 9px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.pill::before{content:"";width:5px;height:5px;background:currentColor;flex:none}
+.pill.ok{color:var(--cyan);background:rgba(103,232,249,.07);border-color:rgba(103,232,249,.25)}
+.pill.proc{color:var(--violet-bright);background:rgba(139,92,246,.10);border-color:rgba(167,139,250,.35)}
+.pill.warn{color:var(--amber);background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.28)}
+.pill.err{color:var(--red);background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.30)}
+.pill.off{color:var(--muted);background:var(--surface-soft);border-color:var(--border-subtle)}
+.pill.proc::before,.pill.live::before{animation:pulse 1.6s var(--ease) infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 5px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font:500 9px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--border-subtle);color:var(--muted)}
+.tag.warn{color:var(--amber);border-color:rgba(251,191,36,.28)}
+.tag.plan{color:var(--subtle)}
+
+.switch{position:relative;width:32px;height:18px;flex:none;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.06);cursor:pointer;padding:0;transition:background .18s ease,border-color .18s ease}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:4px;background:var(--muted);transition:transform .18s var(--ease),background .18s ease}
+.switch[aria-checked="true"]{background:rgba(139,92,246,.35);border-color:var(--violet)}
+.switch[aria-checked="true"]::after{transform:translateX(14px);background:#fff}
+
+.meter{height:5px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden}
+.meter > i{display:block;height:100%;border-radius:3px;background:var(--violet-bright);transition:width .4s var(--ease)}
+.meter.cyan > i{background:var(--cyan)}
+.meter.warn > i{background:var(--amber)}
+
+/* =====================================================================
+   Shell: top navigation, banner, views
+   ===================================================================== */
+.shell{position:relative;z-index:1;height:100vh;height:100dvh;display:grid;grid-template-rows:var(--nav-h) auto minmax(0,1fr)}
+.topnav{display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid var(--border-subtle);background:rgba(14,14,32,.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);position:relative;z-index:40}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--font-pixel);font-size:17px;letter-spacing:.06em;color:var(--foreground);text-decoration:none}
+.logo{width:18px;height:18px;display:block}
+.tabs{position:relative;display:flex;gap:2px;padding:3px;border:1px solid var(--border-subtle);border-radius:10px;background:var(--surface-soft)}
+.tab{position:relative;z-index:1;height:26px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--muted);display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;cursor:pointer;transition:color .18s ease}
+.tab:hover{color:var(--foreground)}
+.tab[aria-selected="true"]{color:var(--foreground)}
+.tab-ind{position:absolute;top:3px;left:0;height:26px;border-radius:6px;background:rgba(139,92,246,.16);border:1px solid rgba(167,139,250,.35);transition:transform .22s var(--ease),width .22s var(--ease)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nav-k{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 9px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);background:var(--surface-soft);color:var(--muted);cursor:pointer;font-size:12.5px;transition:border-color .18s ease,color .18s ease}
+.nav-k:hover{border-color:var(--border-hover);color:var(--foreground)}
+
+.banner{display:flex;align-items:center;gap:12px;padding:8px 16px;background:rgba(251,191,36,.08);border-bottom:1px solid rgba(251,191,36,.25);color:#FDE68A;font-size:12.5px}
+.banner b{color:var(--amber);font:500 11px/1 var(--font-mono);letter-spacing:.1em}
+
+/* Explicit rows: the banner is display:none when hidden, so views must not auto-place into its row */
+.topnav{grid-row:1}
+.banner{grid-row:2}
+.view{grid-row:3;min-height:0;height:100%;animation:viewIn .22s var(--ease)}
+.view[hidden]{display:none}
+@keyframes viewIn{from{opacity:0;transform:translateY(6px)}}
+.scroll{overflow:auto}
+
+/* =====================================================================
+   Chat view: sidebar · thread · run panel
+   ===================================================================== */
+#view-chat{display:grid;grid-template-columns:232px minmax(0,1fr) 320px}
+#view-chat.run-closed{grid-template-columns:232px minmax(0,1fr) 0}
+#view-chat.run-closed .runpanel{display:none}
+
+.side{min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px 10px;border-right:1px solid var(--border-subtle);background:rgba(27,27,57,.42)}
+.side .btn-primary{width:100%}
+.search{position:relative}
+.search .i{position:absolute;left:10px;top:9px;color:var(--subtle)}
+.search .input{padding-left:30px;height:32px;font-size:12.5px}
+.convs{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:2px;margin:0 -4px;padding:0 4px}
+.cgroup{padding:12px 8px 4px}
+.conv{position:relative;display:flex;align-items:center;border-radius:var(--radius-sm);transition:background .18s ease}
+.conv:hover,.conv:focus-within{background:rgba(255,255,255,.035)}
+.conv.active{background:rgba(139,92,246,.12);box-shadow:inset 2px 0 0 var(--violet)}
+.conv-btn{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;padding:6px 8px;border:0;background:none;text-align:left;cursor:pointer;border-radius:var(--radius-sm)}
+.conv-title{font-size:12.5px;color:var(--foreground-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv.active .conv-title{color:var(--foreground);font-weight:500}
+.conv-actions{display:flex;gap:2px;padding-right:4px;opacity:0;transition:opacity .15s ease}
+.conv:hover .conv-actions,.conv:focus-within .conv-actions{opacity:1}
+.conv-actions .btn-icon{width:24px;height:24px;color:var(--subtle)}
+.conv-actions .btn-icon:hover{color:var(--foreground)}
+.conv-actions .on{color:var(--violet-bright)}
+.conv-edit{flex:1;padding:4px}
+.conv-edit .input{height:28px;font-size:12.5px}
+.conv-del{flex:1;display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;color:var(--foreground-secondary)}
+.conv-del span{flex:1}
+.side-foot{border-top:1px solid var(--border-subtle);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.budget-row{display:flex;justify-content:space-between;align-items:baseline}
+
+.thread-col{min-width:0;min-height:0;display:flex;flex-direction:column;
+  background:
+    radial-gradient(70% 38% at 50% 0%,rgba(139,92,246,.07),transparent 70%),
+    radial-gradient(circle at 1px 1px,rgba(167,139,250,.07) 1px,transparent 1.5px) 0 0/16px 16px,
+    var(--chat-bg)}
+.chat-head{min-height:52px;display:flex;align-items:center;gap:10px;padding:8px 20px;border-bottom:1px solid var(--border-subtle);background:rgba(8,8,26,.6)}
+.chat-head .t{min-width:0;flex:1}
+.chat-head h1{margin:0;font-family:var(--font-pixel);font-weight:400;font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-head .meta,#rp-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-btn{display:none}
+.thread{flex:1;min-height:0;overflow:auto;padding:28px 24px 20px;scroll-behavior:smooth}
+.thread-inner{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+
+.msg-user{align-self:flex-end;max-width:min(82%,560px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;animation:rise .22s var(--ease)}
+.msg-user p{margin:0;padding:8px 12px;border-radius:12px 12px 4px 12px;background:var(--surface-elevated);border:1px solid var(--border);color:var(--foreground)}
+.msg-user .uses{display:flex;gap:4px}
+.msg-bot{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;animation:rise .22s var(--ease)}
+.avatar{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:rgba(139,92,246,.14);border:1px solid rgba(167,139,250,.35)}
+.avatar svg{width:12px;height:12px}
+.bot-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.bot-text{color:var(--foreground);max-width:66ch}
+.bot-text b{font-weight:600}
+.caret{display:inline-block;width:7px;height:14px;margin-left:3px;vertical-align:-2px;background:var(--violet-bright);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
+.stopped{font:11px var(--font-mono);color:var(--subtle)}
+
+.runchip{width:100%;display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:10px;background:rgba(27,27,57,.55);border:1px solid var(--border);cursor:pointer;text-align:left;transition:border-color .18s ease,transform .18s ease,background .18s ease;animation:rise .22s var(--ease)}
+.runchip:hover{border-color:var(--border-hover);transform:translateY(-1px);background:rgba(255,255,255,.04)}
+.runchip .rc-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.runchip .rc-sum{font-size:12.5px;color:var(--foreground-secondary)}
+.rc-squares{display:flex;gap:4px}
+.rc-squares i{width:7px;height:7px;display:block;background:var(--subtle)}
+.rc-squares i.s-done{background:var(--cyan)}
+.rc-squares i.s-running{background:var(--violet-bright);box-shadow:0 0 10px rgba(167,139,250,.6)}
+.rc-squares i.s-approval,.rc-squares i.s-ratelimit{background:var(--amber)}
+.rc-squares i.s-failed{background:var(--red)}
+.rc-go{font:500 10px/1 var(--font-mono);color:var(--violet-bright);letter-spacing:.06em;white-space:nowrap}
+
+.approval{padding:14px;border-radius:var(--radius-md);background:linear-gradient(180deg,rgba(251,191,36,.05),transparent 60%),var(--surface);border:1px solid rgba(251,191,36,.28);display:flex;flex-direction:column;gap:10px;animation:rise .22s var(--ease)}
+.approval.done{border-color:rgba(103,232,249,.25);background:var(--surface)}
+.approval.rej{border-color:var(--border-subtle);background:var(--surface-soft)}
+.approval h3{margin:0;font-size:14px;font-weight:600}
+.kv{display:grid;grid-template-columns:72px minmax(0,1fr);gap:3px 12px;margin:0;font:11px/1.5 var(--font-mono)}
+.kv dt{color:var(--subtle)}
+.kv dd{margin:0;color:var(--foreground-secondary);overflow-wrap:anywhere}
+.approval .actions{display:flex;gap:8px;justify-content:flex-end}
+
+.composer-wrap{padding:0 24px 16px;position:relative}
+.composer{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:12px;background:var(--surface);border:1px solid var(--border);transition:border-color .18s ease,box-shadow .18s ease}
+.composer:focus-within{border-color:var(--violet);box-shadow:0 0 0 3px rgba(139,92,246,.14)}
+.composer textarea{width:100%;min-height:22px;font-size:13px;max-height:180px;resize:none;border:0;background:none;outline:none;padding:2px 4px;line-height:1.55}
+.comp-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chipbtn{height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--border-subtle);background:var(--surface-soft);color:var(--muted);font:500 10px/1 var(--font-mono);cursor:pointer;transition:border-color .18s ease,color .18s ease,background .18s ease}
+.chipbtn:hover{color:var(--foreground);border-color:var(--border-hover)}
+.chipbtn[aria-pressed="true"]{color:var(--foreground);border-color:var(--violet);background:rgba(139,92,246,.14)}
+.comp-row .send{margin-left:auto}
+.comp-hint{max-width:660px;margin:6px auto 0;display:flex;justify-content:space-between;gap:12px}
+.slash{position:absolute;left:50%;bottom:calc(100% - 8px);transform:translateX(-50%);width:min(660px,calc(100% - 48px));padding:6px;border-radius:var(--radius-md);background:rgba(34,34,71,.96);border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.4);backdrop-filter:blur(16px);animation:rise .15s var(--ease)}
+.slash ul{list-style:none;margin:0;padding:0}
+.slash li{display:flex;align-items:center;gap:12px;padding:7px 10px;border-radius:var(--radius-sm);cursor:pointer}
+.slash li.sel{background:rgba(139,92,246,.18)}
+.slash li .mono{color:var(--violet-bright);width:110px}
+.slash li span:last-child{color:var(--muted);font-size:12.5px}
+
+.empty{max-width:660px;margin:0 auto;padding-top:7vh;display:flex;flex-direction:column;gap:14px}
+.empty h2{margin:0;font-family:var(--font-pixel);font-weight:400;font-size:clamp(36px,4.6vw,50px);line-height:1.03}
+.empty p{margin:0;color:var(--muted);max-width:56ch}
+.suggest{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:6px}
+.sugg{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:var(--radius-md);background:var(--surface-soft);border:1px solid var(--border);cursor:pointer;text-align:left;transition:border-color .18s ease,transform .18s ease,background .18s ease}
+.sugg:hover{border-color:var(--border-hover);transform:translateY(-1px);background:rgba(255,255,255,.04)}
+.sugg .ic{width:26px;height:26px;flex:none;border-radius:8px;display:grid;place-items:center;background:rgba(139,92,246,.12);color:var(--violet-bright)}
+.sugg b{display:block;font-weight:500;font-size:12.5px;margin-bottom:2px}
+
+/* Run panel */
+.runpanel{min-height:0;display:flex;flex-direction:column;border-left:1px solid var(--border-subtle);background:#131330}
+.rp-head{padding:12px 14px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--border-subtle)}
+.rp-top{display:flex;align-items:center;gap:8px}
+.rp-top .eyebrow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-close{display:none}
+.seg{position:relative;display:flex;padding:3px;border-radius:9px;border:1px solid var(--border-subtle);background:var(--input)}
+.seg button{position:relative;z-index:1;flex:1;height:24px;border:0;background:none;border-radius:6px;color:var(--muted);font-size:11.5px;font-weight:500;cursor:pointer;transition:color .18s ease}
+.seg button[aria-selected="true"],.seg button[aria-checked="true"]{color:var(--foreground)}
+.seg .ind{position:absolute;top:3px;left:0;height:24px;border-radius:6px;background:rgba(139,92,246,.2);border:1px solid rgba(167,139,250,.35);transition:transform .22s var(--ease),width .22s var(--ease)}
+.rp-body{flex:1;min-height:0;overflow:auto;padding:12px 14px}
+.rp-empty{padding:24px 8px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:8px;align-items:center}
+
+.tree{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.node{position:relative;display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;padding:6px 0}
+.node::after{content:"";position:absolute;left:4px;top:20px;bottom:-6px;width:1px;background:var(--border)}
+.tree > .node:last-child::after{display:none}
+.mk{width:9px;height:9px;margin-top:4px;background:var(--subtle);transition:background .2s ease,box-shadow .2s ease}
+.s-done .mk{background:var(--cyan)}
+.s-running .mk{background:var(--violet-bright);box-shadow:0 0 12px rgba(167,139,250,.7);animation:pulse 1.6s var(--ease) infinite;color:var(--violet-bright)}
+.s-approval .mk,.s-ratelimit .mk{background:var(--amber)}
+.s-failed .mk{background:var(--red)}
+.s-skipped .mk,.s-cancelled .mk{background:transparent;border:1px solid var(--subtle)}
+.nb{min-width:0;display:flex;flex-direction:column;gap:3px}
+.nt{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--foreground)}
+.nt .i{width:13px;height:13px;color:var(--muted)}
+.nm{font:10.5px/1.4 var(--font-mono);color:var(--subtle);overflow-wrap:anywhere}
+.ns{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font:500 9px/1.2 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
+.ns .el{color:var(--subtle);letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+.st-ok{color:var(--cyan)} .st-proc{color:var(--violet-bright)} .st-warn{color:var(--amber)} .st-err{color:var(--red)} .st-off{color:var(--muted)}
+.prog{height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:4px}
+.prog i{display:block;height:100%;background:var(--violet-bright);transition:width .15s linear}
+.s-done .prog i{background:var(--cyan)} .s-failed .prog i{background:var(--red)}
+.s-approval .prog i{background:var(--amber)}
+.s-ratelimit .prog i{background:repeating-linear-gradient(90deg,var(--amber) 0 6px,transparent 6px 10px);width:100%!important;opacity:.7}
+.pgroup{position:relative;margin:2px 0 2px 16px;padding:6px 10px;border:1px dashed var(--border);border-radius:var(--radius-md)}
+.pgroup > .eyebrow{display:block;margin-bottom:2px}
+.pgroup .tree .node:last-child::after{display:none}
+.node.gnode::after{display:none}
+.toolcard{padding:10px;border-radius:10px;border:1px solid var(--border-subtle);background:var(--input);display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.toolcard .tc-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.toolcard .name{font:500 12px/1.3 var(--font-mono);color:var(--foreground)}
+.toolcard .kv{grid-template-columns:64px minmax(0,1fr)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat{padding:10px 12px;border-radius:10px;border:1px solid var(--border-subtle);background:var(--surface-soft);display:flex;flex-direction:column;gap:4px;position:relative}
+.stat .num{font-family:var(--font-pixel);font-size:26px;line-height:1;color:var(--foreground);font-variant-numeric:tabular-nums}
+.stat .num small{font-size:13px;color:var(--subtle)}
+.stat .chg{font:11px var(--font-mono);color:var(--cyan)}
+.rp-sec{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.mrow{display:flex;flex-direction:column;gap:6px}
+.mrow .top{display:flex;justify-content:space-between;font:11px var(--font-mono);color:var(--foreground-secondary)}
+.mrow .top span:last-child{color:var(--subtle);font-variant-numeric:tabular-nums}
+.bars{display:block;width:100%;height:auto}
+.bars .gl{stroke:rgba(167,139,250,.08)}
+.bars rect.b{fill:var(--violet-bright);opacity:.85;transition:opacity .15s ease}
+.bars rect.b:hover{opacity:1}
+.bars text{fill:var(--subtle);font:9px var(--font-mono)}
+
+.scrim{display:none}
+
+/* =====================================================================
+   Pages: Connections & Settings
+   ===================================================================== */
+.page{max-width:1120px;margin:0 auto;padding:40px 32px 88px;display:flex;flex-direction:column;gap:28px}
+.phead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.phead h1{margin:8px 0 6px;font-family:var(--font-pixel);font-weight:400;font-size:clamp(40px,5vw,56px);line-height:1.03}
+.phead p{margin:0;color:var(--muted);max-width:60ch}
+.stat-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat-row .stat{padding:14px 16px;border-radius:14px;background:var(--glass);border-color:var(--border)}
+.stat-row .stat::after{content:"+";position:absolute;top:8px;right:12px;font:12px var(--font-mono);color:rgba(167,139,250,.35)}
+.stat-row .num{font-size:32px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sec-h h2{margin:0;font-family:var(--font-pixel);font-weight:400;font-size:28px}
+.cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ccard{padding:16px;border-radius:14px;display:flex;flex-direction:column;gap:12px;transition:transform .18s ease,border-color .18s ease}
+.ccard:hover{transform:translateY(-1px);border-color:var(--border-hover)}
+.cc-top{display:flex;align-items:flex-start;gap:12px}
+.cc-ic{width:32px;height:32px;flex:none;border-radius:8px;display:grid;place-items:center;background:rgba(139,92,246,.12);border:1px solid var(--border);color:var(--violet-bright)}
+.cc-top .t{flex:1;min-width:0}
+.cc-top h3{margin:0 0 2px;font-size:14px;font-weight:600}
+.cc-src{font:10.5px/1.4 var(--font-mono);color:var(--subtle);overflow-wrap:anywhere}
+.cc-note{margin:0;font-size:12.5px;color:var(--muted)}
+.cc-foot{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:12px;border-top:1px solid var(--border-subtle)}
+.cc-foot .count{font:11px var(--font-mono);color:var(--subtle);margin-right:auto}
+.addcard{align-items:flex-start;justify-content:center;border-style:dashed;background:var(--surface-soft);box-shadow:none;cursor:pointer;text-align:left}
+
+.sgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.scard{padding:20px;border-radius:14px;display:flex;flex-direction:column;gap:14px}
+.scard h2{margin:0;font-size:15px;font-weight:600}
+.scard > p{margin:0;color:var(--muted);font-size:12.5px}
+.srow{display:flex;align-items:center;gap:12px}
+.srow .grow{flex:1;min-width:0}
+.srow .grow b{display:block;font-weight:500;font-size:12.5px}
+.srow .grow span{font-size:11.5px;color:var(--muted)}
+.okline{font:12px var(--font-mono);color:var(--cyan)}
+.warnline{font:12px var(--font-mono);color:var(--amber)}
+.inline-confirm{padding:12px;border-radius:var(--radius-md);border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.06);display:flex;flex-direction:column;gap:10px;font-size:13px}
+.inline-confirm .actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* =====================================================================
+   Dialogs: palette, wizard, tools
+   ===================================================================== */
+dialog{padding:0;border:1px solid var(--border);border-radius:var(--radius-xl);background:rgba(27,27,57,.94);color:var(--foreground);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 40px 120px rgba(0,0,0,.55),0 0 50px rgba(139,92,246,.10),inset 0 1px 0 rgba(255,255,255,.05);width:min(580px,calc(100vw - 32px));border-radius:20px;max-height:calc(100dvh - 48px)}
+dialog::backdrop{background:rgba(5,5,16,.62);backdrop-filter:blur(3px)}
+dialog[open]{animation:dlg .2s var(--ease)}
+@keyframes dlg{from{opacity:0;transform:translateY(10px)}}
+.dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 48px)}
+.dlg-head{display:flex;align-items:flex-start;gap:12px;padding:18px 20px 12px}
+.dlg-head .t{flex:1}
+.dlg-head h2{margin:6px 0 0;font-family:var(--font-pixel);font-weight:400;font-size:30px;line-height:1.05}
+.dlg-body{padding:0 20px 18px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.dlg-foot{display:flex;align-items:center;gap:8px;padding:12px 20px;border-top:1px solid var(--border-subtle)}
+.dlg-foot .grow{flex:1}
+
+#palette{width:min(520px,calc(100vw - 32px));margin-top:12vh}
+.pal-in{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border-subtle)}
+.pal-in input{flex:1;border:0;background:none;outline:none;font-size:14px}
+.pal-list{list-style:none;margin:0;padding:6px;max-height:340px;overflow:auto}
+.pal-list li{display:flex;align-items:center;gap:10px;padding:8px 10px;font-size:12.5px;border-radius:var(--radius-sm);cursor:pointer;color:var(--foreground-secondary)}
+.pal-list li .i{color:var(--muted)}
+.pal-list li .hint{margin-left:auto}
+.pal-list li[aria-selected="true"]{background:rgba(139,92,246,.2);color:var(--foreground);box-shadow:inset 2px 0 0 var(--violet)}
+.pal-list li[aria-selected="true"] .i{color:var(--violet-bright)}
+.pal-foot{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--border-subtle)}
+
+.stepper{list-style:none;margin:0;padding:0 20px 14px;display:flex;gap:6px;overflow-x:auto}
+.stepper li{flex:1;min-width:64px;display:flex;flex-direction:column;gap:6px}
+.stepper .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.08)}
+.stepper .done .bar{background:var(--cyan)}
+.stepper .cur .bar{background:var(--violet-bright);box-shadow:0 0 10px rgba(167,139,250,.5)}
+.stepper .sl{font:500 10px/1.2 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--subtle);white-space:nowrap}
+.stepper .cur .sl{color:var(--foreground)}
+.stepper .done .sl{color:var(--cyan)}
+.wz-h{margin:0;font-size:15px;font-weight:600}
+.dlg-body p{margin:0;color:var(--foreground-secondary)}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.checks label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);background:var(--surface-soft);cursor:pointer;transition:border-color .18s ease}
+.checks label:hover{border-color:var(--border-hover)}
+.checks input{appearance:none;width:16px;height:16px;margin:2px 0 0;flex:none;border:1px solid var(--border-active);border-radius:4px;background:var(--input);display:grid;place-items:center;cursor:pointer}
+.checks input:checked{background:var(--violet);border-color:var(--violet)}
+.checks input:checked::after{content:"";width:8px;height:8px;background:#fff;clip-path:polygon(14% 44%,0 65%,50% 100%,100% 16%,80% 0,43% 62%)}
+.steps-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;color:var(--foreground-secondary)}
+.steps-list .mono{color:var(--violet-bright);font-size:12px}
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 16px;border-radius:var(--radius-md);border:1px dashed var(--border-active);background:var(--input);text-align:center;cursor:pointer;transition:border-color .18s ease,background .18s ease}
+.drop:hover,.drop.over{border-color:var(--violet);background:rgba(139,92,246,.08)}
+.drop .i{width:22px;height:22px;color:var(--violet-bright)}
+.result{padding:10px 12px;border-radius:var(--radius-md);border:1px solid rgba(103,232,249,.25);background:rgba(103,232,249,.05);display:flex;flex-direction:column;gap:6px}
+.result.busy{border-color:rgba(167,139,250,.3);background:rgba(139,92,246,.06)}
+.result.err{border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.06)}
+.result ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--foreground-secondary)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.preset{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);background:var(--surface-soft);cursor:pointer;text-align:left;transition:border-color .18s ease,background .18s ease}
+.preset:hover{border-color:var(--border-hover)}
+.preset[aria-checked="true"]{border-color:var(--violet);background:rgba(139,92,246,.12)}
+.preset .i{color:var(--violet-bright)}
+.preset b{font-weight:500;font-size:12.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toolrows{display:flex;flex-direction:column;border:1px solid var(--border-subtle);border-radius:var(--radius-md);overflow:hidden}
+.toolrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--border-subtle)}
+.toolrow:first-child{border-top:0}
+.toolrow .grow{flex:1;min-width:0}
+.toolrow .mono{font-size:12px;color:var(--foreground)}
+.toolrow .d{font-size:12px;color:var(--muted)}
+.tgroup{display:flex;flex-direction:column;gap:8px}
+.tgroup-h{display:flex;align-items:center;gap:8px}
+.tgroup-h b{font-weight:600;font-size:14px}
+.sample-prompts{display:flex;flex-direction:column;gap:8px}
+
+/* Toasts & demo menu */
+.toasts{position:fixed;right:16px;bottom:56px;z-index:100;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-md);background:rgba(34,34,71,.96);border:1px solid var(--border);box-shadow:0 20px 50px rgba(0,0,0,.4);font-size:12.5px;animation:rise .2s var(--ease);max-width:340px}
+.toast .dot{width:8px;height:8px;flex:none;background:var(--cyan)}
+.toast.warn .dot{background:var(--amber)}
+.toast.err .dot{background:var(--red)}
+.demo{position:fixed;right:16px;bottom:16px;z-index:90}
+.demo-btn{height:28px;padding:0 10px;border-radius:6px;border:1px dashed var(--border-active);background:rgba(9,9,24,.85);color:var(--violet-bright);font:500 10px/1 var(--font-mono);letter-spacing:.12em;cursor:pointer}
+.demo-menu{position:absolute;right:0;bottom:36px;width:260px;padding:6px;border-radius:var(--radius-md);background:rgba(34,34,71,.97);border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.45)}
+.demo-menu button{width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:var(--radius-sm);background:none;cursor:pointer;text-align:left;font-size:12.5px;color:var(--foreground-secondary)}
+.demo-menu button:hover{background:rgba(139,92,246,.16);color:var(--foreground)}
+
+/* =====================================================================
+   Responsive
+   ===================================================================== */
+@media (max-width:1180px){
+  #view-chat,#view-chat.run-closed{grid-template-columns:232px minmax(0,1fr)}
+  #view-chat .runpanel{display:flex;position:fixed;z-index:35;top:var(--nav-h);right:0;bottom:0;width:min(340px,92vw);background:#131330;transform:translateX(105%);transition:transform .22s var(--ease)}
+  #view-chat.run-open .runpanel{transform:none}
+  .rp-close{display:inline-flex}
+  .scrim{display:block;position:fixed;inset:var(--nav-h) 0 0 0;z-index:30;background:rgba(5,5,16,.6);opacity:0;pointer-events:none;transition:opacity .18s ease}
+  #view-chat.run-open .scrim,#view-chat.side-open .scrim{opacity:1;pointer-events:auto}
+  .cgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:860px){
+  .sgrid{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  #view-chat,#view-chat.run-closed{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;z-index:35;top:var(--nav-h);left:0;bottom:0;width:min(300px,86vw);background:#0B0B1C;transform:translateX(-105%);transition:transform .22s var(--ease)}
+  #view-chat.side-open .side{transform:none}
+  .menu-btn{display:inline-flex}
+  .tab .lbl,.nav-k .lbl,.nav-status{display:none}
+  .topnav{gap:10px;padding:0 12px}
+  .brand .word{display:none}
+  .chat-head{padding:10px 16px}
+  .thread{padding:24px 16px 16px}
+  .composer-wrap{padding:0 16px 16px}
+  .comp-hint{display:none}
+  .suggest{grid-template-columns:1fr}
+  .page{padding:32px 16px 96px;gap:24px}
+  .cgrid{grid-template-columns:1fr}
+  .two{grid-template-columns:1fr}
+  .dlg-head,.dlg-body{padding-left:16px;padding-right:16px}
+  .dlg-foot{padding:14px 16px}
+  .stepper{padding:0 16px 14px}
+}
+@media (min-width:761px) and (max-width:1024px){ .tab .lbl{display:none} }
+
+body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body class="grid-on">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="pixel-d" viewBox="0 0 5 5" shape-rendering="crispEdges">
+    <rect x="0" y="0" width="4" height="1"/><rect x="0" y="1" width="1" height="3"/><rect x="4" y="1" width="1" height="3"/><rect x="0" y="4" width="4" height="1"/><rect x="2" y="2" width="1" height="1" opacity=".55"/>
+  </symbol>
+</svg>
+
+<div class="shell">
+  <header class="topnav">
+    <a class="brand" href="#" aria-label="Donna home" data-view-link="chat">
+      <svg class="logo" viewBox="0 0 5 5" aria-hidden="true" style="fill:var(--violet-bright)"><use href="#pixel-d"/></svg>
+      <span class="word">DONNA</span>
+    </a>
+    <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
+      <span class="tab-ind" aria-hidden="true"></span>
+      <button class="tab" role="tab" data-view="chat" aria-selected="true" aria-controls="view-chat"><span data-icon="chat"></span><span class="lbl">Chat</span></button>
+      <button class="tab" role="tab" data-view="connections" aria-selected="false" aria-controls="view-connections"><span data-icon="plug"></span><span class="lbl">Connections</span></button>
+      <button class="tab" role="tab" data-view="settings" aria-selected="false" aria-controls="view-settings"><span data-icon="sliders"></span><span class="lbl">Settings</span></button>
+    </nav>
+    <div class="nav-right">
+      <span class="pill ok live nav-status" id="nav-status">Groq · Online</span>
+      <button class="nav-k" id="open-palette" aria-label="Open command palette"><span data-icon="search"></span><span class="lbl">Commands</span><kbd>Ctrl K</kbd></button>
+    </div>
+  </header>
+
+  <div class="banner" id="offline-banner" hidden role="status">
+    <b>■ OFFLINE</b><span>Donna can't reach Groq. Your history and search still work, and sending resumes when you're back online.</span>
+    <button class="btn btn-sm btn-secondary" id="retry-online" style="margin-left:auto">Retry</button>
+  </div>
+
+  <!-- ===================== CHAT ===================== -->
+  <section class="view" id="view-chat" role="tabpanel" aria-label="Chat">
+    <aside class="side" aria-label="Conversations">
+      <button class="btn btn-primary" id="new-chat"><span data-icon="plus"></span>New chat</button>
+      <div class="search">
+        <span data-icon="search"></span>
+        <label class="sr" for="conv-search">Search conversations</label>
+        <input class="input" id="conv-search" type="search" placeholder="Search conversations" autocomplete="off">
+      </div>
+      <div class="convs" id="convs"></div>
+      <div class="side-foot">
+        <div class="budget-row"><span class="eyebrow">Groq today</span><span class="meta" id="budget-text">412 / 1,000 req</span></div>
+        <div class="meter" id="budget-meter"><i style="width:41%"></i></div>
+      </div>
+    </aside>
+
+    <div class="thread-col">
+      <div class="chat-head">
+        <button class="btn btn-ghost btn-icon menu-btn" id="open-side" aria-label="Show conversations"><span data-icon="menu"></span></button>
+        <div class="t">
+          <h1 id="chat-title">Morning briefing</h1>
+          <div class="meta" id="chat-meta">gpt-oss-120b</div>
+        </div>
+        <button class="btn btn-ghost btn-icon" id="toggle-run" aria-label="Toggle run panel" aria-pressed="true"><span data-icon="panel"></span></button>
+      </div>
+      <div class="thread" id="thread" aria-live="polite"></div>
+      <div class="composer-wrap">
+        <div class="slash" id="slash" hidden><ul id="slash-list" role="listbox" aria-label="Commands"></ul></div>
+        <form class="composer" id="composer">
+          <label class="sr" for="prompt">Message Donna</label>
+          <textarea id="prompt" rows="1" placeholder="Ask Donna anything…  (/ for commands)"></textarea>
+          <div class="comp-row" id="mention-row">
+            <button type="button" class="chipbtn" data-mention="gmail" aria-pressed="false">@gmail</button>
+            <button type="button" class="chipbtn" data-mention="calendar" aria-pressed="false">@calendar</button>
+            <button type="button" class="chipbtn" data-mention="notion" aria-pressed="false">@notion</button>
+            <button type="button" class="chipbtn" data-mention="weather" aria-pressed="false">@weather</button>
+            <button type="submit" class="btn btn-primary btn-icon send" id="send" aria-label="Send"><span data-icon="send"></span></button>
+          </div>
+        </form>
+        <div class="comp-hint"><span class="meta">Enter to send · Shift + Enter for a new line</span><span class="meta" id="tool-count">17 tools ready</span></div>
+      </div>
+    </div>
+
+    <aside class="runpanel" id="runpanel" aria-label="Agent run">
+      <div class="rp-head">
+        <div class="rp-top">
+          <span class="eyebrow" id="rp-eyebrow"><span class="sq">■</span> Agent run</span>
+          <span id="rp-state"></span>
+          <button class="btn btn-ghost btn-icon rp-close" id="close-run" aria-label="Close run panel"><span data-icon="x"></span></button>
+        </div>
+        <div class="meta" id="rp-sub"></div>
+        <div class="seg" role="tablist" aria-label="Run details" id="rp-tabs">
+          <span class="ind" aria-hidden="true"></span>
+          <button role="tab" data-rtab="plan" aria-selected="true">Plan</button>
+          <button role="tab" data-rtab="tools" aria-selected="false">Tool calls</button>
+          <button role="tab" data-rtab="usage" aria-selected="false">Usage</button>
+        </div>
+      </div>
+      <div class="rp-body" id="rp-body"></div>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+  </section>
+
+  <!-- ===================== CONNECTIONS ===================== -->
+  <section class="view scroll" id="view-connections" role="tabpanel" aria-label="Connections" hidden>
+    <div class="page">
+      <div class="phead">
+        <div>
+          <span class="eyebrow"><span class="sq">■</span> Integrations // MCP</span>
+          <h1>Connections</h1>
+          <p>The apps and MCP servers Donna can use. Each connection has a guided setup, and you can switch tools on or off one at a time.</p>
+        </div>
+        <button class="btn btn-primary" id="add-mcp"><span data-icon="plus"></span>Add MCP server</button>
+      </div>
+      <div class="stat-row" id="conn-stats"></div>
+      <div class="sec-h"><h2>Your connections</h2><button class="btn btn-secondary btn-sm" id="show-tools"><span data-icon="wrench"></span>All tools</button></div>
+      <div class="cgrid" id="conn-grid"></div>
+    </div>
+  </section>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <section class="view scroll" id="view-settings" role="tabpanel" aria-label="Settings" hidden>
+    <div class="page">
+      <div class="phead">
+        <div>
+          <span class="eyebrow"><span class="sq">■</span> Preferences // local</span>
+          <h1>Settings</h1>
+          <p>Everything is stored on this computer. Keys go to Windows Credential Manager and are never written to plain files.</p>
+        </div>
+      </div>
+      <div class="sgrid">
+        <article class="card scard">
+          <span class="eyebrow">01 // Model provider</span>
+          <h2>Groq API key</h2>
+          <div class="field">
+            <label for="groq-key">API key</label>
+            <div class="srow"><input class="input mono grow" id="groq-key" type="password" value="gsk_demo_7f2c9a1b4e5d6f708192a3b4c5d6e7f8" autocomplete="off"><button class="btn btn-secondary" id="show-key" type="button">Show</button></div>
+            <span class="help">Free key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a></span>
+          </div>
+          <div class="srow"><span class="okline grow" id="key-status">✓ Key works · checked 2 min ago</span><button class="btn btn-secondary btn-sm" id="test-key">Test key</button></div>
+        </article>
+
+        <article class="card scard">
+          <span class="eyebrow">02 // Models</span>
+          <h2>Model roles</h2>
+          <div class="field"><label for="m-plan">Planner and final answer</label><select class="select" id="m-plan"><option>openai/gpt-oss-120b</option><option>openai/gpt-oss-20b</option><option>qwen/qwen3.8-27b</option></select></div>
+          <div class="field"><label for="m-work">Router, workers and verifier</label><select class="select" id="m-work"><option>openai/gpt-oss-20b</option><option>openai/gpt-oss-120b</option><option>qwen/qwen3.8-27b</option></select></div>
+          <div class="field"><label for="m-fb">Fallback when rate-limited</label><select class="select" id="m-fb"><option>qwen/qwen3.8-27b</option><option>openai/gpt-oss-20b</option></select></div>
+          <span class="meta">Free tier per model: 30 req/min · 1,000 req/day · 8K tokens/min</span>
+        </article>
+
+        <article class="card scard">
+          <span class="eyebrow">03 // Time</span>
+          <h2>Timezone</h2>
+          <p>Used for "tomorrow", meeting times, and new calendar events.</p>
+          <div class="field"><label for="tz">Timezone</label><select class="select" id="tz"></select></div>
+        </article>
+
+        <article class="card scard">
+          <span class="eyebrow">04 // Appearance</span>
+          <h2>Look and motion</h2>
+          <div class="srow"><div class="grow"><b id="lbl-grid">Pixel grid background</b><span>A faint 24 px grid behind the interface.</span></div><button class="switch" role="switch" aria-checked="true" aria-labelledby="lbl-grid" id="sw-grid"></button></div>
+          <div class="srow"><div class="grow"><b id="lbl-motion">Reduce motion</b><span>Turns off animations. Also follows your system setting.</span></div><button class="switch" role="switch" aria-checked="false" aria-labelledby="lbl-motion" id="sw-motion"></button></div>
+          <div class="srow"><div class="grow"><b id="lbl-panel">Open run panel automatically</b><span>Shows agent steps whenever Donna starts a run.</span></div><button class="switch" role="switch" aria-checked="true" aria-labelledby="lbl-panel" id="sw-panel"></button></div>
+        </article>
+
+        <article class="card scard">
+          <span class="eyebrow">05 // Data</span>
+          <h2>Your data</h2>
+          <p>Conversations, agent runs and memories live in <span class="mono">data/donna.db</span>, with a nightly backup kept for 7 days.</p>
+          <div class="srow"><button class="btn btn-secondary" id="export"><span data-icon="upload"></span>Export conversations</button><button class="btn btn-danger" id="wipe">Wipe all data</button></div>
+          <div id="wipe-confirm" hidden class="inline-confirm" role="alert">
+            <span>This permanently deletes every conversation, run and memory on this computer. Connections and keys are kept.</span>
+            <div class="actions"><button class="btn btn-ghost btn-sm" id="wipe-cancel">Cancel</button><button class="btn btn-danger btn-sm" id="wipe-yes">Wipe everything</button></div>
+          </div>
+        </article>
+
+        <article class="card scard">
+          <span class="eyebrow">06 // Advanced</span>
+          <h2>Setup and diagnostics</h2>
+          <div class="srow"><div class="grow"><b>First-time setup</b><span>Go through the welcome steps again.</span></div><button class="btn btn-secondary btn-sm" id="rerun-setup">Run setup</button></div>
+          <div class="srow"><div class="grow"><b>Logs</b><span class="mono">logs/donna.log</span></div><button class="btn btn-secondary btn-sm" id="open-logs">Open folder</button></div>
+          <div class="srow"><div class="grow"><b id="lbl-off">Simulate offline</b><span>Preview how Donna behaves without internet.</span></div><button class="switch" role="switch" aria-checked="false" aria-labelledby="lbl-off" id="sw-offline"></button></div>
+        </article>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== DIALOGS ===================== -->
+<dialog id="palette" aria-label="Command palette">
+  <div class="pal-in"><span data-icon="search"></span><label class="sr" for="pal-q">Search commands</label><input id="pal-q" placeholder="Search commands…" autocomplete="off" role="combobox" aria-controls="pal-list" aria-expanded="true"></div>
+  <ul class="pal-list" id="pal-list" role="listbox"></ul>
+  <div class="pal-foot"><span class="meta">↑↓ move</span><span class="meta">↵ open</span><span class="meta">Esc close</span></div>
+</dialog>
+
+<dialog id="wizard" aria-labelledby="wz-title">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div class="t"><span class="eyebrow" id="wz-eyebrow"></span><h2 id="wz-title"></h2></div>
+      <button class="btn btn-ghost btn-icon" data-close aria-label="Close"><span data-icon="x"></span></button>
+    </div>
+    <ol class="stepper" id="wz-steps"></ol>
+    <div class="dlg-body" id="wz-body"></div>
+    <div class="dlg-foot">
+      <span class="meta grow" id="wz-count"></span>
+      <button class="btn btn-ghost" id="wz-back">Back</button>
+      <button class="btn btn-primary" id="wz-next">Continue</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="tools-dlg" aria-labelledby="tools-title">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div class="t"><span class="eyebrow" id="tools-eyebrow"><span class="sq">■</span> Tool catalog</span><h2 id="tools-title">Tools</h2></div>
+      <button class="btn btn-ghost btn-icon" data-close aria-label="Close"><span data-icon="x"></span></button>
+    </div>
+    <div class="dlg-body" id="tools-body"></div>
+  </div>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<div class="demo">
+  <div class="demo-menu" id="demo-menu" hidden>
+    <button data-demo="setup"><span data-icon="key"></span>Run first-time setup</button>
+    <button data-demo="offline"><span data-icon="bolt"></span>Toggle offline mode</button>
+    <button data-demo="expire"><span data-icon="cal"></span>Expire Google sign-in</button>
+    <button data-demo="reset"><span data-icon="refresh"></span>Reset demo</button>
+  </div>
+  <button class="demo-btn" id="demo-btn" aria-expanded="false" aria-controls="demo-menu">DEMO ▴</button>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ------------------------------------------------------------------ utils */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = (p) => p + Math.random().toString(36).slice(2, 7);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmtMs = (ms) => (ms < 1000 ? Math.round(ms) + 'ms' : (ms / 1000).toFixed(1) + 's');
+const fmtK = (n) => (n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n));
+
+const ICONS = {
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  plug: '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  stop: '<rect x="7" y="7" width="10" height="10" rx="1.5"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+  doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
+  route: '<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h5a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h5"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  pen: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  pin: '<path d="M12 17v5M5 17h14l-2-4V4H7v9z"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  panel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  terminal: '<path d="m4 17 6-6-6-6M12 19h8"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+  db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  git: '<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 8v8M18 11c0 4-6 3-6 7"/>',
+  smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+  arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+  hash: '<path d="M5 9h14M5 15h14M10 3 8 21M16 3l-2 18"/>'
+};
+const icon = (n, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+const hydrateIcons = (root = document) => $$('[data-icon]', root).forEach((el) => { el.outerHTML = icon(el.dataset.icon); });
+const pixelD = '<svg viewBox="0 0 5 5" aria-hidden="true" style="fill:var(--violet-bright)"><use href="#pixel-d"/></svg>';
+
+/* ------------------------------------------------------------------ data */
+// Tool catalog. Flags: "confirm" = asks before running, "planned" = on the roadmap, not built yet.
+const TOOLS = {
+  gmail: [['list_emails', 'List or search emails'], ['read_email', 'Read one email in full'], ['send_email', 'Compose and send an email', 'confirm'], ['get_unread_emails', 'Latest unread emails'], ['search_emails', 'Search with Gmail syntax'], ['delete_email', 'Move an email to trash', 'confirm'], ['reply_email', 'Reply to a thread', 'planned confirm'], ['mark_read', 'Mark read or unread', 'planned'], ['create_draft', 'Save a draft', 'planned']],
+  calendar: [['get_events', 'Next upcoming events'], ['create_event', 'Create an event', 'confirm'], ['list_events_range', 'Events between two dates', 'planned'], ['update_event', 'Change an event', 'planned confirm'], ['delete_event', 'Delete an event', 'planned confirm']],
+  notion: [['list_pages', 'Pages and databases you shared'], ['read_page_content', 'Read a page as plain text'], ['create_page', 'Create a page'], ['update_page_title', 'Rename a page'], ['append_text_to_page', 'Add text to a page'], ['delete_page', 'Archive a page', 'confirm'], ['query_database', 'Filter a database', 'planned']],
+  weather: [['get_weather', 'Current weather for any city']],
+  utils: [['square', 'Square a number'], ['get_jokes', 'A random joke']],
+  fs: [['read_text_file', 'Read a file'], ['read_multiple_files', 'Read several files'], ['write_file', 'Create or overwrite a file', 'confirm'], ['edit_file', 'Edit part of a file', 'confirm'], ['create_directory', 'Make a folder'], ['list_directory', 'List a folder'], ['directory_tree', 'Folder tree'], ['move_file', 'Move or rename', 'confirm'], ['search_files', 'Find files by name'], ['get_file_info', 'Size and dates'], ['list_allowed_directories', 'Folders Donna may use']],
+  fetch: [['fetch', 'Fetch a web page as markdown']]
+};
+const PRESET_TOOLS = {
+  filesystem: TOOLS.fs,
+  fetch: TOOLS.fetch,
+  git: [['git_status', 'Working tree status'], ['git_diff', 'Show changes'], ['git_log', 'Recent commits'], ['git_add', 'Stage files'], ['git_commit', 'Commit staged changes', 'confirm'], ['git_create_branch', 'Create a branch']],
+  sqlite: [['list_tables', 'List tables'], ['describe_table', 'Table schema'], ['read_query', 'Run a SELECT'], ['write_query', 'Run INSERT / UPDATE', 'confirm'], ['create_table', 'Create a table', 'confirm']],
+  custom: [['hello', 'Example tool from your server']]
+};
+const PRESETS = {
+  filesystem: { name: 'Filesystem', icon: 'folder', transport: 'stdio', cmd: 'npx', args: '-y @modelcontextprotocol/server-filesystem C:\\Users\\yashr\\Documents', sub: 'Read and edit local files' },
+  fetch: { name: 'Fetch', icon: 'globe', transport: 'stdio', cmd: 'uvx', args: 'mcp-server-fetch', sub: 'Read web pages' },
+  git: { name: 'Git', icon: 'git', transport: 'stdio', cmd: 'uvx', args: 'mcp-server-git --repository .', sub: 'Inspect repositories' },
+  sqlite: { name: 'SQLite', icon: 'db', transport: 'stdio', cmd: 'uvx', args: 'mcp-server-sqlite --db-path data\\notes.db', sub: 'Query a local database' },
+  custom: { name: 'Custom server', icon: 'terminal', transport: 'stdio', cmd: '', args: '', sub: 'Any MCP server' }
+};
+
+const S = {
+  view: 'chat',
+  runTab: 'plan',
+  q: '',
+  offline: false,
+  autoPanel: true,
+  mentions: new Set(),
+  live: null,
+  runs: {},
+  usage: { req: 412, max: 1000, tokens: 58200, tpm120: 3100, tpm20: 1400 },
+  conns: [
+    { id: 'gmail', name: 'Gmail', icon: 'mail', src: 'Google · built-in', status: 'connected', note: 'Signed in as you@gmail.com · last used 2 min ago', guide: 'google' },
+    { id: 'calendar', name: 'Google Calendar', icon: 'cal', src: 'Google · built-in', status: 'connected', note: 'Primary calendar · Asia/Kolkata', guide: 'google' },
+    { id: 'notion', name: 'Notion', icon: 'doc', src: 'Built-in', status: 'off', note: 'Needs your integration secret. Takes about 2 minutes.', guide: 'notion' },
+    { id: 'weather', name: 'Weather', icon: 'sun', src: 'Open-Meteo · built-in', status: 'connected', toggle: true, on: true, note: 'No setup needed. Results cached for 10 minutes.' },
+    { id: 'utils', name: 'Utilities', icon: 'smile', src: 'Built-in', status: 'connected', toggle: true, on: true, note: 'square and get_jokes, handy for testing.' },
+    { id: 'fs', name: 'Filesystem', icon: 'folder', src: 'stdio · npx @modelcontextprotocol/server-filesystem', status: 'connected', custom: true, note: 'Allowed folder: C:\\Users\\yashr\\Documents' },
+    { id: 'fetch', name: 'Fetch', icon: 'globe', src: 'stdio · uvx mcp-server-fetch', status: 'error', custom: true, note: 'Process exited with code 1: "uvx" was not found. Install uv or change the command.' }
+  ],
+  convs: [],
+  activeId: null
+};
+
+const conn = (id) => S.conns.find((c) => c.id === id);
+const readyTools = (id) => (TOOLS[id] || []).filter((t) => !(t[2] || '').includes('planned'));
+const connUsable = (id) => { const c = conn(id); return c && c.status === 'connected' && (!c.toggle || c.on); };
+
+/* ------------------------------------------------------------------ runs */
+const now = () => Date.now();
+function mkNode(kind, title, o = {}) {
+  return Object.assign({ id: uid('n'), kind, title, icon: 'spark', state: 'queued', t0: 0, t1: 0, deps: [], note: '', tool: '', expect: 800 }, o);
+}
+function doneNode(kind, title, ms, o = {}) { const t = now() - 90000; return mkNode(kind, title, Object.assign({ state: 'done', t0: t, t1: t + ms }, o)); }
+
+function seed() {
+  // 1) Morning briefing: multi-agent run waiting for approval
+  const r1 = { id: 'r_8f2a1', route: 'multi_agent', status: 'waiting', t0: now() - 90000, t1: now() - 88400, tokens: { in: 2840, out: 412 }, nodes: [], tools: [], timers: [] };
+  const g = doneNode('worker', 'Summarize unread emails', 1184, { icon: 'mail', tool: 'get_unread_emails', parallel: true });
+  const w = doneNode('worker', 'Weather in Pune tomorrow', 402, { icon: 'sun', tool: 'get_weather', parallel: true });
+  const c = mkNode('worker', 'Add “Prep” 09:00–09:30', { icon: 'cal', tool: 'create_event', parallel: true, state: 'approval', t0: now() - 89300, t1: now() - 88600 });
+  r1.nodes = [
+    doneNode('router', 'Route request', 180, { icon: 'route', note: 'multi_agent · 3 intents' }),
+    doneNode('planner', 'Plan tasks', 620, { icon: 'spark', note: '3 tasks · all independent' }),
+    g, w, c,
+    doneNode('verifier', 'Verify results', 380, { icon: 'shield', note: '2 passed · 1 waiting for you' }),
+    doneNode('synth', 'Write answer', 910, { icon: 'pen', note: 'streamed 412 tokens' })
+  ];
+  r1.tools = [
+    { nodeId: g.id, name: 'get_unread_emails', server: 'Gmail', args: '{"max_results": 10}', status: 'complete', ms: 1184, result: '6 emails · 2 need a reply' },
+    { nodeId: w.id, name: 'get_weather', server: 'Weather', args: '{"city": "Pune"}', status: 'complete', ms: 402, result: 'Pune: 24°C, Clear sky' },
+    { nodeId: c.id, name: 'create_event', server: 'Google Calendar', args: '{"summary": "Prep", "start_time": "…T09:00:00", "end_time": "…T09:30:00"}', status: 'awaiting approval', ms: 0, result: '—' }
+  ];
+  S.runs[r1.id] = r1;
+
+  // 2) Weather in Tokyo: single tool
+  const r2 = { id: 'r_31c07', route: 'single_tool', status: 'done', t0: now() - 3600e3, t1: now() - 3600e3 + 1400, tokens: { in: 910, out: 38 }, nodes: [], tools: [], timers: [] };
+  const w2 = doneNode('worker', 'Weather in Tokyo', 388, { icon: 'sun', tool: 'get_weather' });
+  r2.nodes = [doneNode('router', 'Route request', 150, { icon: 'route', note: 'single_tool' }), w2, doneNode('synth', 'Write answer', 520, { icon: 'pen', note: 'streamed 38 tokens' })];
+  r2.tools = [{ nodeId: w2.id, name: 'get_weather', server: 'Weather', args: '{"city": "Tokyo"}', status: 'complete', ms: 388, result: 'Tokyo: 18°C, Partly cloudy' }];
+  S.runs[r2.id] = r2;
+
+  // 3) Notion cleanup: failed tool
+  const r3 = { id: 'r_c90e4', route: 'single_tool', status: 'done', t0: now() - 86400e3, t1: now() - 86400e3 + 900, tokens: { in: 880, out: 51 }, nodes: [], tools: [], timers: [] };
+  const n3 = doneNode('worker', 'List Notion pages', 12, { icon: 'doc', tool: 'list_pages', state: 'failed' });
+  r3.nodes = [doneNode('router', 'Route request', 140, { icon: 'route', note: 'single_tool' }), n3, doneNode('synth', 'Write answer', 480, { icon: 'pen', note: 'explained the failure' })];
+  r3.tools = [{ nodeId: n3.id, name: 'list_pages', server: 'Notion', args: '{}', status: 'error', ms: 12, result: 'Notion is not configured. Set INTERNAL_INTERGRATION_TOKEN.' }];
+  S.runs[r3.id] = r3;
+
+  // 4) Invoices: single tool
+  const r4 = { id: 'r_5ab19', route: 'single_tool', status: 'done', t0: now() - 3 * 86400e3, t1: now() - 3 * 86400e3 + 2100, tokens: { in: 1320, out: 96 }, nodes: [], tools: [], timers: [] };
+  const n4 = doneNode('worker', 'Search emails', 940, { icon: 'mail', tool: 'search_emails' });
+  r4.nodes = [doneNode('router', 'Route request', 160, { icon: 'route', note: 'single_tool' }), n4, doneNode('synth', 'Write answer', 700, { icon: 'pen', note: 'streamed 96 tokens' })];
+  r4.tools = [{ nodeId: n4.id, name: 'search_emails', server: 'Gmail', args: '{"query": "invoice after:2026/09/01 before:2026/10/01"}', status: 'complete', ms: 940, result: '3 emails' }];
+  S.runs[r4.id] = r4;
+
+  S.convs = [
+    { id: 'c1', title: 'Morning briefing', group: 'today', pinned: true, runId: r1.id, msgs: [
+      { id: uid('m'), role: 'user', text: "Summarize my unread emails, check tomorrow's weather in Pune, and add a 30-min prep block before my first meeting." },
+      { id: uid('m'), role: 'run', runId: r1.id },
+      { id: uid('m'), role: 'confirm', runId: r1.id, nodeId: c.id, state: 'pending', title: 'Create calendar event', detail: 'Tomorrow · 09:00–09:30', fields: [['summary', 'Prep'], ['when', 'Tomorrow, 09:00–09:30'], ['calendar', 'primary'], ['tool', 'create_event']] },
+      { id: uid('m'), role: 'bot', html: "You have <b>6 unread emails</b>. Two need a reply today: the Acme invoice and Priya's design review. Tomorrow in Pune it will be <b>24°C and clear</b>. Your first meeting is at 09:30, so I've lined up <b>Prep at 09:00</b>. Approve it above and I'll add it." }
+    ] },
+    { id: 'c2', title: 'Weather in Tokyo', group: 'today', pinned: false, runId: r2.id, msgs: [
+      { id: uid('m'), role: 'user', text: "What's the weather in Tokyo?" },
+      { id: uid('m'), role: 'run', runId: r2.id },
+      { id: uid('m'), role: 'bot', html: "It's <b>18°C and partly cloudy</b> in Tokyo right now." }
+    ] },
+    { id: 'c3', title: 'Notion cleanup', group: 'week', pinned: false, runId: r3.id, msgs: [
+      { id: uid('m'), role: 'user', text: 'List my Notion pages' },
+      { id: uid('m'), role: 'run', runId: r3.id },
+      { id: uid('m'), role: 'bot', html: 'I couldn\'t reach Notion because it isn\'t connected yet. <button class="linkbtn" data-wizard="notion">Set up Notion</button> takes about 2 minutes.' }
+    ] },
+    { id: 'c4', title: 'Invoices from September', group: 'week', pinned: false, runId: r4.id, msgs: [
+      { id: uid('m'), role: 'user', text: 'Find invoices from September' },
+      { id: uid('m'), role: 'run', runId: r4.id },
+      { id: uid('m'), role: 'bot', html: 'I found <b>3 invoices</b> from September: Acme Corp (₹42,000, due Oct 5), Figma (US$15) and Notion (US$10). The Acme one is still unpaid.' }
+    ] }
+  ];
+  S.activeId = 'c1';
+}
+
+const active = () => S.convs.find((c) => c.id === S.activeId) || null;
+const runOf = (c) => (c && c.runId ? S.runs[c.runId] : null);
+
+/* ------------------------------------------------------------------ nav / views */
+function moveIndicator(container, selSel) {
+  const ind = $('.tab-ind, .ind', container);
+  const sel = $(selSel, container);
+  if (!ind || !sel) return;
+  ind.style.width = sel.offsetWidth + 'px';
+  ind.style.transform = `translateX(${sel.offsetLeft}px)`;
+}
+function setView(v) {
+  S.view = v;
+  $$('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.view === v)));
+  ['chat', 'connections', 'settings'].forEach((id) => { $('#view-' + id).hidden = id !== v; });
+  moveIndicator($('#tabs'), '.tab[aria-selected="true"]');
+  if (v === 'chat') { renderAll(); requestAnimationFrame(() => moveIndicator($('#rp-tabs'), '[aria-selected="true"]')); }
+  if (v === 'connections') renderConnections();
+  closeDrawers();
+}
+
+/* ------------------------------------------------------------------ sidebar */
+function renderConvList() {
+  const q = S.q.trim().toLowerCase();
+  const match = (c) => !q || c.title.toLowerCase().includes(q) || c.msgs.some((m) => (m.text || m.html || '').toLowerCase().includes(q));
+  const list = S.convs.filter(match);
+  const groups = [['Pinned', list.filter((c) => c.pinned)], ['Today', list.filter((c) => !c.pinned && c.group === 'today')], ['This week', list.filter((c) => !c.pinned && c.group === 'week')]];
+  let html = '';
+  groups.forEach(([name, items]) => {
+    if (!items.length) return;
+    html += `<div class="cgroup eyebrow">${name}</div>`;
+    items.forEach((c) => { html += convItem(c); });
+  });
+  if (!list.length) html = `<div class="rp-empty"><span class="meta">${q ? 'No conversations match “' + esc(S.q) + '”' : 'No conversations yet'}</span></div>`;
+  $('#convs').innerHTML = html;
+}
+function convItem(c) {
+  const act = c.id === S.activeId ? ' active' : '';
+  if (c.editing) {
+    return `<div class="conv${act}"><div class="conv-edit"><label class="sr" for="ren-${c.id}">Rename conversation</label><input class="input" id="ren-${c.id}" data-rename="${c.id}" value="${esc(c.title)}"></div></div>`;
+  }
+  if (c.deleting) {
+    return `<div class="conv${act}"><div class="conv-del"><span>Delete this chat?</span><button class="btn btn-ghost btn-sm" data-del-no="${c.id}">Keep</button><button class="btn btn-danger btn-sm" data-del-yes="${c.id}">Delete</button></div></div>`;
+  }
+  const r = S.runs[c.runId];
+  const running = S.live && S.live.conv === c;
+  const sub = running ? '<span class="st-proc">● running</span>' : r && r.status === 'waiting' ? '<span class="st-warn">● needs approval</span>' : esc(timeAgo(r ? r.t0 : now()));
+  return `<div class="conv${act}">
+    <button class="conv-btn" data-open="${c.id}"><span class="conv-title">${esc(c.title)}</span><span class="meta">${sub}</span></button>
+    <div class="conv-actions">
+      <button class="btn btn-ghost btn-icon${c.pinned ? ' on' : ''}" data-pin="${c.id}" aria-label="${c.pinned ? 'Unpin' : 'Pin'} ${esc(c.title)}" aria-pressed="${c.pinned}">${icon('pin')}</button>
+      <button class="btn btn-ghost btn-icon" data-ren="${c.id}" aria-label="Rename ${esc(c.title)}">${icon('pen')}</button>
+      <button class="btn btn-ghost btn-icon" data-del="${c.id}" aria-label="Delete ${esc(c.title)}">${icon('trash')}</button>
+    </div></div>`;
+}
+function timeAgo(t) {
+  const s = (now() - t) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.round(s / 60) + ' min ago';
+  if (s < 86400) return Math.round(s / 3600) + ' h ago';
+  return Math.round(s / 86400) + ' d ago';
+}
+
+/* ------------------------------------------------------------------ thread */
+function renderThread() {
+  const c = active();
+  $('#chat-title').textContent = c ? c.title : 'New chat';
+  const r = runOf(c);
+  $('#chat-meta').textContent = r ? `${S.conns.filter((x) => x.status === 'connected').length} connections · ${routeLabel(r.route)} · ${$('#m-plan').value.replace('openai/', '')}` : `${$('#m-plan').value.replace('openai/', '')} · ${countReady()} tools ready`;
+  const th = $('#thread');
+  if (!c || !c.msgs.length) { th.innerHTML = emptyState(); return; }
+  th.innerHTML = `<div class="thread-inner">${c.msgs.map(msgHTML).join('')}</div>`;
+  th.scrollTop = th.scrollHeight;
+}
+function msgHTML(m) {
+  if (m.role === 'user') {
+    const uses = m.uses && m.uses.length ? `<div class="uses">${m.uses.map((u) => `<span class="tag">@${u}</span>`).join('')}</div>` : '';
+    return `<div class="msg-user" data-mid="${m.id}"><p>${esc(m.text)}</p>${uses}</div>`;
+  }
+  if (m.role === 'run') return runChipHTML(m);
+  if (m.role === 'confirm') return approvalHTML(m);
+  const caret = m.streaming ? '<span class="caret" aria-hidden="true"></span>' : '';
+  const stopped = m.stopped ? ' <span class="stopped">[stopped]</span>' : '';
+  return `<div class="msg-bot" data-mid="${m.id}"><span class="avatar">${pixelD}</span><div class="bot-body"><span class="meta">DONNA · ${esc(m.model || 'gpt-oss-120b')}</span><div class="bot-text">${m.html || ''}${caret}${stopped}</div></div></div>`;
+}
+function runChipHTML(m) {
+  const r = S.runs[m.runId];
+  if (!r) return '';
+  const workers = r.nodes.filter((n) => n.kind === 'worker');
+  const counts = { done: 0, approval: 0, failed: 0 };
+  workers.forEach((w) => { if (counts[w.state] !== undefined) counts[w.state]++; });
+  let sum;
+  if (r.route === 'multi_agent') sum = `${workers.length} tasks in parallel`;
+  else if (r.route === 'single_tool') sum = `1 tool · ${workers[0] ? workers[0].tool : '…'}`;
+  else sum = 'Direct answer · no tools';
+  const bits = [];
+  if (counts.done) bits.push(`${counts.done} done`);
+  if (counts.approval) bits.push(`${counts.approval} needs approval`);
+  if (counts.failed) bits.push(`${counts.failed} failed`);
+  if (r.status === 'running') bits.push('running…');
+  if (r.status === 'cancelled') bits.push('stopped');
+  return `<button class="runchip" data-runchip="${m.id}" data-open-run aria-label="Show agent run details">
+    <span class="rc-main"><span class="eyebrow"><span class="sq">■</span> Agent run · ${routeLabel(r.route)}</span><span class="rc-sum">${sum}${bits.length ? ' · ' + bits.join(' · ') : ''}</span></span>
+    <span class="rc-squares" aria-hidden="true">${r.nodes.map((n) => `<i class="s-${n.state}"></i>`).join('')}</span>
+    <span class="rc-go">VIEW →</span></button>`;
+}
+function approvalHTML(m) {
+  const kv = `<dl class="kv">${m.fields.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
+  if (m.state === 'approved') return `<div class="approval done" data-mid="${m.id}"><span class="eyebrow st-ok">■ Approved · done</span><h3>${esc(m.title)}</h3>${kv}</div>`;
+  if (m.state === 'rejected') return `<div class="approval rej" data-mid="${m.id}"><span class="eyebrow">■ Rejected · nothing changed</span><h3>${esc(m.title)}</h3></div>`;
+  const busy = m.state === 'working';
+  return `<div class="approval" data-mid="${m.id}" role="group" aria-label="Action requires approval">
+    <span class="eyebrow st-warn">■ Action requires approval</span>
+    <h3>${esc(m.title)}</h3>
+    <span class="help">${esc(m.detail)}</span>${kv}
+    <div class="actions"><button class="btn btn-secondary" data-approve="${m.id}" data-ok="0" ${busy ? 'disabled' : ''}>Reject</button><button class="btn btn-primary" data-approve="${m.id}" data-ok="1" ${busy ? 'disabled' : ''}>${busy ? 'Working…' : 'Approve'}</button></div></div>`;
+}
+function emptyState() {
+  const sug = [
+    { icon: 'mail', t: 'Summarize my unread emails', s: 'Gmail · 1 tool' },
+    { icon: 'sun', t: "What's the weather in Pune tomorrow?", s: 'Weather · 1 tool' },
+    { icon: 'spark', t: 'Plan my morning', p: "Summarize my unread emails, check tomorrow's weather in Pune, and add a 30-min prep block before my first meeting.", s: '3 agents in parallel' },
+    connUsable('notion')
+      ? { icon: 'doc', t: "Add today's email summary to Daily Notes", p: 'Summarize my unread emails and append the summary to my Daily Notes page in Notion', s: 'Gmail → Notion' }
+      : { icon: 'doc', t: 'Connect Notion', s: 'Guided setup · about 2 minutes', wizard: 'notion' }
+  ];
+  return `<div class="empty">
+    <span class="eyebrow"><span class="sq">■</span> New conversation</span>
+    <h2>What can I do<br>for you today?</h2>
+    <p>Donna has ${countReady()} tools across Gmail, Calendar, Notion, the weather and your MCP servers. Type <kbd>/</kbd> for commands, or choose a starting point.</p>
+    <div class="suggest">${sug.map((x) => `<button class="sugg" ${x.wizard ? `data-wizard="${x.wizard}"` : `data-prompt="${esc(x.p || x.t)}"`}><span class="ic">${icon(x.icon)}</span><span><b>${esc(x.t)}</b><span class="meta">${esc(x.s)}</span></span></button>`).join('')}</div>
+  </div>`;
+}
+function countReady() {
+  let n = 0;
+  S.conns.forEach((c) => { if (connUsable(c.id)) n += readyTools(c.id).length; });
+  return n;
+}
+const routeLabel = (r) => ({ multi_agent: 'Multi-agent', single_tool: 'Single tool', direct: 'Direct' }[r] || r);
+function refreshRunChips() {
+  $$('[data-runchip]').forEach((el) => {
+    const c = active(); if (!c) return;
+    const m = c.msgs.find((x) => x.id === el.dataset.runchip);
+    if (m) el.outerHTML = runChipHTML(m);
+  });
+}
+
+/* ------------------------------------------------------------------ run panel */
+const STATE = {
+  queued: ['Queued', 'off'], running: ['Running', 'proc'], ratelimit: ['Rate limit', 'warn'], approval: ['Needs approval', 'warn'],
+  done: ['Done', 'ok'], failed: ['Failed', 'err'], skipped: ['Rejected', 'off'], cancelled: ['Stopped', 'off']
+};
+function elapsed(n) {
+  if (n.state === 'ratelimit') return 'retry in ' + Math.max(0, ((n.waitUntil - now()) / 1000)).toFixed(1) + 's';
+  if (!n.t0) return '—';
+  return fmtMs((n.t1 || now()) - n.t0);
+}
+function nodeHTML(n, grouped) {
+  const [label, cls] = STATE[n.state] || ['', 'off'];
+  let prog = '';
+  if (n.kind === 'worker') {
+    let pct = 0;
+    if (['done', 'failed', 'approval'].includes(n.state)) pct = 100;
+    else if (n.state === 'running') pct = Math.min(94, ((now() - n.t0) / n.expect) * 100);
+    prog = `<div class="prog"><i style="width:${pct}%"></i></div>`;
+  }
+  return `<li class="node s-${n.state}${grouped ? ' gnode' : ''}"><span class="mk" aria-hidden="true"></span>
+    <div class="nb"><span class="nt">${icon(n.icon)}${esc(n.title)}</span>${n.tool ? `<span class="nm">${esc(n.tool)}</span>` : ''}${n.note ? `<span class="nm">${esc(n.note)}</span>` : ''}${prog}</div>
+    <div class="ns"><span class="st-${cls}">${label}</span><span class="el">${elapsed(n)}</span></div></li>`;
+}
+function renderRun() {
+  const c = active();
+  const r = runOf(c);
+  const body = $('#rp-body');
+  if (!r) {
+    $('#rp-eyebrow').innerHTML = '<span class="sq">■</span> Agent run';
+    $('#rp-state').innerHTML = '';
+    $('#rp-sub').textContent = 'No runs in this conversation yet';
+    body.innerHTML = `<div class="rp-empty">${icon('spark', 'i i-lg')}<span>Every step Donna takes shows up here: planning, tool calls, checks and approvals.</span></div>`;
+    return;
+  }
+  const st = { running: ['proc', 'Running'], waiting: ['warn', 'Waiting for you'], done: ['ok', 'Complete'], cancelled: ['off', 'Stopped'] }[r.status];
+  $('#rp-eyebrow').innerHTML = `<span class="sq">■</span> Agent run // ${esc(r.id)}`;
+  $('#rp-state').innerHTML = `<span class="pill ${st[0]}">${st[1]}</span>`;
+  const total = (r.t1 || now()) - r.t0;
+  $('#rp-sub').textContent = `${routeLabel(r.route)} · ${fmtMs(total)} · ${r.tools.length} tool call${r.tools.length === 1 ? '' : 's'} · ${fmtK(r.tokens.in + r.tokens.out)} tokens`;
+
+  if (S.runTab === 'plan') {
+    const before = r.nodes.filter((n) => n.kind === 'router' || n.kind === 'planner');
+    const workers = r.nodes.filter((n) => n.kind === 'worker');
+    const after = r.nodes.filter((n) => n.kind === 'verifier' || n.kind === 'synth');
+    let html = '<ul class="tree">' + before.map((n) => nodeHTML(n)).join('');
+    if (workers.length > 1) {
+      html += `<li class="node" style="grid-template-columns:1fr;padding:0"><div class="pgroup"><span class="eyebrow">Parallel × ${workers.length}</span><ul class="tree">${workers.map((n) => nodeHTML(n, true)).join('')}</ul></div></li>`;
+    } else html += workers.map((n) => nodeHTML(n)).join('');
+    html += after.map((n) => nodeHTML(n)).join('') + '</ul>';
+    body.innerHTML = html;
+  } else if (S.runTab === 'tools') {
+    body.innerHTML = r.tools.length ? r.tools.map((t) => {
+      const cls = { complete: 'ok', running: 'proc', 'awaiting approval': 'warn', error: 'err', rejected: 'off', cancelled: 'off' }[t.status] || 'off';
+      const ms = t.status === 'running' ? fmtMs(now() - t.t0) : t.ms ? fmtMs(t.ms) : '—';
+      return `<div class="toolcard"><div class="tc-top"><span class="eyebrow">Tool call</span><span class="pill ${cls}">${esc(t.status)}</span></div>
+        <span class="name">${esc(t.name)}</span>
+        <dl class="kv"><dt>server</dt><dd>${esc(t.server)}</dd><dt>args</dt><dd>${esc(t.args)}</dd><dt>latency</dt><dd>${ms}</dd><dt>result</dt><dd>${esc(t.result || '…')}</dd></dl></div>`;
+    }).join('') : '<div class="rp-empty"><span>This run answered directly, without tools.</span></div>';
+  } else {
+    body.innerHTML = usageHTML(r);
+  }
+}
+function usageHTML(r) {
+  const u = S.usage;
+  const pct = (a, b) => Math.min(100, Math.round((a / b) * 100));
+  const meter = (a, b, cls) => `<div class="meter ${pct(a, b) >= 80 ? 'warn' : cls || ''}"><i style="width:${pct(a, b)}%"></i></div>`;
+  const hours = [4, 0, 0, 0, 2, 6, 18, 42, 64, 88, 71, 57];
+  const max = 100, W = 300, H = 90, bw = 18, gap = (W - 12 * bw) / 11;
+  const bars = hours.map((v, i) => {
+    const h = Math.max(1, (v / max) * (H - 18)), x = i * (bw + gap), y = H - 14 - h;
+    const hr = (i + 1).toString().padStart(2, '0');
+    return `<rect class="b" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="2"><title>${hr}:00 · ${v} requests</title></rect>`;
+  }).join('');
+  const grid = [0.5, 1].map((f) => `<line class="gl" x1="0" x2="${W}" y1="${(H - 14 - f * (H - 18)).toFixed(1)}" y2="${(H - 14 - f * (H - 18)).toFixed(1)}"/>`).join('');
+  return `<div class="stats">
+      <div class="stat"><span class="eyebrow">This run</span><span class="num">${fmtK(r.tokens.in + r.tokens.out)}</span><span class="chg">${fmtK(r.tokens.in)} in · ${fmtK(r.tokens.out)} out</span></div>
+      <div class="stat"><span class="eyebrow">Requests today</span><span class="num">${u.req}<small> /1K</small></span><span class="chg">${u.max - u.req} left</span></div>
+    </div>
+    <div class="rp-sec"><span class="eyebrow">Tokens per minute · live</span>
+      <div class="mrow"><div class="top"><span>gpt-oss-120b</span><span>${fmtK(u.tpm120)} / 8K</span></div>${meter(u.tpm120, 8000)}</div>
+      <div class="mrow"><div class="top"><span>gpt-oss-20b</span><span>${fmtK(u.tpm20)} / 8K</span></div>${meter(u.tpm20, 8000, 'cyan')}</div>
+      <div class="mrow"><div class="top"><span>Daily requests</span><span>${u.req} / ${u.max}</span></div>${meter(u.req, u.max)}</div>
+    </div>
+    <div class="rp-sec"><span class="eyebrow">Requests · last 12 hours</span>
+      <svg class="bars" viewBox="0 0 ${W} ${H}" role="img" aria-label="Requests per hour over the last 12 hours, peaking at 88">${grid}${bars}<text x="0" y="${H - 2}">12 h ago</text><text x="${W}" y="${H - 2}" text-anchor="end">now</text></svg>
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ simulation */
+const WEATHER = [['Clear sky', 24], ['Partly cloudy', 21], ['Light rain', 19], ['Overcast', 17], ['Mainly clear', 26]];
+function parseIntents(text) {
+  const s = text.toLowerCase();
+  const out = [];
+  const m = S.mentions;
+  if (/(e-?mails?|inbox|unread|\bmail\b)/.test(s) || m.has('gmail')) out.push({ key: 'gmail', conn: 'gmail', title: 'Summarize unread emails', tool: 'get_unread_emails', server: 'Gmail', args: '{"max_results": 10}', icon: 'mail', ms: 1300, result: '6 emails · 2 need a reply', say: "You have <b>6 unread emails</b>. Two need a reply today: the Acme invoice and Priya's design review." });
+  if (/(weather|temperature|rain|forecast)/.test(s) || m.has('weather')) {
+    const cm = text.match(/\b(?:in|for|at)\s+([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?)/);
+    const city = cm ? cm[1] : 'Pune';
+    const [cond, temp] = WEATHER[city.length % WEATHER.length];
+    const tmr = /tomorrow/.test(s);
+    out.push({ key: 'weather', conn: 'weather', title: `Weather in ${city}${tmr ? ' tomorrow' : ''}`, tool: 'get_weather', server: 'Weather', args: `{"city": "${city}"}`, icon: 'sun', ms: 500, result: `${city}: ${temp}°C, ${cond}`, say: `${tmr ? 'Tomorrow in' : 'Right now in'} ${esc(city)} it's <b>${temp}°C and ${cond.toLowerCase()}</b>.` });
+  }
+  if (/(calendar|meeting|event|schedule|prep|block)/.test(s) || m.has('calendar')) out.push({ key: 'cal', conn: 'calendar', title: 'Add “Prep” 09:00–09:30', tool: 'create_event', server: 'Google Calendar', args: '{"summary": "Prep", "start_time": "…T09:00:00", "end_time": "…T09:30:00"}', icon: 'cal', ms: 800, approval: true, say: "Your first meeting tomorrow is at 09:30, so I've lined up <b>Prep at 09:00</b>. Approve it above and I'll add it." });
+  if (/(notion|daily notes|notes page|\bpages?\b)/.test(s) || m.has('notion')) {
+    const writes = /(append|add|write|save|put)/.test(s);
+    out.push(writes
+      ? { key: 'notion', conn: 'notion', dep: out.some((i) => i.key === 'gmail') ? 'gmail' : null, title: 'Append summary to Daily Notes', tool: 'append_text_to_page', server: 'Notion', args: '{"page": "Daily Notes"}', icon: 'doc', ms: 900, result: 'Appended 1 block', say: 'I added the summary to your <b>Daily Notes</b> page.' }
+      : { key: 'notion', conn: 'notion', title: 'List Notion pages', tool: 'list_pages', server: 'Notion', args: '{}', icon: 'doc', ms: 700, result: '3 pages', say: 'You have <b>3 shared pages</b>: Daily Notes, Project Donna and Reading list.' });
+  }
+  if (/(joke|funny|laugh)/.test(s)) out.push({ key: 'joke', conn: 'utils', title: 'Fetch a joke', tool: 'get_jokes', server: 'Utilities', args: '{}', icon: 'smile', ms: 450, result: 'setup + punchline', say: 'Why do programmers prefer dark mode? <b>Because light attracts bugs.</b>' });
+  const sq = s.match(/square(?: of)?\s+(-?\d+)|(-?\d+)\s*(?:squared|\^\s*2)/);
+  if (sq) { const n = Number(sq[1] || sq[2]); out.push({ key: 'square', conn: 'utils', title: `Square ${n}`, tool: 'square', server: 'Utilities', args: `{"n": ${n}}`, icon: 'hash', ms: 120, result: String(n * n), say: `${n} squared is <b>${n * n}</b>.` }); }
+  return out;
+}
+function failureFor(it) {
+  const c = conn(it.conn);
+  if (!c || c.status === 'off') return { result: `${c ? c.name : it.server} is not configured`, say: `I couldn't use ${esc(c ? c.name : it.server)} because it isn't connected yet. <button class="linkbtn" data-wizard="${c && c.guide ? c.guide : 'mcp'}">Set it up</button> and ask again.` };
+  if (c.status === 'reauth') return { result: 'Google sign-in expired (401)', say: `Your Google sign-in expired, so I couldn't use ${esc(c.name)}. <button class="linkbtn" data-reauth="1">Re-authorize Google</button> (one click) and ask again.` };
+  if (c.status === 'error') return { result: 'Server not running', say: `${esc(c.name)} isn't running right now. Check it in <button class="linkbtn" data-goto="connections">Connections</button>.` };
+  if (c.toggle && !c.on) return { result: `${c.name} is turned off`, say: `${esc(c.name)} is turned off in <button class="linkbtn" data-goto="connections">Connections</button>.` };
+  return null;
+}
+
+async function simulate(conv, text) {
+  const intents = parseIntents(text);
+  const route = !intents.length ? 'direct' : intents.length === 1 ? 'single_tool' : 'multi_agent';
+  const run = { id: 'r_' + Math.random().toString(16).slice(2, 7), route, status: 'running', t0: now(), t1: 0, tokens: { in: 0, out: 0 }, nodes: [], tools: [], timers: [], cancelled: false };
+  S.runs[run.id] = run;
+  conv.runId = run.id;
+  S.live = { run, conv };
+  setBusy(true);
+  const wait = (ms) => new Promise((res) => run.timers.push(setTimeout(res, ms)));
+  const isActive = () => active() === conv;
+  const upd = () => { if (isActive() && S.view === 'chat') { renderRun(); refreshRunChips(); } renderConvList(); };
+  const start = (n) => { n.state = 'running'; n.t0 = now(); upd(); };
+  const finish = (n, state = 'done', note) => { n.state = state; n.t1 = now(); if (note) n.note = note; upd(); };
+  const addTokens = (i, o) => { run.tokens.in += i; run.tokens.out += o; S.usage.req += 1; S.usage.tokens += i + o; S.usage.tpm120 = Math.min(7900, S.usage.tpm120 + Math.round((i + o) / 3)); updateBudget(); };
+
+  conv.msgs.push({ id: uid('m'), role: 'run', runId: run.id });
+  if (isActive()) { renderThread(); if (S.autoPanel) openRun(); }
+
+  const router = mkNode('router', 'Route request', { icon: 'route' });
+  run.nodes.push(router); start(router);
+  await wait(280); if (run.cancelled) return;
+  addTokens(420, 12);
+  finish(router, 'done', `${route} · ${intents.length} intent${intents.length === 1 ? '' : 's'}`);
+
+  if (route === 'multi_agent') {
+    const planner = mkNode('planner', 'Plan tasks', { icon: 'spark' });
+    run.nodes.push(planner); start(planner);
+    await wait(700); if (run.cancelled) return;
+    addTokens(980, 160);
+    const indep = intents.filter((i) => !i.dep).length;
+    finish(planner, 'done', `${intents.length} tasks · ${indep} in parallel${indep < intents.length ? ' · ' + (intents.length - indep) + ' waits for input' : ''}`);
+  }
+
+  const workers = intents.map((it) => mkNode('worker', it.title, { icon: it.icon, tool: it.tool, intent: it, expect: it.ms }));
+  workers.forEach((w) => { if (w.intent.dep) { const d = workers.find((x) => x.intent.key === w.intent.dep); if (d) { w.deps = [d.id]; w.note = 'waits for ' + d.title.toLowerCase(); } } });
+  run.nodes.push(...workers);
+  const tail = [];
+  if (route === 'multi_agent') tail.push(mkNode('verifier', 'Verify results', { icon: 'shield' }));
+  tail.push(mkNode('synth', 'Write answer', { icon: 'pen' }));
+  run.nodes.push(...tail);
+  upd();
+
+  const settled = (n) => ['done', 'failed', 'approval', 'skipped', 'cancelled'].includes(n.state);
+  const outcomes = {};
+  async function runWorker(w, i) {
+    const it = w.intent;
+    while (w.deps.length && !w.deps.every((id) => settled(workers.find((x) => x.id === id)))) { await wait(120); if (run.cancelled) return; }
+    if (route === 'multi_agent' && i === 1 && workers.length >= 3) {
+      w.state = 'ratelimit'; w.waitUntil = now() + 1500; upd();
+      toast('gpt-oss-20b hit its 8K tokens/min limit. Retrying in 1.5 s.', 'warn');
+      await wait(1500); if (run.cancelled) return;
+    }
+    start(w);
+    const tc = { nodeId: w.id, name: it.tool, server: it.server, args: it.args, status: 'running', t0: now(), ms: 0, result: '' };
+    run.tools.push(tc); upd();
+    await wait(it.ms); if (run.cancelled) return;
+    addTokens(640, 60);
+    const fail = failureFor(it);
+    tc.ms = now() - tc.t0;
+    if (fail) { tc.status = 'error'; tc.result = fail.result; outcomes[w.id] = fail.say; finish(w, 'failed'); return; }
+    if (it.approval) {
+      tc.status = 'awaiting approval'; tc.result = '—'; tc.ms = 0;
+      outcomes[w.id] = it.say; finish(w, 'approval');
+      conv.msgs.push({ id: uid('m'), role: 'confirm', runId: run.id, nodeId: w.id, state: 'pending', title: 'Create calendar event', detail: 'Tomorrow · 09:00–09:30', fields: [['summary', 'Prep'], ['when', 'Tomorrow, 09:00–09:30'], ['calendar', 'primary'], ['tool', 'create_event']] });
+      if (isActive()) renderThread();
+      return;
+    }
+    tc.status = 'complete'; tc.result = it.result; outcomes[w.id] = it.say; finish(w, 'done');
+  }
+  await Promise.all(workers.map((w, i) => runWorker(w, i)));
+  if (run.cancelled) return;
+
+  if (route === 'multi_agent') {
+    const v = tail[0]; start(v);
+    await wait(420); if (run.cancelled) return;
+    addTokens(700, 40);
+    const ok = workers.filter((w) => w.state === 'done').length, wt = workers.filter((w) => w.state === 'approval').length, bad = workers.filter((w) => w.state === 'failed').length;
+    finish(v, 'done', [ok && `${ok} passed`, wt && `${wt} waiting for you`, bad && `${bad} failed`].filter(Boolean).join(' · '));
+  }
+
+  const synth = tail[tail.length - 1]; start(synth);
+  let html;
+  if (route === 'direct') {
+    html = /^(hi|hey|hello|yo)\b/i.test(text.trim())
+      ? "Hi! I can summarize your email, check the weather, plan your calendar and work with your Notion pages and MCP servers. What would you like to do?"
+      : "I don't have a tool for that yet. I can work with <b>Gmail</b>, <b>Calendar</b>, <b>Notion</b>, the <b>weather</b> and your MCP servers. Type <b>/tools</b> to see everything.";
+  } else html = workers.map((w) => outcomes[w.id]).filter(Boolean).join(' ');
+  const msg = { id: uid('m'), role: 'bot', html: '', streaming: true, model: $('#m-plan').value.replace('openai/', '') };
+  conv.msgs.push(msg);
+  if (isActive()) renderThread();
+  await streamInto(conv, msg, html, run);
+  if (run.cancelled) return;
+  addTokens(900, Math.round(html.length / 4));
+  finish(synth, 'done', `streamed ${Math.round(html.length / 4)} tokens`);
+  run.status = workers.some((w) => w.state === 'approval') ? 'waiting' : 'done';
+  run.t1 = now();
+  S.live = null; setBusy(false); upd();
+  if (isActive()) renderThread();
+}
+
+async function streamInto(conv, msg, html, run) {
+  const toks = html.match(/<[^>]+>[^<]*<\/[^>]+>|<[^>]+>|\s+|[^\s<]+/g) || [];
+  msg.html = ''; msg.streaming = true;
+  for (const t of toks) {
+    if (run && run.cancelled) return;
+    msg.html += t;
+    if (!/^\s+$/.test(t)) {
+      if (active() === conv) {
+        const el = $(`[data-mid="${msg.id}"] .bot-text`);
+        if (el) { el.innerHTML = msg.html + '<span class="caret" aria-hidden="true"></span>'; const th = $('#thread'); th.scrollTop = th.scrollHeight; }
+      }
+      await new Promise((res) => { const t2 = setTimeout(res, 34); if (run) run.timers.push(t2); });
+    }
+  }
+  msg.streaming = false;
+  if (active() === conv) { const el = $(`[data-mid="${msg.id}"] .bot-text`); if (el) el.innerHTML = msg.html; }
+}
+
+function stopRun() {
+  const L = S.live; if (!L) return;
+  const { run, conv } = L;
+  run.cancelled = true;
+  run.timers.forEach(clearTimeout);
+  run.nodes.forEach((n) => { if (['running', 'queued', 'ratelimit'].includes(n.state)) { n.state = 'cancelled'; n.t1 = n.t0 ? now() : 0; } });
+  run.tools.forEach((t) => { if (t.status === 'running') { t.status = 'cancelled'; t.ms = now() - t.t0; } });
+  run.status = 'cancelled'; run.t1 = now();
+  const last = conv.msgs[conv.msgs.length - 1];
+  if (last && last.role === 'bot' && last.streaming) { last.streaming = false; last.stopped = true; }
+  S.live = null; setBusy(false);
+  renderAll();
+  toast('Stopped. Nothing else will run.', 'warn');
+}
+
+async function resolveApproval(msgId, ok) {
+  const conv = S.convs.find((c) => c.msgs.some((m) => m.id === msgId));
+  if (!conv) return;
+  const m = conv.msgs.find((x) => x.id === msgId);
+  const run = S.runs[m.runId];
+  const node = run.nodes.find((n) => n.id === m.nodeId);
+  const tc = run.tools.find((t) => t.nodeId === node.id);
+  if (!ok) {
+    m.state = 'rejected'; node.state = 'skipped'; node.t1 = now();
+    if (tc) { tc.status = 'rejected'; tc.result = 'User rejected'; }
+    const reply = { id: uid('m'), role: 'bot', html: '', streaming: true };
+    conv.msgs.push(reply); finalizeRun(run); renderAll();
+    await streamInto(conv, reply, "Okay, I didn't add anything to your calendar.", null);
+    renderAll();
+    return;
+  }
+  m.state = 'working'; node.state = 'running'; node.t0 = now(); node.t1 = 0;
+  if (tc) { tc.status = 'running'; tc.t0 = now(); }
+  renderAll();
+  await sleep(750);
+  node.state = 'done'; node.t1 = now(); m.state = 'approved';
+  if (tc) { tc.status = 'complete'; tc.ms = now() - tc.t0; tc.result = 'Event created · calendar.google.com/event?eid=…'; }
+  const reply = { id: uid('m'), role: 'bot', html: '', streaming: true };
+  conv.msgs.push(reply); finalizeRun(run); renderAll();
+  toast('Added “Prep” to Google Calendar.');
+  await streamInto(conv, reply, 'Done. <b>Prep</b> is on your calendar tomorrow, 09:00–09:30.', null);
+  renderAll();
+}
+function finalizeRun(run) { if (!run.nodes.some((n) => n.state === 'approval')) { run.status = 'done'; run.t1 = run.t1 || now(); } }
+
+/* ------------------------------------------------------------------ composer */
+const prompt = () => $('#prompt');
+function setBusy(b) {
+  const btn = $('#send');
+  btn.innerHTML = b ? icon('stop') : icon('send');
+  btn.setAttribute('aria-label', b ? 'Stop' : 'Send');
+  btn.classList.toggle('btn-primary', !b);
+  btn.classList.toggle('btn-secondary', b);
+  btn.dataset.busy = b ? '1' : '';
+}
+function autosize() { const t = prompt(); t.style.height = 'auto'; t.style.height = Math.min(180, t.scrollHeight) + 'px'; }
+function titleFrom(t) { const s = t.replace(/\s+/g, ' ').trim(); const w = s.split(' ').slice(0, 6).join(' '); return (w.length > 34 ? w.slice(0, 33) + '…' : w).replace(/^./, (c) => c.toUpperCase()); }
+function newChat(focus = true) {
+  const c = { id: uid('c'), title: 'New chat', group: 'today', pinned: false, runId: null, msgs: [] };
+  S.convs.unshift(c); S.activeId = c.id;
+  if (S.view !== 'chat') setView('chat'); else renderAll();
+  closeDrawers();
+  if (focus) prompt().focus();
+  return c;
+}
+function send(text) {
+  text = (text || '').trim();
+  if (!text) return;
+  if (S.offline) { toast("You're offline. Donna will send this when Groq is reachable.", 'warn'); return; }
+  if (S.live) { toast('Donna is still working on the last message. Stop it first or wait a moment.', 'warn'); return; }
+  let c = active();
+  if (!c) c = newChat(false);
+  c.msgs.push({ id: uid('m'), role: 'user', text, uses: Array.from(S.mentions) });
+  if (c.title === 'New chat') c.title = titleFrom(text);
+  const p = prompt(); p.value = ''; autosize();
+  renderConvList(); renderThread();
+  simulate(c, text).finally(() => { S.mentions.clear(); $$('[data-mention]').forEach((b) => b.setAttribute('aria-pressed', 'false')); });
+}
+
+/* Slash commands */
+const SLASH = [
+  { cmd: '/new', d: 'Start a new chat', run: () => newChat() },
+  { cmd: '/tools', d: 'See every tool Donna can use', run: () => openTools() },
+  { cmd: '/connections', d: 'Open Connections', run: () => setView('connections') },
+  { cmd: '/clear', d: 'Clear this conversation', run: () => { const c = active(); if (c) { c.msgs = []; c.runId = null; renderAll(); toast('Conversation cleared.'); } } },
+  { cmd: '/setup', d: 'Run first-time setup', run: () => openWizard('onboarding') }
+];
+let slashSel = 0;
+function updateSlash() {
+  const v = prompt().value;
+  const box = $('#slash');
+  if (!v.startsWith('/') || v.includes(' ')) { box.hidden = true; return; }
+  const items = SLASH.filter((s) => s.cmd.startsWith(v.toLowerCase()));
+  if (!items.length) { box.hidden = true; return; }
+  slashSel = Math.min(slashSel, items.length - 1);
+  $('#slash-list').innerHTML = items.map((s, i) => `<li role="option" aria-selected="${i === slashSel}" class="${i === slashSel ? 'sel' : ''}" data-slash="${s.cmd}"><span class="mono">${s.cmd}</span><span>${s.d}</span></li>`).join('');
+  box.hidden = false;
+}
+function runSlash(cmd) { const s = SLASH.find((x) => x.cmd === cmd); prompt().value = ''; autosize(); $('#slash').hidden = true; if (s) s.run(); }
+
+/* ------------------------------------------------------------------ drawers */
+function openRun() {
+  const v = $('#view-chat');
+  v.classList.remove('run-closed');
+  v.classList.add('run-open');
+  $('#toggle-run').setAttribute('aria-pressed', 'true');
+  requestAnimationFrame(() => moveIndicator($('#rp-tabs'), '[aria-selected="true"]'));
+}
+function toggleRun() {
+  const v = $('#view-chat');
+  const narrow = window.matchMedia('(max-width:1180px)').matches;
+  if (narrow) { v.classList.toggle('run-open'); $('#toggle-run').setAttribute('aria-pressed', String(v.classList.contains('run-open'))); }
+  else { v.classList.toggle('run-closed'); $('#toggle-run').setAttribute('aria-pressed', String(!v.classList.contains('run-closed'))); }
+  requestAnimationFrame(() => moveIndicator($('#rp-tabs'), '[aria-selected="true"]'));
+}
+function closeDrawers() { $('#view-chat').classList.remove('side-open', 'run-open'); }
+
+/* ------------------------------------------------------------------ connections */
+function statusPill(c) {
+  if (c.toggle && !c.on) return '<span class="pill off">Off</span>';
+  return { connected: '<span class="pill ok">Connected</span>', reauth: '<span class="pill warn">Needs re-auth</span>', off: '<span class="pill off">Not set up</span>', error: '<span class="pill err">Error</span>' }[c.status];
+}
+function renderConnections() {
+  const connected = S.conns.filter((c) => c.status === 'connected' && (!c.toggle || c.on)).length;
+  const attention = S.conns.filter((c) => ['reauth', 'error'].includes(c.status)).length;
+  const planned = Object.values(TOOLS).flat().filter((t) => (t[2] || '').includes('planned')).length;
+  $('#conn-stats').innerHTML = [
+    ['Connected', connected, `of ${S.conns.length} connections`],
+    ['Tools ready', countReady(), `${planned} more planned`],
+    ['Need attention', attention, attention ? 'see below' : 'all healthy'],
+    ['Tool calls today', 128, '+18% vs yesterday']
+  ].map(([l, n, c]) => `<div class="stat"><span class="eyebrow">${l}</span><span class="num">${n}</span><span class="chg"${l === 'Need attention' && attention ? ' style="color:var(--amber)"' : ''}>${c}</span></div>`).join('');
+
+  $('#conn-grid').innerHTML = S.conns.map((c) => {
+    const n = readyTools(c.id).length;
+    let actions = '';
+    if (c.toggle) actions = `<button class="btn btn-ghost btn-sm" data-tools="${c.id}">Tools</button><button class="switch" role="switch" aria-checked="${c.on}" data-toggle="${c.id}" aria-label="Turn ${esc(c.name)} ${c.on ? 'off' : 'on'}"></button>`;
+    else if (c.status === 'connected') actions = `<button class="btn btn-ghost btn-sm" data-tools="${c.id}">Tools</button><button class="btn btn-secondary btn-sm" data-test="${c.id}">Test</button>${c.custom ? `<button class="btn btn-ghost btn-sm" data-remove="${c.id}" aria-label="Remove ${esc(c.name)}">Remove</button>` : ''}`;
+    else if (c.status === 'reauth') actions = `<button class="btn btn-primary btn-sm" data-reauth="1">Re-authorize</button>`;
+    else if (c.status === 'off') actions = `<button class="btn btn-primary btn-sm" data-wizard="${c.guide}">Connect</button>`;
+    else if (c.status === 'error') actions = `<button class="btn btn-secondary btn-sm" data-restart="${c.id}">Restart</button><button class="btn btn-ghost btn-sm" data-remove="${c.id}">Remove</button>`;
+    return `<article class="card ccard">
+      <div class="cc-top"><span class="cc-ic">${icon(c.icon, 'i i-lg')}</span><div class="t"><h3>${esc(c.name)}</h3><div class="cc-src">${esc(c.src)}</div></div>${statusPill(c)}</div>
+      <p class="cc-note">${esc(c.note)}</p>
+      <div class="cc-foot"><span class="count">${n} tool${n === 1 ? '' : 's'}</span>${actions}</div></article>`;
+  }).join('') + `<button class="card ccard addcard" id="add-card"><span class="cc-ic">${icon('plus', 'i i-lg')}</span><span><b style="display:block;font-weight:600;font-size:16px;margin-bottom:4px">Add an MCP server</b><span class="cc-note">Filesystem, Fetch, Git, SQLite, or any command or URL.</span></span></button>`;
+}
+function openTools(only) {
+  const groups = only ? [only] : S.conns.map((c) => c.id);
+  const total = S.conns.reduce((a, c) => a + readyTools(c.id).length, 0);
+  $('#tools-title').textContent = only ? `${conn(only).name} tools` : 'Tools';
+  $('#tools-body').innerHTML = (only ? '' : `<p>${countReady()} tools are ready to use right now (${total} installed). Tools marked <span class="tag warn">asks first</span> always wait for your approval.</p>`) +
+    groups.map((id) => {
+      const c = conn(id); const list = TOOLS[id] || [];
+      return `<div class="tgroup"><div class="tgroup-h">${icon(c.icon)}<b>${esc(c.name)}</b>${statusPill(c)}</div><div class="toolrows">${list.map(([n, d, f = '']) => `<div class="toolrow"><div class="grow"><div class="mono">${n}</div><div class="d">${d}</div></div>${f.includes('confirm') ? '<span class="tag warn">asks first</span>' : ''}${f.includes('planned') ? '<span class="tag plan">planned</span>' : ''}</div>`).join('')}</div></div>`;
+    }).join('');
+  $('#tools-dlg').showModal();
+}
+
+/* ------------------------------------------------------------------ wizards */
+const W = { name: '', flow: null, i: 0, data: {} };
+const FLOWS = {
+  onboarding: {
+    eyebrow: '■ First-time setup', title: 'Welcome to Donna', finish: 'Start chatting',
+    steps: [
+      { short: 'Groq key', title: 'Add your Groq API key',
+        body: (d) => `<p>Donna runs its AI models on Groq's free tier. Paste your key and Donna will check it.</p>
+          <div class="field"><label for="ob-key">Groq API key</label><div class="srow"><input class="input mono grow" id="ob-key" type="password" placeholder="gsk_…" value="${esc(d.key || '')}" autocomplete="off"><button class="btn btn-secondary" id="ob-test" type="button">Test</button></div>
+          <span class="help">Get one free at <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. It's stored in Windows Credential Manager.</span></div>
+          <div id="ob-res">${d.keyOk ? okRes('Key works · openai/gpt-oss-120b and gpt-oss-20b available · 30 req/min free') : ''}</div>`,
+        check: (d) => d.keyOk,
+        bind: (root, d, refresh) => {
+          $('#ob-key', root).addEventListener('input', (e) => { d.key = e.target.value; d.keyOk = false; refresh(); });
+          $('#ob-test', root).addEventListener('click', async () => {
+            const k = $('#ob-key', root).value.trim();
+            const res = $('#ob-res', root);
+            if (k.length < 8) { res.innerHTML = errRes('That key looks too short. Groq keys start with gsk_.'); return; }
+            res.innerHTML = busyRes('Checking the key with Groq…');
+            await sleep(900);
+            d.keyOk = true; res.innerHTML = okRes('Key works · openai/gpt-oss-120b and gpt-oss-20b available · 30 req/min free'); refresh();
+          });
+        } },
+      { short: 'Timezone', title: 'Confirm your timezone',
+        body: () => `<p>Donna uses this for "tomorrow", meeting times and new events.</p><div class="field"><label for="ob-tz">Timezone</label><select class="select" id="ob-tz">${tzOptions()}</select></div>`,
+        bind: (root) => { $('#ob-tz', root).addEventListener('change', (e) => { $('#tz').value = e.target.value; }); } },
+      { short: 'Tools', title: 'Connect your tools',
+        body: () => `<p>Connect now, or skip and do it later in Connections.</p>
+          <div class="toolrows">
+            ${obRow('Google', 'Gmail + Calendar · 8 tools', conn('gmail').status === 'connected' ? statusPill(conn('gmail')) : `<button class="btn btn-secondary btn-sm" data-chain="google">Set up</button>`, 'mail')}
+            ${obRow('Notion', 'Pages and notes · 6 tools', conn('notion').status === 'connected' ? statusPill(conn('notion')) : `<button class="btn btn-secondary btn-sm" data-chain="notion">Set up</button>`, 'doc')}
+            ${obRow('Weather and utilities', 'Ready, no setup needed', '<span class="pill ok">Ready</span>', 'sun')}
+          </div>` },
+      { short: 'Try it', title: 'Ask your first question',
+        body: () => `<p>Pick one to see Donna work, including the run panel on the right.</p><div class="sample-prompts">
+          ${["Summarize my unread emails, check tomorrow's weather in Pune, and add a 30-min prep block before my first meeting.", "What's the weather in Tokyo?", 'Tell me a joke'].map((p) => `<button class="sugg" data-ob-prompt="${esc(p)}"><span class="ic">${icon('arrow')}</span><span><b>${esc(p)}</b></span></button>`).join('')}</div>` }
+    ],
+    done: () => toast("You're all set. Donna is ready.")
+  },
+  google: {
+    eyebrow: '■ Connect // Google', title: 'Gmail + Google Calendar', finish: 'Finish setup',
+    steps: [
+      { short: 'Project', title: 'Create a Google Cloud project',
+        body: (d) => `<p>Donna uses your own free Google Cloud project, so your data stays between you and Google.</p>
+          <ul class="checks">${[['g1', 'Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">console.cloud.google.com</a> and create a project with any name'], ['g2', 'Enable the <b>Gmail API</b> (APIs &amp; Services → Library)'], ['g3', 'Enable the <b>Google Calendar API</b>']].map(([k, t]) => `<li><label><input type="checkbox" data-k="${k}" ${d[k] ? 'checked' : ''}><span>${t}</span></label></li>`).join('')}</ul>`,
+        check: (d) => d.g1 && d.g2 && d.g3, bind: bindChecks },
+      { short: 'OAuth', title: 'Create a sign-in client',
+        body: (d) => `<ol class="steps-list">
+            <li><span class="mono">OAuth consent screen</span>: choose <b>External</b>, then add your Google account under <b>Test users</b>.</li>
+            <li><span class="mono">Credentials → Create credentials → OAuth client ID</span></li>
+            <li>Application type <b>Desktop app</b>, then <b>Download JSON</b>.</li></ol>
+          <ul class="checks"><li><label><input type="checkbox" data-k="g4" ${d.g4 ? 'checked' : ''}><span>I downloaded the JSON file</span></label></li></ul>
+          <span class="help">Testing mode is free. Google asks you to sign in again every 7 days, and Donna shows a one-click button when that happens.</span>`,
+        check: (d) => d.g4, bind: bindChecks },
+      { short: 'Upload', title: 'Upload credentials.json',
+        body: (d) => `<label class="drop" id="drop"><input type="file" accept=".json,application/json" class="sr" id="cred-file">${icon('upload')}<b>Drop credentials.json here</b><span class="help">or click to choose the file</span></label>
+          <button class="btn btn-ghost btn-sm" id="use-sample" type="button" style="align-self:flex-start">Use a sample file for this demo</button>
+          <div id="up-res">${d.uploaded ? okRes(`${esc(d.file)} · Desktop app client · project donna-local-4821`) : ''}</div>`,
+        check: (d) => d.uploaded,
+        bind: (root, d, refresh) => {
+          const accept = async (name) => { const r = $('#up-res', root); r.innerHTML = busyRes('Checking the file…'); await sleep(650); d.uploaded = true; d.file = name; r.innerHTML = okRes(`${esc(name)} · Desktop app client · project donna-local-4821`); refresh(); };
+          $('#cred-file', root).addEventListener('change', (e) => { if (e.target.files[0]) accept(e.target.files[0].name); });
+          $('#use-sample', root).addEventListener('click', () => accept('credentials.json'));
+          const drop = $('#drop', root);
+          drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+          drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+          drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) accept(f.name); });
+        } },
+      { short: 'Authorize', title: 'Sign in with Google',
+        body: (d) => `<p>Your browser opens Google's consent screen. Approve access, then come back here.</p>
+          <button class="btn btn-primary" id="auth" type="button" style="align-self:flex-start" ${d.authed ? 'disabled' : ''}>${icon('key')}Authorize with Google</button>
+          <div id="auth-res">${d.authed ? authOk() : ''}</div>`,
+        check: (d) => d.authed,
+        bind: (root, d, refresh) => { $('#auth', root).addEventListener('click', async (e) => { e.currentTarget.disabled = true; $('#auth-res', root).innerHTML = busyRes('Waiting for you to approve in the browser…'); await sleep(1600); d.authed = true; $('#auth-res', root).innerHTML = authOk(); refresh(); }); } },
+      { short: 'Test', title: 'Check that it works',
+        body: () => `<div id="g-test">${busyRes('Reading your calendar and inbox…')}</div>`,
+        check: (d) => d.tested,
+        bind: async (root, d, refresh) => {
+          if (!d.tested) await sleep(900);
+          d.tested = true;
+          const el = $('#g-test', root);
+          if (el) el.innerHTML = `<div class="result"><span class="eyebrow st-ok">■ Next events</span><ul><li>Tomorrow 09:30 · Team standup</li><li>Tomorrow 14:00 · Design review with Priya</li><li>Thu 11:00 · 1:1 with Arjun</li></ul></div>
+            <div class="result"><span class="eyebrow st-ok">■ Latest emails</span><ul><li>Acme Corp · Invoice #4471 due Oct 5</li><li>Priya · Design review notes</li><li>GitHub · [mcps] 1 new pull request</li></ul></div>`;
+          refresh();
+        } }
+    ],
+    done: () => { ['gmail', 'calendar'].forEach((id) => { const c = conn(id); c.status = 'connected'; c.note = id === 'gmail' ? 'Signed in as you@gmail.com · just now' : 'Primary calendar · ' + $('#tz').value; }); afterConnChange(); toast('Google connected. 8 Gmail and Calendar tools are ready.'); }
+  },
+  notion: {
+    eyebrow: '■ Connect // Notion', title: 'Notion', finish: 'Finish setup',
+    steps: [
+      { short: 'Integration', title: 'Create a Notion integration',
+        body: (d) => `<ol class="steps-list"><li>Open <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a></li><li>Click <b>New integration</b>, name it <b>Donna</b>, and choose your workspace.</li><li>Keep the type <b>Internal</b>, then save.</li></ol>
+          <ul class="checks"><li><label><input type="checkbox" data-k="n1" ${d.n1 ? 'checked' : ''}><span>I created the integration</span></label></li></ul>`,
+        check: (d) => d.n1, bind: bindChecks },
+      { short: 'Secret', title: 'Paste the integration secret',
+        body: (d) => `<div class="field"><label for="n-secret">Internal integration secret</label><input class="input mono" id="n-secret" type="password" placeholder="ntn_…" value="${esc(d.secret || '')}" autocomplete="off"><span class="help">Find it under <b>Configuration → Internal integration secret</b>. It's stored in Windows Credential Manager.</span></div>`,
+        check: (d) => (d.secret || '').length >= 8,
+        bind: (root, d, refresh) => { $('#n-secret', root).addEventListener('input', (e) => { d.secret = e.target.value; refresh(); }); } },
+      { short: 'Share', title: 'Share pages with Donna',
+        body: (d) => `<p>Donna can only see pages you share with it. On each page or database you want to use:</p>
+          <ol class="steps-list"><li>Click <span class="mono">•••</span> in the top-right corner</li><li><span class="mono">Connections → Donna</span></li></ol>
+          <ul class="checks"><li><label><input type="checkbox" data-k="n3" ${d.n3 ? 'checked' : ''}><span>I shared at least one page</span></label></li></ul>`,
+        check: (d) => d.n3, bind: bindChecks },
+      { short: 'Test', title: 'Check that it works',
+        body: (d) => `<button class="btn btn-secondary" id="n-test" type="button" style="align-self:flex-start">${icon('refresh')}Test connection</button><div id="n-res">${d.tested ? notionOk() : ''}</div>`,
+        check: (d) => d.tested,
+        bind: (root, d, refresh) => { $('#n-test', root).addEventListener('click', async () => { $('#n-res', root).innerHTML = busyRes('Looking for pages you shared…'); await sleep(900); d.tested = true; $('#n-res', root).innerHTML = notionOk(); refresh(); }); } }
+    ],
+    done: () => { const c = conn('notion'); c.status = 'connected'; c.note = '3 pages shared · Daily Notes, Project Donna, Reading list'; afterConnChange(); toast('Notion connected. 6 tools are ready.'); }
+  },
+  mcp: {
+    eyebrow: '■ Connect // MCP server', title: 'Add an MCP server', finish: 'Save server',
+    steps: [
+      { short: 'Server', title: 'Choose a server',
+        body: (d) => `<div class="seg" role="radiogroup" aria-label="How the server runs" id="mcp-tr"><span class="ind" aria-hidden="true"></span>
+            <button role="radio" type="button" data-tr="stdio" aria-checked="${d.transport !== 'http'}">Command · stdio</button><button role="radio" type="button" data-tr="http" aria-checked="${d.transport === 'http'}">URL · HTTP</button></div>
+          <span class="label">Start from a preset</span>
+          <div class="presets" role="radiogroup" aria-label="Presets">${Object.entries(PRESETS).map(([k, p]) => `<button type="button" class="preset" role="radio" aria-checked="${d.preset === k}" data-preset="${k}">${icon(p.icon)}<b>${p.name}</b><span class="meta">${p.sub}</span></button>`).join('')}</div>`,
+        check: (d) => !!d.preset,
+        bind: (root, d, refresh) => {
+          const seg = $('#mcp-tr', root);
+          requestAnimationFrame(() => moveIndicator(seg, '[aria-checked="true"]'));
+          $$('[data-tr]', root).forEach((b) => b.addEventListener('click', () => { d.transport = b.dataset.tr; $$('[data-tr]', root).forEach((x) => x.setAttribute('aria-checked', String(x === b))); moveIndicator(seg, '[aria-checked="true"]'); }));
+          $$('[data-preset]', root).forEach((b) => b.addEventListener('click', () => {
+            const p = PRESETS[b.dataset.preset];
+            d.preset = b.dataset.preset; d.name = p.name === 'Custom server' ? '' : p.name; d.cmd = p.cmd; d.args = p.args; d.tested = false;
+            $$('[data-preset]', root).forEach((x) => x.setAttribute('aria-checked', String(x === b))); refresh();
+          }));
+        } },
+      { short: 'Configure', title: 'Configure it',
+        body: (d) => `<div class="field"><label for="m-name">Name</label><input class="input" id="m-name" value="${esc(d.name || '')}" placeholder="My server"></div>
+          ${d.transport === 'http'
+            ? `<div class="field"><label for="m-url">Server URL</label><input class="input mono" id="m-url" value="${esc(d.url || '')}" placeholder="http://127.0.0.1:3001/mcp"></div>`
+            : `<div class="two"><div class="field"><label for="m-cmd">Command</label><input class="input mono" id="m-cmd" value="${esc(d.cmd || '')}" placeholder="npx"></div><div class="field"><label for="m-args">Arguments</label><input class="input mono" id="m-args" value="${esc(d.args || '')}" placeholder="-y package-name"></div></div>`}
+          <div class="two"><div class="field"><label for="m-envk">Environment variable (optional)</label><input class="input mono" id="m-envk" value="${esc(d.envk || '')}" placeholder="API_KEY"></div><div class="field"><label for="m-envv">Value</label><input class="input mono" id="m-envv" type="password" value="${esc(d.envv || '')}" placeholder="stored in Credential Manager"></div></div>`,
+        check: (d) => !!(d.name && (d.transport === 'http' ? d.url : d.cmd)),
+        bind: (root, d, refresh) => { [['m-name', 'name'], ['m-url', 'url'], ['m-cmd', 'cmd'], ['m-args', 'args'], ['m-envk', 'envk'], ['m-envv', 'envv']].forEach(([id, k]) => { const el = $('#' + id, root); if (el) el.addEventListener('input', (e) => { d[k] = e.target.value; d.tested = false; refresh(); }); }); } },
+      { short: 'Test', title: 'Start it and list its tools',
+        body: (d) => `<p class="mono" style="font-size:12px;color:var(--muted)">${esc(d.transport === 'http' ? d.url : (d.cmd + ' ' + (d.args || '')))}</p>
+          <button class="btn btn-secondary" id="m-test" type="button" style="align-self:flex-start">${icon('terminal')}Run test</button><div id="m-res">${d.tested ? mcpToolsHTML(d) : ''}</div>`,
+        check: (d) => d.tested,
+        bind: (root, d, refresh) => {
+          $('#m-test', root).addEventListener('click', async () => { $('#m-res', root).innerHTML = busyRes('Starting the server…'); await sleep(1200); d.tested = true; d.off = d.off || {}; $('#m-res', root).innerHTML = mcpToolsHTML(d); bindToolSwitches(root, d); refresh(); });
+          bindToolSwitches(root, d);
+        } },
+      { short: 'Save', title: 'Review and save',
+        body: (d) => { const tools = PRESET_TOOLS[d.preset] || []; const on = tools.filter((t) => !(d.off || {})[t[0]]).length;
+          return `<dl class="kv" style="grid-template-columns:110px minmax(0,1fr)"><dt>name</dt><dd>${esc(d.name)}</dd><dt>runs as</dt><dd>${esc(d.transport === 'http' ? 'HTTP · ' + d.url : 'stdio · ' + d.cmd + ' ' + (d.args || ''))}</dd><dt>tools on</dt><dd>${on} of ${tools.length}</dd><dt>approval</dt><dd>${tools.filter((t) => (t[2] || '').includes('confirm')).length} tools ask first</dd></dl>
+          <p class="help">Donna starts this server only while Donna is running, restarts it if it crashes, and shows its logs in Connections. You can turn it off at any time.</p>`; } }
+    ],
+    done: (d) => {
+      const id = uid('mcp');
+      TOOLS[id] = (PRESET_TOOLS[d.preset] || []).filter((t) => !(d.off || {})[t[0]]);
+      S.conns.push({ id, name: d.name, icon: PRESETS[d.preset].icon, src: d.transport === 'http' ? 'HTTP · ' + d.url : `stdio · ${d.cmd} ${d.args || ''}`.trim(), status: 'connected', custom: true, note: 'Added just now' });
+      afterConnChange(); toast(`${d.name} added with ${TOOLS[id].length} tools.`);
+    }
+  }
+};
+const okRes = (t) => `<div class="result"><span class="okline">✓ ${t}</span></div>`;
+const busyRes = (t) => `<div class="result busy"><span class="pill proc">Working</span><span class="help">${t}</span></div>`;
+const errRes = (t) => `<div class="result err"><span class="st-err" style="font:12px var(--font-mono)">✕ ${t}</span></div>`;
+const authOk = () => `<div class="result"><span class="okline">✓ Signed in as you@gmail.com</span><div class="chips"><span class="tag">gmail.modify</span><span class="tag">gmail.send</span><span class="tag">calendar</span></div></div>`;
+const notionOk = () => `<div class="result"><span class="okline">✓ Found 3 shared pages</span><ul><li>Daily Notes</li><li>Project Donna</li><li>Reading list</li></ul></div>`;
+const obRow = (t, s, right, ic) => `<div class="toolrow">${icon(ic)}<div class="grow"><div style="font-weight:500">${t}</div><div class="d">${s}</div></div>${right}</div>`;
+function mcpToolsHTML(d) {
+  const tools = PRESET_TOOLS[d.preset] || [];
+  return `<div class="result"><span class="okline">✓ Started in 840 ms · ${tools.length} tool${tools.length === 1 ? '' : 's'} found</span></div>
+    <div class="toolrows">${tools.map(([n, desc, f = '']) => `<div class="toolrow"><div class="grow"><div class="mono">${n}</div><div class="d">${desc}</div></div>${f.includes('confirm') ? '<span class="tag warn">asks first</span>' : ''}<button type="button" class="switch" role="switch" aria-checked="${!(d.off || {})[n]}" data-tool-sw="${n}" aria-label="Enable ${n}"></button></div>`).join('')}</div>`;
+}
+function bindToolSwitches(root, d) {
+  $$('[data-tool-sw]', root).forEach((sw) => sw.addEventListener('click', () => { d.off = d.off || {}; const n = sw.dataset.toolSw; d.off[n] = !d.off[n]; sw.setAttribute('aria-checked', String(!d.off[n])); }));
+}
+function bindChecks(root, d, refresh) { $$('input[type=checkbox][data-k]', root).forEach((cb) => cb.addEventListener('change', () => { d[cb.dataset.k] = cb.checked; refresh(); })); }
+
+function openWizard(name) {
+  W.name = name; W.flow = FLOWS[name]; W.i = 0; W.data = { transport: 'stdio' };
+  const dlg = $('#wizard');
+  if (!dlg.open) dlg.showModal();
+  renderWizard();
+}
+function renderWizard() {
+  const f = W.flow, st = f.steps[W.i];
+  $('#wz-eyebrow').textContent = f.eyebrow;
+  $('#wz-title').textContent = f.title;
+  $('#wz-steps').innerHTML = f.steps.map((s, k) => `<li class="${k < W.i ? 'done' : k === W.i ? 'cur' : ''}" aria-current="${k === W.i ? 'step' : 'false'}"><span class="bar"></span><span class="sl">${String(k + 1).padStart(2, '0')} ${esc(s.short)}</span></li>`).join('');
+  const body = $('#wz-body');
+  body.innerHTML = `<h3 class="wz-h">${esc(st.title)}</h3>${st.body(W.data)}`;
+  const refresh = () => { $('#wz-next').disabled = st.check ? !st.check(W.data) : false; };
+  refresh();
+  if (st.bind) st.bind(body, W.data, refresh);
+  $('#wz-back').disabled = W.i === 0;
+  $('#wz-next').textContent = W.i === f.steps.length - 1 ? f.finish : 'Continue';
+  $('#wz-count').textContent = `Step ${W.i + 1} of ${f.steps.length}`;
+  const first = $('input:not([type=checkbox]):not(.sr), select', body);
+  if (first) first.focus();
+}
+function tzOptions() {
+  let det = 'Asia/Kolkata';
+  try { det = Intl.DateTimeFormat().resolvedOptions().timeZone || det; } catch (e) { /* keep default */ }
+  const list = Array.from(new Set([det, 'Asia/Kolkata', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney', 'UTC']));
+  return list.map((z) => `<option value="${z}">${z}${z === det ? ' (detected)' : ''}</option>`).join('');
+}
+
+/* ------------------------------------------------------------------ palette */
+const CMDS = [
+  { l: 'New chat', i: 'plus', k: 'N', run: () => newChat() },
+  { l: 'Search conversations', i: 'search', run: () => { setView('chat'); $('#view-chat').classList.add('side-open'); $('#conv-search').focus(); } },
+  { l: 'Open Chat', i: 'chat', run: () => setView('chat') },
+  { l: 'Open Connections', i: 'plug', run: () => setView('connections') },
+  { l: 'Add MCP server', i: 'terminal', run: () => openWizard('mcp') },
+  { l: 'Connect Google', i: 'mail', run: () => openWizard('google') },
+  { l: 'Connect Notion', i: 'doc', run: () => openWizard('notion') },
+  { l: 'Show all tools', i: 'wrench', run: () => openTools() },
+  { l: 'Toggle run panel', i: 'panel', run: () => { setView('chat'); toggleRun(); } },
+  { l: 'Open Settings', i: 'sliders', run: () => setView('settings') },
+  { l: 'Run first-time setup', i: 'key', run: () => openWizard('onboarding') },
+  { l: 'Toggle offline mode', i: 'bolt', run: () => setOffline(!S.offline) }
+];
+let palItems = [], palSel = 0;
+function openPalette() { const d = $('#palette'); if (d.open) return; $('#pal-q').value = ''; palSel = 0; renderPalette(); d.showModal(); $('#pal-q').focus(); }
+function renderPalette() {
+  const q = $('#pal-q').value.trim().toLowerCase();
+  palItems = CMDS.filter((c) => c.l.toLowerCase().includes(q));
+  palSel = Math.max(0, Math.min(palSel, palItems.length - 1));
+  $('#pal-list').innerHTML = palItems.length ? palItems.map((c, i) => `<li role="option" id="pal-${i}" aria-selected="${i === palSel}" data-pal="${i}">${icon(c.i)}<span>${c.l}</span></li>`).join('') : '<li aria-disabled="true"><span class="meta">No matching commands</span></li>';
+  $('#pal-q').setAttribute('aria-activedescendant', palItems.length ? 'pal-' + palSel : '');
+  const sel = $('#pal-' + palSel); if (sel) sel.scrollIntoView({ block: 'nearest' });
+}
+function runPal(i) { const c = palItems[i]; if (!c) return; $('#palette').close(); c.run(); }
+
+/* ------------------------------------------------------------------ misc */
+function toast(text, kind = 'ok') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = `<span class="dot" aria-hidden="true"></span><span>${esc(text)}</span>`;
+  $('#toasts').appendChild(el);
+  const all = $$('.toast'); if (all.length > 3) all[0].remove();
+  setTimeout(() => { el.style.transition = 'opacity .2s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 220); }, 3400);
+}
+function setOffline(v) {
+  S.offline = v;
+  $('#offline-banner').hidden = !v;
+  const pill = $('#nav-status');
+  pill.className = 'pill nav-status ' + (v ? 'warn' : 'ok live');
+  pill.textContent = v ? 'Offline' : 'Groq · Online';
+  $('#sw-offline').setAttribute('aria-checked', String(v));
+  const p = prompt();
+  p.placeholder = v ? "You're offline. History and search still work." : 'Ask Donna anything…  (/ for commands)';
+  toast(v ? 'Offline mode: Donna will wait for the connection to come back.' : 'Back online. Groq is reachable.', v ? 'warn' : 'ok');
+}
+function updateBudget() {
+  const u = S.usage;
+  $('#budget-text').textContent = `${u.req.toLocaleString()} / 1,000 req`;
+  const m = $('#budget-meter');
+  m.classList.toggle('warn', u.req >= 800);
+  $('i', m).style.width = Math.min(100, (u.req / u.max) * 100) + '%';
+}
+function afterConnChange() {
+  if (S.view === 'connections') renderConnections();
+  $('#tool-count').textContent = `${countReady()} tools ready`;
+  if (S.view === 'chat') renderThread();
+}
+function renderAll() { renderConvList(); renderThread(); renderRun(); updateBudget(); $('#tool-count').textContent = `${countReady()} tools ready`; }
+
+/* ------------------------------------------------------------------ events */
+function bind() {
+  $$('.tab').forEach((t) => t.addEventListener('click', () => setView(t.dataset.view)));
+  $('#tabs').addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const tabs = $$('.tab'); const i = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+    const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; setView(n.dataset.view); n.focus();
+  });
+  $('[data-view-link]').addEventListener('click', (e) => { e.preventDefault(); setView('chat'); });
+  $('#open-palette').addEventListener('click', openPalette);
+  $('#new-chat').addEventListener('click', () => newChat());
+  $('#conv-search').addEventListener('input', (e) => { S.q = e.target.value; renderConvList(); });
+  $('#open-side').addEventListener('click', () => $('#view-chat').classList.add('side-open'));
+  $('#toggle-run').addEventListener('click', toggleRun);
+  $('#close-run').addEventListener('click', () => { $('#view-chat').classList.remove('run-open'); $('#toggle-run').setAttribute('aria-pressed', 'false'); });
+  $('#scrim').addEventListener('click', closeDrawers);
+  $('#retry-online').addEventListener('click', () => setOffline(false));
+
+  $('#rp-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rtab]'); if (!b) return;
+    S.runTab = b.dataset.rtab;
+    $$('[data-rtab]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+    moveIndicator($('#rp-tabs'), '[aria-selected="true"]');
+    renderRun();
+  });
+
+  // Composer
+  const p = prompt();
+  p.addEventListener('input', () => { autosize(); slashSel = 0; updateSlash(); });
+  p.addEventListener('keydown', (e) => {
+    const box = $('#slash');
+    if (!box.hidden) {
+      const items = $$('#slash-list li');
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); slashSel = (slashSel + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length; updateSlash(); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); const it = items[slashSel]; if (it) runSlash(it.dataset.slash); return; }
+      if (e.key === 'Escape') { box.hidden = true; return; }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(p.value); }
+  });
+  $('#slash-list').addEventListener('mousedown', (e) => { const li = e.target.closest('[data-slash]'); if (li) { e.preventDefault(); runSlash(li.dataset.slash); } });
+  $('#composer').addEventListener('submit', (e) => { e.preventDefault(); if ($('#send').dataset.busy) stopRun(); else send(p.value); });
+  $$('[data-mention]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.mention; if (S.mentions.has(k)) S.mentions.delete(k); else S.mentions.add(k);
+    b.setAttribute('aria-pressed', String(S.mentions.has(k))); p.focus();
+  }));
+
+  // Delegated clicks
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    let el;
+    if ((el = t.closest('[data-open]'))) { S.activeId = el.dataset.open; closeDrawers(); renderAll(); return; }
+    if ((el = t.closest('[data-pin]'))) { const c = S.convs.find((x) => x.id === el.dataset.pin); c.pinned = !c.pinned; renderConvList(); return; }
+    if ((el = t.closest('[data-ren]'))) { const c = S.convs.find((x) => x.id === el.dataset.ren); c.editing = true; renderConvList(); const inp = $(`[data-rename="${c.id}"]`); inp.focus(); inp.select(); return; }
+    if ((el = t.closest('[data-del]'))) { const c = S.convs.find((x) => x.id === el.dataset.del); c.deleting = true; renderConvList(); $(`[data-del-no="${c.id}"]`).focus(); return; }
+    if ((el = t.closest('[data-del-no]'))) { const c = S.convs.find((x) => x.id === el.dataset.delNo); c.deleting = false; renderConvList(); return; }
+    if ((el = t.closest('[data-del-yes]'))) {
+      const id = el.dataset.delYes; const c = S.convs.find((x) => x.id === id);
+      if (S.live && S.live.conv === c) stopRun();
+      S.convs = S.convs.filter((x) => x.id !== id);
+      if (S.activeId === id) S.activeId = S.convs[0] ? S.convs[0].id : null;
+      renderAll(); toast(`Deleted “${c.title}”.`); return;
+    }
+    if ((el = t.closest('[data-prompt]'))) { send(el.dataset.prompt); return; }
+    if ((el = t.closest('[data-open-run]'))) { const v = $('#view-chat'); if (window.matchMedia('(max-width:1180px)').matches) v.classList.add('run-open'); else v.classList.remove('run-closed'); S.runTab = 'plan'; $$('[data-rtab]').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.rtab === 'plan'))); requestAnimationFrame(() => moveIndicator($('#rp-tabs'), '[aria-selected="true"]')); renderRun(); return; }
+    if ((el = t.closest('[data-approve]'))) { resolveApproval(el.dataset.approve, el.dataset.ok === '1'); return; }
+    if ((el = t.closest('[data-wizard]'))) { openWizard(el.dataset.wizard); return; }
+    if ((el = t.closest('[data-goto]'))) { setView(el.dataset.goto); return; }
+    if ((el = t.closest('[data-reauth]'))) {
+      el.disabled = true; toast('Opening Google sign-in in your browser…');
+      setTimeout(() => { ['gmail', 'calendar'].forEach((id) => { const c = conn(id); c.status = 'connected'; c.note = id === 'gmail' ? 'Signed in as you@gmail.com · just now' : 'Primary calendar · ' + $('#tz').value; }); afterConnChange(); toast('Google re-authorized. Good for another 7 days.'); }, 1300);
+      return;
+    }
+    if ((el = t.closest('[data-toggle]'))) { const c = conn(el.dataset.toggle); c.on = !c.on; afterConnChange(); toast(`${c.name} turned ${c.on ? 'on' : 'off'}.`); return; }
+    if ((el = t.closest('[data-test]'))) { const c = conn(el.dataset.test); el.disabled = true; el.textContent = 'Testing…'; setTimeout(() => { el.disabled = false; el.textContent = 'Test'; toast(`${c.name} responded in ${200 + Math.round(Math.random() * 400)} ms.`); }, 800); return; }
+    if ((el = t.closest('[data-restart]'))) { const c = conn(el.dataset.restart); el.disabled = true; el.textContent = 'Restarting…'; setTimeout(() => { c.status = 'error'; afterConnChange(); toast(`${c.name} still can't start: "uvx" was not found.`, 'err'); }, 1100); return; }
+    if ((el = t.closest('[data-remove]'))) { const c = conn(el.dataset.remove); S.conns = S.conns.filter((x) => x !== c); afterConnChange(); toast(`Removed ${c.name}.`); return; }
+    if ((el = t.closest('[data-tools]'))) { openTools(el.dataset.tools); return; }
+    if ((el = t.closest('[data-chain]'))) { const n = el.dataset.chain; $('#wizard').close(); setTimeout(() => openWizard(n), 60); return; }
+    if ((el = t.closest('[data-ob-prompt]'))) { const txt = el.dataset.obPrompt; $('#wizard').close(); FLOWS.onboarding.done(); setView('chat'); newChat(false); send(txt); return; }
+    if ((el = t.closest('[data-pal]'))) { runPal(Number(el.dataset.pal)); return; }
+    if ((el = t.closest('[data-close]'))) { el.closest('dialog').close(); return; }
+    if ((el = t.closest('[data-demo]'))) {
+      $('#demo-menu').hidden = true; $('#demo-btn').setAttribute('aria-expanded', 'false');
+      const a = el.dataset.demo;
+      if (a === 'setup') openWizard('onboarding');
+      if (a === 'offline') setOffline(!S.offline);
+      if (a === 'expire') { ['gmail', 'calendar'].forEach((id) => { const c = conn(id); c.status = 'reauth'; c.note = 'Google sign-in expired (testing mode lasts 7 days)'; }); afterConnChange(); toast('Google sign-in expired. Gmail and Calendar need re-authorizing.', 'warn'); }
+      if (a === 'reset') location.reload();
+      return;
+    }
+    if (t.closest('#add-card') || t.closest('#add-mcp')) { openWizard('mcp'); return; }
+    if (t.closest('#show-tools')) { openTools(); return; }
+  });
+  document.addEventListener('keydown', (e) => {
+    const r = e.target.closest && e.target.closest('[data-rename]');
+    if (r) {
+      const c = S.convs.find((x) => x.id === r.dataset.rename);
+      if (e.key === 'Enter') { c.title = r.value.trim() || c.title; c.editing = false; renderAll(); }
+      if (e.key === 'Escape') { c.editing = false; renderConvList(); }
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); }
+  });
+  document.addEventListener('focusout', (e) => {
+    const r = e.target.closest && e.target.closest('[data-rename]');
+    if (r) { const c = S.convs.find((x) => x.id === r.dataset.rename); if (c && c.editing) { c.title = r.value.trim() || c.title; c.editing = false; setTimeout(renderAll, 0); } }
+  });
+
+  // Palette
+  $('#pal-q').addEventListener('input', () => { palSel = 0; renderPalette(); });
+  $('#pal-q').addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); palSel = (palSel + 1) % Math.max(1, palItems.length); renderPalette(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); palSel = (palSel - 1 + palItems.length) % Math.max(1, palItems.length); renderPalette(); }
+    if (e.key === 'Enter') { e.preventDefault(); runPal(palSel); }
+  });
+  $('#palette').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $$('dialog').forEach((d) => d.addEventListener('click', (e) => { if (e.target === d && d.id !== 'wizard') d.close(); }));
+
+  // Wizard nav
+  $('#wz-back').addEventListener('click', () => { if (W.i > 0) { W.i--; renderWizard(); } });
+  $('#wz-next').addEventListener('click', () => {
+    const f = W.flow;
+    if (W.i < f.steps.length - 1) { W.i++; renderWizard(); return; }
+    $('#wizard').close(); f.done(W.data);
+    if (W.name === 'onboarding') setView('chat');
+  });
+
+  // Settings
+  $('#show-key').addEventListener('click', (e) => { const k = $('#groq-key'); const show = k.type === 'password'; k.type = show ? 'text' : 'password'; e.currentTarget.textContent = show ? 'Hide' : 'Show'; });
+  $('#test-key').addEventListener('click', async (e) => { const b = e.currentTarget, s = $('#key-status'); b.disabled = true; s.className = 'grow meta'; s.textContent = 'Checking with Groq…'; await sleep(900); b.disabled = false; s.className = 'okline grow'; s.textContent = '✓ Key works · 2 chat models available on the free tier'; });
+  $('#tz').innerHTML = tzOptions();
+  const sw = (id, fn) => $(id).addEventListener('click', (e) => { const v = e.currentTarget.getAttribute('aria-checked') !== 'true'; e.currentTarget.setAttribute('aria-checked', String(v)); fn(v); });
+  sw('#sw-grid', (v) => document.body.classList.toggle('grid-on', v));
+  sw('#sw-motion', (v) => document.body.classList.toggle('reduce-motion', v));
+  sw('#sw-panel', (v) => { S.autoPanel = v; });
+  $('#sw-offline').addEventListener('click', () => setOffline(!S.offline));
+  $('#m-plan').addEventListener('change', () => renderThread());
+  $('#export').addEventListener('click', () => toast(`Exported ${S.convs.length} conversations to data/exports/donna-2026-09-29.json`));
+  $('#wipe').addEventListener('click', () => { $('#wipe-confirm').hidden = false; $('#wipe-cancel').focus(); });
+  $('#wipe-cancel').addEventListener('click', () => { $('#wipe-confirm').hidden = true; });
+  $('#wipe-yes').addEventListener('click', () => { if (S.live) stopRun(); S.convs = []; S.activeId = null; $('#wipe-confirm').hidden = true; renderAll(); toast('All conversations, runs and memories were deleted.', 'warn'); });
+  $('#rerun-setup').addEventListener('click', () => openWizard('onboarding'));
+  $('#open-logs').addEventListener('click', () => toast('Opened logs/donna.log in File Explorer.'));
+
+  // Demo menu
+  $('#demo-btn').addEventListener('click', (e) => { const m = $('#demo-menu'); m.hidden = !m.hidden; e.currentTarget.setAttribute('aria-expanded', String(!m.hidden)); });
+
+  window.addEventListener('resize', () => { moveIndicator($('#tabs'), '.tab[aria-selected="true"]'); moveIndicator($('#rp-tabs'), '[aria-selected="true"]'); });
+
+  // Live elapsed timers while a run is active
+  setInterval(() => { if (S.live && S.view === 'chat' && active() === S.live.conv) renderRun(); }, 200);
+}
+
+/* ------------------------------------------------------------------ boot */
+hydrateIcons();
+seed();
+bind();
+renderAll();
+setBusy(false);
+if (window.matchMedia('(max-width:1180px)').matches) $('#toggle-run').setAttribute('aria-pressed', 'false');
+const ready = () => { moveIndicator($('#tabs'), '.tab[aria-selected="true"]'); moveIndicator($('#rp-tabs'), '[aria-selected="true"]'); };
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(ready); else ready();
+requestAnimationFrame(ready);
+})();
+</script>
+</body>
+</html>

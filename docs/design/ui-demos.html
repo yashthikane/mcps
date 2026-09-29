@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Donna UI Directions</title>
+<!-- Google Fonts: Geist, Geist Mono, Inter, Instrument Sans -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<!-- Fontshare: General Sans, Satoshi -->
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&f[]=satoshi@400,500,700&display=swap">
+<style>
+/* ---------- Showcase page (neutral frame) ---------- */
+:root{--page:#EFEFEC;--page-ink:#1B1B1A;--page-muted:#6A6A66;--page-line:#DADAD5;--ease:cubic-bezier(.2,.8,.2,1)}
+@media (prefers-color-scheme:dark){:root{--page:#131312;--page-ink:#EDEDEA;--page-muted:#9A9A95;--page-line:#2A2A28}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--page-ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.page{max-width:1200px;margin:0 auto;padding:48px 20px 96px}
+.intro{display:flex;flex-direction:column;gap:12px;max-width:760px}
+.intro h1{margin:0;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-.02em;font-weight:650}
+.intro p{margin:0;color:var(--page-muted)}
+.jump{position:sticky;top:0;z-index:5;display:flex;gap:8px;flex-wrap:wrap;padding:14px 0;margin-top:24px;background:var(--page);border-bottom:1px solid var(--page-line)}
+.jump a{font-size:13px;color:var(--page-ink);text-decoration:none;padding:6px 12px;border:1px solid var(--page-line);border-radius:999px;transition:background .15s,border-color .15s}
+.jump a:hover{border-color:var(--page-muted)}
+.demo{padding-top:64px;scroll-margin-top:56px;display:flex;flex-direction:column;gap:16px}
+.demo-meta{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.demo-meta .label{font:500 12px/1 ui-monospace,"Cascadia Mono",Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--page-muted)}
+.demo-meta h2{margin:6px 0 4px;font-size:26px;letter-spacing:-.015em;font-weight:650}
+.demo-meta p{margin:0;color:var(--page-muted);font-size:14px}
+.demo-meta .specs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.demo-meta .specs span{font-size:12px;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,var(--page-ink) 7%,transparent)}
+.replay{font:inherit;font-size:13px;color:var(--page-ink);background:transparent;border:1px solid var(--page-line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.replay:hover{border-color:var(--page-muted)}
+.stage{border-radius:18px;padding:clamp(12px,3vw,36px);overflow:hidden}
+
+/* ---------- Icons ---------- */
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- Shared app structure (every theme sets the tokens) ---------- */
+.app{
+  --bw:1px;--r-sm:6px;--r:8px;--r-lg:12px;--frame-r:14px;
+  display:grid;grid-template-columns:236px minmax(0,1fr);height:680px;
+  font-family:var(--font);color:var(--ink);background:var(--bg);
+  border:var(--bw) solid var(--frame-line,var(--line));border-radius:var(--frame-r);overflow:hidden;box-shadow:var(--frame-shadow,none);
+  font-size:14px;line-height:1.55;
+}
+.side{background:var(--side);border-right:var(--bw) solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:6px;min-height:0}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 6px 10px}
+.logo{width:24px;height:24px;border-radius:var(--r-sm);display:grid;place-items:center;font-weight:600;font-size:13px;background:var(--logo-bg,var(--accent));color:var(--logo-ink,var(--accent-ink))}
+.bname{font-weight:600;flex:1}
+kbd{font-family:var(--mono,inherit);font-size:11px;color:var(--muted);border:var(--bw) solid var(--line);border-radius:var(--r-sm);padding:1px 6px}
+.side .new{width:100%;justify-content:center}
+.search{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;color:var(--muted);border-radius:var(--r);background:var(--input);border:var(--bw) solid var(--input-line,transparent);margin-bottom:6px;font-size:13px}
+.grp{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 8px 4px}
+.convs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.convs li{padding:6px 10px;border-radius:var(--r);color:var(--ink-2);cursor:default;transition:background .15s,color .15s,transform .15s var(--ease);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.convs li:hover{background:var(--hover);color:var(--ink)}
+.convs li.active{background:var(--active);color:var(--ink);font-weight:500}
+.conns{margin-top:auto;display:flex;flex-direction:column;gap:2px}
+.conn{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--r);color:var(--ink-2)}
+.conn .dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.conn .setup{margin-left:auto;font-size:11px;font-weight:500;color:var(--warn);padding:1px 8px;border-radius:999px;background:var(--warn-bg)}
+
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--main)}
+.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-bottom:var(--bw) solid var(--line)}
+.chat-head h4{margin:0;font-size:14px;font-weight:600}
+.chat-head p{margin:0;font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;font-size:12px;border-radius:999px;background:var(--chip);color:var(--ink-2);border:var(--bw) solid var(--chip-line,transparent)}
+.mono{font-family:var(--mono,inherit)}
+.thread{flex:1;min-height:0;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:16px;width:100%;max-width:720px;margin:0 auto}
+.msg.user{align-self:flex-end;max-width:78%;background:var(--user-bg);color:var(--user-ink);padding:10px 14px;border-radius:var(--r-lg);border:var(--bw) solid var(--user-line,transparent)}
+.msg.bot{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start}
+.msg.bot p{margin:0;color:var(--ink)}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--logo-bg,var(--accent));color:var(--logo-ink,var(--accent-ink))}
+.caret{display:inline-block;width:2px;height:1.05em;margin-left:3px;vertical-align:-3px;background:var(--accent-line,var(--accent));animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+.run{border:var(--bw) solid var(--line);background:var(--card);border-radius:var(--r-lg);padding:12px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--card-shadow,none)}
+.run-head{display:flex;align-items:center;gap:8px;padding:2px 6px 6px;font-weight:500;font-size:13px}
+.run-head .i{color:var(--accent-line,var(--accent))}
+.run-meta{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.steps li{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;padding:6px;border-radius:var(--r);transition:background .15s}
+.steps li:hover{background:var(--hover)}
+.ico{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-sm);background:var(--ico-bg);color:var(--ico-ink);border:var(--bw) solid var(--ico-line,transparent)}
+.st{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.state{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.done .state{color:var(--ok)}
+.wait .state{color:var(--warn)}
+.wait .state::before{animation:pulse 1.4s var(--ease) infinite}
+.skip .state{color:var(--muted)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.confirm{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:4px;padding:10px 12px;border-radius:var(--r);background:var(--confirm-bg);border:var(--bw) solid var(--confirm-line,transparent)}
+.confirm p{margin:0;font-size:13px;display:flex;align-items:center;gap:8px}
+.confirm.resolved{animation:settle .35s var(--ease)}
+@keyframes settle{from{opacity:0;transform:translateY(4px)}}
+.actions{display:flex;gap:8px}
+
+.btn{font:inherit;font-size:13px;font-weight:500;height:32px;padding:0 12px;border-radius:var(--btn-r,var(--r));border:var(--bw) solid transparent;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  transition:transform .15s var(--ease),background .15s,box-shadow .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn:focus-visible,.convs li:focus-visible{outline:2px solid var(--accent-line,var(--accent));outline-offset:2px}
+.btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:var(--btn-shadow,none)}
+.btn-ghost{background:var(--ghost-bg,transparent);color:var(--ink);border-color:var(--line-strong)}
+
+.composer{width:calc(100% - 48px);max-width:672px;margin:0 auto 20px;border:var(--bw) solid var(--line-strong);border-radius:var(--r-lg);background:var(--card);padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--card-shadow,none);transition:border-color .15s,box-shadow .2s}
+.composer:hover{border-color:var(--accent-line,var(--accent))}
+.field{color:var(--muted);padding:2px 4px}
+.comp-row{display:flex;align-items:center;gap:6px}
+.send{margin-left:auto;width:32px;padding:0;justify-content:center}
+
+/* ---------- Entrance motion (JS adds .in when in view) ---------- */
+.js .demo .app{transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.js .demo:not(.in) .app{opacity:0;transform:translateY(18px) scale(.99)}
+.js .demo .steps li,.js .demo .msg,.js .demo .confirm,.js .demo .run-head{transition:opacity .45s var(--ease),transform .45s var(--ease)}
+.js .demo:not(.in) .steps li,.js .demo:not(.in) .confirm{opacity:0;transform:translateX(-8px)}
+.js .demo:not(.in) .msg,.js .demo:not(.in) .run-head{opacity:0;transform:translateY(8px)}
+.js .demo.in .msg.user{transition-delay:.2s}
+.js .demo.in .run-head{transition-delay:.35s}
+.js .demo.in .steps li{transition-delay:calc(.45s + var(--i) * .1s)}
+.js .demo.in .confirm{transition-delay:.8s}
+.js .demo.in .msg.bot{transition-delay:.95s}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;height:auto}
+  .side{display:none}
+  .thread{padding:16px}
+  .composer{width:calc(100% - 32px)}
+  .msg.user{max-width:92%}
+}
+
+/* =========================================================
+   Demo 1 · Midnight Console (Linear / Raycast)
+   ========================================================= */
+.s1{background:#060709}
+.t1 .app{
+  --font:"Geist",system-ui,sans-serif;--mono:"Geist Mono",ui-monospace,monospace;
+  --bg:#0B0C0F;--side:#0B0C0F;--main:radial-gradient(120% 60% at 50% -10%,rgba(124,132,255,.10),transparent 60%),#0E0F13;
+  --card:#14161B;--input:#14161B;--input-line:rgba(255,255,255,.06);
+  --ink:#E7E8EA;--ink-2:#B4B7BD;--muted:#7C818A;--line:rgba(255,255,255,.07);--line-strong:rgba(255,255,255,.12);
+  --hover:rgba(255,255,255,.04);--active:rgba(255,255,255,.07);--chip:rgba(255,255,255,.06);--chip-line:rgba(255,255,255,.06);
+  --accent:#7C84FF;--accent-ink:#0B0C0F;--ok:#4CC38A;--warn:#F0B35B;--warn-bg:rgba(240,179,91,.12);
+  --user-bg:#1B1D24;--user-ink:#E7E8EA;--user-line:rgba(255,255,255,.06);
+  --ico-bg:rgba(255,255,255,.05);--ico-ink:#B4B7BD;--ico-line:rgba(255,255,255,.06);
+  --confirm-bg:rgba(124,132,255,.08);--confirm-line:rgba(124,132,255,.22);
+  --logo-bg:linear-gradient(135deg,#8B93FF,#5E66E6);--logo-ink:#fff;
+  --frame-shadow:0 0 0 1px rgba(255,255,255,.04),0 30px 80px -20px rgba(0,0,0,.7);
+  --btn-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+  --r:7px;--r-lg:10px;
+  letter-spacing:-.005em;
+}
+.t1 .btn-primary:hover{background:#8F96FF}
+
+/* =========================================================
+   Demo 2 · Monochrome (Vercel)
+   ========================================================= */
+.s2{background:#F5F5F5;background-image:radial-gradient(#DADADA 1px,transparent 1px);background-size:20px 20px}
+.t2 .app{
+  --font:"Inter",system-ui,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --bg:#fff;--side:#FAFAFA;--main:#fff;--card:#fff;--input:#fff;--input-line:#EAEAEA;
+  --ink:#0A0A0A;--ink-2:#444;--muted:#8F8F8F;--line:#EAEAEA;--line-strong:#E0E0E0;
+  --hover:#F2F2F2;--active:#EDEDED;--chip:#F5F5F5;--chip-line:#EAEAEA;
+  --accent:#0A0A0A;--accent-ink:#fff;--accent-line:#0070F3;--ok:#1A7F37;--warn:#B25E09;--warn-bg:#FFF4E5;
+  --user-bg:#F5F5F5;--user-ink:#0A0A0A;
+  --ico-bg:#fff;--ico-ink:#0A0A0A;--ico-line:#EAEAEA;
+  --confirm-bg:#FAFAFA;--confirm-line:#EAEAEA;
+  --frame-shadow:0 1px 2px rgba(0,0,0,.04),0 12px 40px -12px rgba(0,0,0,.12);
+  --r:6px;--r-lg:8px;--frame-r:12px;
+  font-feature-settings:"cv11","ss01";
+}
+.t2 .btn-primary:hover{background:#383838}
+.t2 .chat-head h4{letter-spacing:-.01em}
+
+/* =========================================================
+   Demo 3 · Soft Glass (Arc / Apple)
+   ========================================================= */
+.s3{background:
+  radial-gradient(40% 55% at 15% 20%,#FFC7B8 0,transparent 70%),
+  radial-gradient(45% 60% at 85% 15%,#C9C2FF 0,transparent 70%),
+  radial-gradient(50% 60% at 70% 95%,#A9E4FF 0,transparent 70%),
+  radial-gradient(40% 50% at 20% 90%,#FFE6A8 0,transparent 70%),#F2EEF8}
+.t3 .app{
+  --font:"General Sans",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(255,255,255,.38);--main:rgba(255,255,255,.52);
+  --card:rgba(255,255,255,.62);--input:rgba(255,255,255,.55);--input-line:rgba(255,255,255,.7);
+  --ink:#1E1B2E;--ink-2:#46415C;--muted:#716B88;--line:rgba(255,255,255,.65);--line-strong:rgba(255,255,255,.85);
+  --hover:rgba(255,255,255,.5);--active:rgba(255,255,255,.75);--chip:rgba(255,255,255,.6);
+  --accent:#6B4DFF;--accent-ink:#fff;--ok:#1E9E6A;--warn:#C26A0E;--warn-bg:rgba(255,196,120,.35);
+  --user-bg:linear-gradient(135deg,#7B5CFF,#A06BFF);--user-ink:#fff;
+  --ico-bg:rgba(255,255,255,.75);--ico-ink:#4B3FB5;
+  --confirm-bg:rgba(255,255,255,.7);--confirm-line:rgba(255,255,255,.9);
+  --frame-line:rgba(255,255,255,.7);
+  --frame-shadow:0 30px 80px -30px rgba(70,50,140,.45),inset 0 1px 0 rgba(255,255,255,.8);
+  --card-shadow:0 8px 24px -12px rgba(70,50,140,.25);
+  --btn-shadow:0 6px 16px -6px rgba(107,77,255,.6);
+  --r:10px;--r-lg:16px;--frame-r:22px;--btn-r:999px;
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+}
+.t3 .side,.t3 .chat{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.t3 .btn-primary:hover{box-shadow:0 10px 24px -8px rgba(107,77,255,.7)}
+.t3 .msg.user{box-shadow:0 8px 20px -10px rgba(107,77,255,.6)}
+
+/* =========================================================
+   Demo 4 · Pastel Paper (Stripe)
+   ========================================================= */
+.s4{background:linear-gradient(160deg,#F6F9FC 0%,#EEF1FF 55%,#FDF1F5 100%)}
+.t4 .app{
+  --font:"Satoshi",system-ui,sans-serif;
+  --bg:#fff;--side:#F6F9FC;--main:#fff;--card:#fff;--input:#fff;--input-line:#E3E8EE;
+  --ink:#0A2540;--ink-2:#30435A;--muted:#6B7C93;--line:#E6EBF1;--line-strong:#DCE3EB;
+  --hover:#F2F5F9;--active:#E9EEFF;--chip:#EEF1FF;
+  --accent:#635BFF;--accent-ink:#fff;--ok:#0E8A5F;--warn:#B45309;--warn-bg:#FFF1E6;
+  --user-bg:#635BFF;--user-ink:#fff;
+  --confirm-bg:#F7F6FF;--confirm-line:#E2DFFF;
+  --frame-shadow:0 50px 100px -20px rgba(50,50,93,.25),0 30px 60px -30px rgba(0,0,0,.3);
+  --card-shadow:0 2px 5px -1px rgba(50,50,93,.12),0 1px 3px -1px rgba(0,0,0,.08);
+  --btn-shadow:0 2px 5px -1px rgba(50,50,93,.35),0 1px 3px -1px rgba(0,0,0,.3);
+  --r:8px;--r-lg:12px;--frame-r:16px;
+}
+.t4 .chat-head{background:linear-gradient(90deg,#F7F6FF,#F2FBF8 60%,#FFF7F0)}
+.t4 .steps li:nth-child(1) .ico{--ico-bg:#FFE9DC;--ico-ink:#C2410C}
+.t4 .steps li:nth-child(2) .ico{--ico-bg:#DDF5EC;--ico-ink:#0E7A55}
+.t4 .steps li:nth-child(3) .ico{--ico-bg:#E8E6FF;--ico-ink:#4B45C6}
+.t4 .btn-primary:hover{background:#7A73FF}
+.t4 .run{background:linear-gradient(#fff,#fff) padding-box}
+
+/* =========================================================
+   Demo 5 · Neo Brutal (Gumroad)
+   ========================================================= */
+.s5{background:#FFC900}
+.t5 .app{
+  --font:"Instrument Sans",system-ui,sans-serif;
+  --bw:2px;--r-sm:4px;--r:4px;--r-lg:6px;--frame-r:8px;
+  --bg:#fff;--side:#F4F0E8;--main:#fff;--card:#fff;--input:#fff;--input-line:#000;
+  --ink:#000;--ink-2:#1A1A1A;--muted:#555;--line:#000;--line-strong:#000;
+  --hover:#FFEFA6;--active:#FF90E8;--chip:#fff;--chip-line:#000;
+  --accent:#FF90E8;--accent-ink:#000;--accent-line:#000;--ok:#00804A;--warn:#000;--warn-bg:#FFC900;
+  --user-bg:#90A8ED;--user-ink:#000;--user-line:#000;
+  --ico-bg:#fff;--ico-ink:#000;--ico-line:#000;
+  --confirm-bg:#FFC900;--confirm-line:#000;
+  --logo-bg:#000;--logo-ink:#FF90E8;
+  --frame-shadow:8px 8px 0 #000;--card-shadow:4px 4px 0 #000;--btn-shadow:3px 3px 0 #000;
+  font-weight:500;
+}
+.t5 .convs li.active{border:2px solid #000;font-weight:600}
+.t5 .convs li:hover{transform:translateX(2px)}
+.t5 .btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 #000}
+.t5 .btn:active{transform:translate(2px,2px);box-shadow:0 0 0 #000}
+.t5 .btn-ghost{background:#fff;box-shadow:3px 3px 0 #000}
+.t5 .run-head,.t5 .chat-head h4,.t5 .grp{text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.t5 .chat-head{background:#FF90E8}
+.t5 .composer:hover{box-shadow:6px 6px 0 #000;border-color:#000}
+.t5 .state::before{border-radius:0}
+.t5 .wait .state{background:#FFC900;padding:0 6px;border:2px solid #000;border-radius:4px}
+.t5 .avatar{border:2px solid #000}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+</svg>
+
+<div class="page">
+  <header class="intro">
+    <h1>Donna: five UI directions</h1>
+    <p>This page shows the same Donna screen in five different styles: sidebar, chat thread, a three-task parallel plan with an approval step, and the composer. Click <b>Approve</b> or <b>Reject</b> to try the confirmation flow, and use <b>Replay</b> to see the entrance motion again.</p>
+  </header>
+  <nav class="jump" aria-label="Demos">
+    <a href="#demo1">1 · Midnight Console</a>
+    <a href="#demo2">2 · Monochrome</a>
+    <a href="#demo3">3 · Soft Glass</a>
+    <a href="#demo4">4 · Pastel Paper</a>
+    <a href="#demo5">5 · Neo Brutal</a>
+  </nav>
+
+  <section class="demo t1" id="demo1">
+    <div class="demo-meta"><div><span class="label">Demo 1</span><h2>Midnight Console</h2><p>Dark and technical. Dense, quiet, keyboard-first, with one indigo accent.</p>
+      <div class="specs"><span>Geist + Geist Mono · Google Fonts</span><span>Inspired by Linear, Raycast</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage s1"></div>
+  </section>
+
+  <section class="demo t2" id="demo2">
+    <div class="demo-meta"><div><span class="label">Demo 2</span><h2>Monochrome</h2><p>Minimal and precise. Black on white with hairline borders; color only for status.</p>
+      <div class="specs"><span>Inter · Google Fonts</span><span>Inspired by Vercel</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage s2"></div>
+  </section>
+
+  <section class="demo t3" id="demo3">
+    <div class="demo-meta"><div><span class="label">Demo 3</span><h2>Soft Glass</h2><p>Frosted panels over a warm gradient. Pill buttons and soft depth.</p>
+      <div class="specs"><span>General Sans · Fontshare</span><span>Inspired by Arc, Apple</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage s3"></div>
+  </section>
+
+  <section class="demo t4" id="demo4">
+    <div class="demo-meta"><div><span class="label">Demo 4</span><h2>Pastel Paper</h2><p>Friendly and polished. Navy text, blurple accent, pastel task icons, layered soft shadows.</p>
+      <div class="specs"><span>Satoshi · Fontshare</span><span>Inspired by Stripe</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage s4"></div>
+  </section>
+
+  <section class="demo t5" id="demo5">
+    <div class="demo-meta"><div><span class="label">Demo 5</span><h2>Neo Brutal</h2><p>Loud and playful. 2px black outlines, hard offset shadows, pink and yellow.</p>
+      <div class="specs"><span>Instrument Sans · Google Fonts</span><span>Inspired by Gumroad</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage s5"></div>
+  </section>
+</div>
+
+<template id="app-tpl">
+  <div class="app">
+    <aside class="side">
+      <div class="brand"><span class="logo">D</span><span class="bname">Donna</span><kbd>⌘K</kbd></div>
+      <button class="btn btn-primary new"><svg class="i"><use href="#i-plus"/></svg>New chat</button>
+      <div class="search"><svg class="i"><use href="#i-search"/></svg>Search chats</div>
+      <div class="grp">Today</div>
+      <ul class="convs"><li class="active" tabindex="0">Morning briefing</li><li tabindex="0">Trip to Pune</li></ul>
+      <div class="grp">This week</div>
+      <ul class="convs"><li tabindex="0">Notion cleanup</li><li tabindex="0">Invoices from September</li></ul>
+      <div class="conns">
+        <div class="grp">Connections</div>
+        <div class="conn"><svg class="i"><use href="#i-mail"/></svg>Gmail<span class="dot"></span></div>
+        <div class="conn"><svg class="i"><use href="#i-cal"/></svg>Calendar<span class="dot"></span></div>
+        <div class="conn"><svg class="i"><use href="#i-doc"/></svg>Notion<span class="setup">Set up</span></div>
+      </div>
+    </aside>
+    <main class="chat">
+      <header class="chat-head">
+        <div><h4>Morning briefing</h4><p>3 agents · finished in 1.6 s</p></div>
+        <span class="chip mono">gpt-oss-120b</span>
+      </header>
+      <div class="thread">
+        <div class="msg user">Summarize my unread emails, check tomorrow's weather in Pune, and add a 30-min prep block before my first meeting.</div>
+        <div class="run">
+          <div class="run-head"><svg class="i"><use href="#i-spark"/></svg>Plan · 3 tasks in parallel<span class="run-meta mono">1.6 s</span></div>
+          <ol class="steps">
+            <li class="done" style="--i:0"><span class="ico"><svg class="i"><use href="#i-mail"/></svg></span><span class="st">Summarize 6 unread emails</span><span class="state mono">done · 1.2s</span></li>
+            <li class="done" style="--i:1"><span class="ico"><svg class="i"><use href="#i-sun"/></svg></span><span class="st">Weather in Pune tomorrow</span><span class="state mono">done · 0.4s</span></li>
+            <li class="wait" style="--i:2"><span class="ico"><svg class="i"><use href="#i-cal"/></svg></span><span class="st">Add “Prep” 09:00–09:30</span><span class="state mono">needs approval</span></li>
+          </ol>
+          <div class="confirm">
+            <p>Create event <b>Prep</b> tomorrow, 09:00–09:30?</p>
+            <div class="actions"><button class="btn btn-ghost reject">Reject</button><button class="btn btn-primary approve">Approve</button></div>
+          </div>
+        </div>
+        <div class="msg bot"><span class="avatar">D</span>
+          <p>You have <b>6 unread emails</b>. Two need a reply today: the Acme invoice and Priya's design review. Tomorrow in Pune it will be <b>24°C and clear</b>. Your first meeting is at 09:30, so Prep goes in at 09:00 once you approve.<span class="caret"></span></p>
+        </div>
+      </div>
+      <div class="composer">
+        <div class="field">Ask Donna anything…</div>
+        <div class="comp-row"><span class="chip">@gmail</span><span class="chip">@calendar</span>
+          <button class="btn btn-primary send" aria-label="Send"><svg class="i"><use href="#i-send"/></svg></button></div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<script>
+(function () {
+  document.documentElement.classList.add("js");
+  var tpl = document.getElementById("app-tpl");
+  var demos = document.querySelectorAll(".demo");
+
+  function mount(demo) {
+    demo.querySelector(".stage").replaceChildren(tpl.content.cloneNode(true));
+  }
+  demos.forEach(mount);
+
+  // Entrance: reveal each demo as it scrolls into view.
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.2 });
+    demos.forEach(function (d) { io.observe(d); });
+  } else {
+    demos.forEach(function (d) { d.classList.add("in"); });
+  }
+
+  // Replay: remount fresh markup and re-run the entrance.
+  document.addEventListener("click", function (ev) {
+    var replay = ev.target.closest(".replay");
+    if (replay) {
+      var demo = replay.closest(".demo");
+      demo.classList.remove("in");
+      mount(demo);
+      void demo.offsetWidth;
+      requestAnimationFrame(function () { demo.classList.add("in"); });
+      return;
+    }
+
+    // Confirmation flow: Approve / Reject.
+    var btn = ev.target.closest(".approve, .reject");
+    if (!btn) return;
+    var app = btn.closest(".app");
+    var step = app.querySelector(".steps li.wait");
+    var confirm = app.querySelector(".confirm");
+    var approved = btn.classList.contains("approve");
+    step.classList.remove("wait");
+    step.classList.add(approved ? "done" : "skip");
+    step.querySelector(".state").textContent = approved ? "done · approved" : "skipped";
+    confirm.classList.add("resolved");
+    confirm.innerHTML = approved
+      ? '<p><svg class="i"><use href="#i-check"/></svg>Added “Prep” to your calendar, 09:00–09:30.</p>'
+      : "<p>Skipped. Nothing was added to your calendar.</p>";
+    var caret = app.querySelector(".caret");
+    if (caret) caret.remove();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Donna Glass Variants</title>
+<!-- Google Fonts: Manrope, Figtree, Inter Tight, Hanken Grotesk -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=Inter+Tight:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600&display=swap">
+<!-- Fontshare: General Sans (original), Switzer -->
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&f[]=switzer@400,500,600&display=swap">
+<style>
+/* ---------- Showcase page (neutral frame) ---------- */
+:root{--page:#EFEFEC;--page-ink:#1B1B1A;--page-muted:#6A6A66;--page-line:#DADAD5;--ease:cubic-bezier(.2,.8,.2,1)}
+@media (prefers-color-scheme:dark){:root{--page:#131312;--page-ink:#EDEDEA;--page-muted:#9A9A95;--page-line:#2A2A28}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--page-ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.page{max-width:1200px;margin:0 auto;padding:48px 20px 96px}
+.intro{display:flex;flex-direction:column;gap:12px;max-width:760px}
+.intro h1{margin:0;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-.02em;font-weight:650}
+.intro p{margin:0;color:var(--page-muted)}
+.jump{position:sticky;top:0;z-index:5;display:flex;gap:8px;flex-wrap:wrap;padding:14px 0;margin-top:24px;background:var(--page);border-bottom:1px solid var(--page-line)}
+.jump a{font-size:13px;color:var(--page-ink);text-decoration:none;padding:6px 12px;border:1px solid var(--page-line);border-radius:999px;transition:background .15s,border-color .15s}
+.jump a:hover{border-color:var(--page-muted)}
+.jump .toggle{margin-left:auto}
+.demo{padding-top:64px;scroll-margin-top:56px;display:flex;flex-direction:column;gap:16px}
+.demo-meta{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.demo-meta .label{font:500 12px/1 ui-monospace,"Cascadia Mono",Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--page-muted)}
+.demo-meta h2{margin:6px 0 4px;font-size:26px;letter-spacing:-.015em;font-weight:650}
+.demo-meta p{margin:0;color:var(--page-muted);font-size:14px;max-width:70ch}
+.demo-meta .specs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.demo-meta .specs span{font-size:12px;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,var(--page-ink) 7%,transparent)}
+.replay,.toggle{font:inherit;font-size:13px;color:var(--page-ink);background:transparent;border:1px solid var(--page-line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.replay:hover,.toggle:hover{border-color:var(--page-muted)}
+.stage{position:relative;isolation:isolate;border-radius:18px;padding:clamp(12px,3vw,36px);overflow:hidden}
+.stage > .app{position:relative;z-index:1}
+
+/* Ambient drifting light behind the glass (new variants only) */
+.ambient::before,.ambient::after{content:"";position:absolute;z-index:0;width:55%;aspect-ratio:1;border-radius:50%;filter:blur(40px);opacity:.85;pointer-events:none}
+.ambient::before{background:var(--blob-a);top:-15%;left:-10%;animation:driftA 22s ease-in-out infinite alternate}
+.ambient::after{background:var(--blob-b);bottom:-20%;right:-10%;animation:driftB 26s ease-in-out infinite alternate}
+@keyframes driftA{to{transform:translate(35%,25%) scale(1.15)}}
+@keyframes driftB{to{transform:translate(-30%,-20%) scale(.9)}}
+.no-ambient .ambient::before,.no-ambient .ambient::after{animation-play-state:paused}
+
+/* ---------- Icons ---------- */
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- Shared app structure (identical to ui-demos.html) ---------- */
+.app{
+  --bw:1px;--r-sm:6px;--r:8px;--r-lg:12px;--frame-r:14px;
+  display:grid;grid-template-columns:236px minmax(0,1fr);height:680px;
+  font-family:var(--font);color:var(--ink);background:var(--bg);
+  border:var(--bw) solid var(--frame-line,var(--line));border-radius:var(--frame-r);overflow:hidden;box-shadow:var(--frame-shadow,none);
+  font-size:14px;line-height:1.55;
+}
+.side{background:var(--side);border-right:var(--bw) solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:6px;min-height:0}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 6px 10px}
+.logo{width:24px;height:24px;border-radius:var(--r-sm);display:grid;place-items:center;font-weight:600;font-size:13px;background:var(--logo-bg,var(--accent));color:var(--logo-ink,var(--accent-ink))}
+.bname{font-weight:600;flex:1}
+kbd{font-family:var(--mono,inherit);font-size:11px;color:var(--muted);border:var(--bw) solid var(--line);border-radius:var(--r-sm);padding:1px 6px}
+.side .new{width:100%;justify-content:center}
+.search{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;color:var(--muted);border-radius:var(--r);background:var(--input);border:var(--bw) solid var(--input-line,transparent);margin-bottom:6px;font-size:13px}
+.grp{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 8px 4px}
+.convs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.convs li{padding:6px 10px;border-radius:var(--r);color:var(--ink-2);cursor:default;transition:background .15s,color .15s,transform .15s var(--ease);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.convs li:hover{background:var(--hover);color:var(--ink)}
+.convs li.active{background:var(--active);color:var(--ink);font-weight:500}
+.conns{margin-top:auto;display:flex;flex-direction:column;gap:2px}
+.conn{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--r);color:var(--ink-2)}
+.conn .dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.conn .setup{margin-left:auto;font-size:11px;font-weight:500;color:var(--warn);padding:1px 8px;border-radius:999px;background:var(--warn-bg)}
+
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--main)}
+.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-bottom:var(--bw) solid var(--line)}
+.chat-head h4{margin:0;font-size:14px;font-weight:600}
+.chat-head p{margin:0;font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 10px;font-size:12px;border-radius:999px;background:var(--chip);color:var(--ink-2);border:var(--bw) solid var(--chip-line,transparent)}
+.mono{font-family:var(--mono,inherit)}
+.thread{flex:1;min-height:0;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:16px;width:100%;max-width:720px;margin:0 auto}
+.msg.user{align-self:flex-end;max-width:78%;background:var(--user-bg);color:var(--user-ink);padding:10px 14px;border-radius:var(--r-lg);border:var(--bw) solid var(--user-line,transparent)}
+.msg.bot{display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start}
+.msg.bot p{margin:0;color:var(--ink)}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--logo-bg,var(--accent));color:var(--logo-ink,var(--accent-ink))}
+.caret{display:inline-block;width:2px;height:1.05em;margin-left:3px;vertical-align:-3px;background:var(--accent-line,var(--accent));animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+.run{border:var(--bw) solid var(--line);background:var(--card);border-radius:var(--r-lg);padding:12px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--card-shadow,none)}
+.run-head{display:flex;align-items:center;gap:8px;padding:2px 6px 6px;font-weight:500;font-size:13px}
+.run-head .i{color:var(--accent-line,var(--accent))}
+.run-meta{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.steps li{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;padding:6px;border-radius:var(--r);transition:background .15s}
+.steps li:hover{background:var(--hover)}
+.ico{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-sm);background:var(--ico-bg);color:var(--ico-ink);border:var(--bw) solid var(--ico-line,transparent)}
+.st{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.state{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.done .state{color:var(--ok)}
+.wait .state{color:var(--warn)}
+.wait .state::before{animation:pulse 1.4s var(--ease) infinite}
+.skip .state{color:var(--muted)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.confirm{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:4px;padding:10px 12px;border-radius:var(--r);background:var(--confirm-bg);border:var(--bw) solid var(--confirm-line,transparent)}
+.confirm p{margin:0;font-size:13px;display:flex;align-items:center;gap:8px}
+.confirm.resolved{animation:settle .35s var(--ease)}
+@keyframes settle{from{opacity:0;transform:translateY(4px)}}
+.actions{display:flex;gap:8px}
+
+.btn{font:inherit;font-size:13px;font-weight:500;height:32px;padding:0 12px;border-radius:var(--btn-r,var(--r));border:var(--bw) solid transparent;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  transition:transform .15s var(--ease),background .15s,box-shadow .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn:focus-visible,.convs li:focus-visible{outline:2px solid var(--accent-line,var(--accent));outline-offset:2px}
+.btn-primary{background:var(--accent);color:var(--accent-ink);box-shadow:var(--btn-shadow,none)}
+.btn-ghost{background:var(--ghost-bg,transparent);color:var(--ink);border-color:var(--line-strong)}
+
+.composer{width:calc(100% - 48px);max-width:672px;margin:0 auto 20px;border:var(--bw) solid var(--line-strong);border-radius:var(--r-lg);background:var(--card);padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--card-shadow,none);transition:border-color .15s,box-shadow .2s}
+.composer:hover{border-color:var(--accent-line,var(--accent))}
+.field{color:var(--muted);padding:2px 4px}
+.comp-row{display:flex;align-items:center;gap:6px}
+.send{margin-left:auto;width:32px;padding:0;justify-content:center}
+
+/* ---------- Entrance motion (JS adds .in when in view) ---------- */
+.js .demo .app{transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.js .demo:not(.in) .app{opacity:0;transform:translateY(18px) scale(.99)}
+.js .demo .steps li,.js .demo .msg,.js .demo .confirm,.js .demo .run-head{transition:opacity .45s var(--ease),transform .45s var(--ease)}
+.js .demo:not(.in) .steps li,.js .demo:not(.in) .confirm{opacity:0;transform:translateX(-8px)}
+.js .demo:not(.in) .msg,.js .demo:not(.in) .run-head{opacity:0;transform:translateY(8px)}
+.js .demo.in .msg.user{transition-delay:.2s}
+.js .demo.in .run-head{transition-delay:.35s}
+.js .demo.in .steps li{transition-delay:calc(.45s + var(--i) * .1s)}
+.js .demo.in .confirm{transition-delay:.8s}
+.js .demo.in .msg.bot{transition-delay:.95s}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;height:auto}
+  .side{display:none}
+  .thread{padding:16px}
+  .composer{width:calc(100% - 32px)}
+  .msg.user{max-width:92%}
+}
+
+/* =========================================================
+   Original · Soft Glass (unchanged copy from ui-demos.html)
+   ========================================================= */
+.s3{background:
+  radial-gradient(40% 55% at 15% 20%,#FFC7B8 0,transparent 70%),
+  radial-gradient(45% 60% at 85% 15%,#C9C2FF 0,transparent 70%),
+  radial-gradient(50% 60% at 70% 95%,#A9E4FF 0,transparent 70%),
+  radial-gradient(40% 50% at 20% 90%,#FFE6A8 0,transparent 70%),#F2EEF8}
+.t3 .app{
+  --font:"General Sans",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(255,255,255,.38);--main:rgba(255,255,255,.52);
+  --card:rgba(255,255,255,.62);--input:rgba(255,255,255,.55);--input-line:rgba(255,255,255,.7);
+  --ink:#1E1B2E;--ink-2:#46415C;--muted:#716B88;--line:rgba(255,255,255,.65);--line-strong:rgba(255,255,255,.85);
+  --hover:rgba(255,255,255,.5);--active:rgba(255,255,255,.75);--chip:rgba(255,255,255,.6);
+  --accent:#6B4DFF;--accent-ink:#fff;--ok:#1E9E6A;--warn:#C26A0E;--warn-bg:rgba(255,196,120,.35);
+  --user-bg:linear-gradient(135deg,#7B5CFF,#A06BFF);--user-ink:#fff;
+  --ico-bg:rgba(255,255,255,.75);--ico-ink:#4B3FB5;
+  --confirm-bg:rgba(255,255,255,.7);--confirm-line:rgba(255,255,255,.9);
+  --frame-line:rgba(255,255,255,.7);
+  --frame-shadow:0 30px 80px -30px rgba(70,50,140,.45),inset 0 1px 0 rgba(255,255,255,.8);
+  --card-shadow:0 8px 24px -12px rgba(70,50,140,.25);
+  --btn-shadow:0 6px 16px -6px rgba(107,77,255,.6);
+  --r:10px;--r-lg:16px;--frame-r:22px;--btn-r:999px;
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+}
+.t3 .side,.t3 .chat{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.t3 .btn-primary:hover{box-shadow:0 10px 24px -8px rgba(107,77,255,.7)}
+.t3 .msg.user{box-shadow:0 8px 20px -10px rgba(107,77,255,.6)}
+
+/* =========================================================
+   Glass 1 · Midnight Glass: dark tinted glass over an aurora
+   ========================================================= */
+.sg1{background:
+  radial-gradient(45% 60% at 10% 10%,#4C2BD9 0,transparent 70%),
+  radial-gradient(40% 55% at 90% 20%,#0B84C6 0,transparent 70%),
+  radial-gradient(50% 60% at 60% 100%,#B0307E 0,transparent 70%),#07070F;
+  --blob-a:radial-gradient(circle,#6D4BFF 0,transparent 65%);--blob-b:radial-gradient(circle,#18B4E8 0,transparent 65%)}
+.g1 .app{
+  --font:"Manrope",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(12,12,26,.42);--main:rgba(18,18,36,.34);
+  --card:rgba(255,255,255,.06);--input:rgba(255,255,255,.06);--input-line:rgba(255,255,255,.1);
+  --ink:#F2F1FF;--ink-2:#CBC8EA;--muted:#9591BA;--line:rgba(255,255,255,.1);--line-strong:rgba(255,255,255,.18);
+  --hover:rgba(255,255,255,.06);--active:rgba(255,255,255,.11);--chip:rgba(255,255,255,.08);--chip-line:rgba(255,255,255,.08);
+  --accent:#8B7BFF;--accent-ink:#fff;--ok:#5EE0A0;--warn:#FFC46B;--warn-bg:rgba(255,196,107,.15);
+  --user-bg:linear-gradient(135deg,#6F55FF,#B64CFF);--user-ink:#fff;
+  --ico-bg:rgba(255,255,255,.08);--ico-ink:#DCD6FF;--ico-line:rgba(255,255,255,.08);
+  --confirm-bg:rgba(139,123,255,.12);--confirm-line:rgba(139,123,255,.32);
+  --frame-line:rgba(255,255,255,.14);
+  --frame-shadow:0 40px 100px -30px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.14);
+  --card-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+  --btn-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 8px 24px -8px rgba(139,123,255,.8);
+  --r:10px;--r-lg:16px;--frame-r:22px;--btn-r:999px;
+  backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);
+}
+.g1 .btn-primary:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 30px -6px rgba(139,123,255,.95)}
+
+/* =========================================================
+   Glass 2 · Aurora Mint: cool frosted white, teal accent
+   ========================================================= */
+.sg2{background:
+  radial-gradient(45% 55% at 12% 18%,#9FF3D4 0,transparent 70%),
+  radial-gradient(45% 60% at 88% 12%,#8ED8FF 0,transparent 70%),
+  radial-gradient(50% 60% at 75% 95%,#C8F7E6 0,transparent 70%),
+  radial-gradient(40% 50% at 15% 92%,#E4FFB8 0,transparent 70%),#EAF7F4;
+  --blob-a:radial-gradient(circle,#6EE7C8 0,transparent 65%);--blob-b:radial-gradient(circle,#7CC8FF 0,transparent 65%)}
+.g2 .app{
+  --font:"Switzer",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(255,255,255,.42);--main:rgba(255,255,255,.55);
+  --card:rgba(255,255,255,.68);--input:rgba(255,255,255,.6);--input-line:rgba(255,255,255,.8);
+  --ink:#0E2A29;--ink-2:#2E4C4A;--muted:#5E7C79;--line:rgba(255,255,255,.7);--line-strong:rgba(255,255,255,.9);
+  --hover:rgba(255,255,255,.55);--active:rgba(255,255,255,.8);--chip:rgba(255,255,255,.65);
+  --accent:#0F9580;--accent-ink:#fff;--ok:#15803D;--warn:#B45309;--warn-bg:rgba(253,210,140,.45);
+  --user-bg:linear-gradient(135deg,#12B5A0,#1C9AD6);--user-ink:#fff;
+  --ico-bg:rgba(255,255,255,.8);--ico-ink:#0F766E;
+  --confirm-bg:rgba(255,255,255,.72);--confirm-line:rgba(255,255,255,.95);
+  --frame-line:rgba(255,255,255,.75);
+  --frame-shadow:0 30px 80px -30px rgba(20,90,90,.4),inset 0 1px 0 rgba(255,255,255,.85);
+  --card-shadow:0 8px 24px -14px rgba(20,90,90,.3);
+  --btn-shadow:0 6px 16px -6px rgba(15,149,128,.55);
+  --r:10px;--r-lg:14px;--frame-r:20px;--btn-r:10px;
+  backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
+}
+.g2 .btn-primary:hover{background:#0C8572}
+
+/* =========================================================
+   Glass 3 · Sunset Frost: warm cream glass, coral accent
+   ========================================================= */
+.sg3{background:
+  radial-gradient(45% 55% at 12% 18%,#FFB199 0,transparent 70%),
+  radial-gradient(45% 60% at 88% 14%,#FF9DB3 0,transparent 70%),
+  radial-gradient(50% 60% at 70% 96%,#FFD18F 0,transparent 70%),
+  radial-gradient(40% 50% at 18% 92%,#F8C8EC 0,transparent 70%),#FFF1EA;
+  --blob-a:radial-gradient(circle,#FF9A7A 0,transparent 65%);--blob-b:radial-gradient(circle,#FFC46E 0,transparent 65%)}
+.g3 .app{
+  --font:"Figtree",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(255,247,242,.42);--main:rgba(255,250,246,.55);
+  --card:rgba(255,252,249,.66);--input:rgba(255,250,246,.6);--input-line:rgba(255,255,255,.75);
+  --ink:#2B1A1F;--ink-2:#5A3C44;--muted:#8A6A72;--line:rgba(255,255,255,.65);--line-strong:rgba(255,255,255,.88);
+  --hover:rgba(255,255,255,.5);--active:rgba(255,255,255,.78);--chip:rgba(255,255,255,.6);
+  --accent:#EC4E6C;--accent-ink:#fff;--ok:#15803D;--warn:#B45309;--warn-bg:rgba(255,205,130,.45);
+  --user-bg:linear-gradient(135deg,#FF7A59,#EC4E6C);--user-ink:#fff;
+  --ico-bg:rgba(255,255,255,.78);--ico-ink:#C2415B;
+  --confirm-bg:rgba(255,255,255,.7);--confirm-line:rgba(255,255,255,.95);
+  --frame-line:rgba(255,255,255,.72);
+  --frame-shadow:0 30px 80px -30px rgba(160,60,60,.4),inset 0 1px 0 rgba(255,255,255,.85);
+  --card-shadow:0 8px 24px -14px rgba(160,60,60,.28);
+  --btn-shadow:0 6px 16px -6px rgba(236,78,108,.6);
+  --r:10px;--r-lg:16px;--frame-r:22px;--btn-r:999px;
+  backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);
+}
+.g3 .btn-primary:hover{box-shadow:0 10px 24px -8px rgba(236,78,108,.75)}
+
+/* =========================================================
+   Glass 4 · Clear Glass: neutral grey glass over a vivid scene
+   (visionOS-style), white text, very round
+   ========================================================= */
+.sg4{background:
+  radial-gradient(50% 60% at 15% 20%,#2F7BFF 0,transparent 70%),
+  radial-gradient(45% 55% at 85% 10%,#20C9E6 0,transparent 70%),
+  radial-gradient(50% 60% at 80% 95%,#A77BFF 0,transparent 70%),
+  radial-gradient(45% 55% at 10% 95%,#FF6FB1 0,transparent 70%),#1B2340;
+  --blob-a:radial-gradient(circle,#43E0FF 0,transparent 65%);--blob-b:radial-gradient(circle,#FF7AC6 0,transparent 65%)}
+.g4 .app{
+  --font:"Inter Tight",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(120,120,128,.26);--main:rgba(128,128,136,.2);
+  --card:rgba(255,255,255,.12);--input:rgba(255,255,255,.12);--input-line:rgba(255,255,255,.14);
+  --ink:#FFFFFF;--ink-2:rgba(255,255,255,.86);--muted:rgba(255,255,255,.64);--line:rgba(255,255,255,.14);--line-strong:rgba(255,255,255,.24);
+  --hover:rgba(255,255,255,.1);--active:rgba(255,255,255,.2);--chip:rgba(255,255,255,.14);
+  --accent:#FFFFFF;--accent-ink:#141824;--accent-line:#FFFFFF;--ok:#7CF2B0;--warn:#FFD479;--warn-bg:rgba(255,212,121,.18);
+  --user-bg:rgba(255,255,255,.22);--user-ink:#fff;--user-line:rgba(255,255,255,.25);
+  --ico-bg:rgba(255,255,255,.16);--ico-ink:#fff;
+  --confirm-bg:rgba(255,255,255,.12);--confirm-line:rgba(255,255,255,.22);
+  --logo-bg:rgba(255,255,255,.9);--logo-ink:#141824;
+  --frame-line:rgba(255,255,255,.28);
+  --frame-shadow:0 40px 90px -30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(255,255,255,.08);
+  --card-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+  --btn-shadow:0 8px 20px -8px rgba(0,0,0,.4);
+  --r:14px;--r-lg:22px;--frame-r:32px;--btn-r:999px;--r-sm:10px;
+  backdrop-filter:blur(40px) saturate(170%);-webkit-backdrop-filter:blur(40px) saturate(170%);
+  text-shadow:0 1px 1px rgba(0,0,0,.08);
+}
+.g4 .convs li{border-radius:999px}
+.g4 .btn-ghost{background:rgba(255,255,255,.12)}
+.g4 .btn-primary:hover{background:#F2F4FF}
+
+/* =========================================================
+   Glass 5 · Liquid Glass: very clear panels, gradient rims,
+   specular highlights (Apple 2025 "Liquid Glass" feel)
+   ========================================================= */
+.sg5{background:
+  radial-gradient(45% 55% at 15% 15%,#FFB36B 0,transparent 70%),
+  radial-gradient(45% 55% at 85% 20%,#6BA8FF 0,transparent 70%),
+  radial-gradient(50% 60% at 55% 100%,#7CF0C5 0,transparent 70%),
+  radial-gradient(40% 45% at 5% 95%,#FF7EB0 0,transparent 70%),#EEF0F8;
+  --blob-a:radial-gradient(circle,#FF9F5A 0,transparent 65%);--blob-b:radial-gradient(circle,#5B8CFF 0,transparent 65%)}
+.g5 .app{
+  --font:"Hanken Grotesk",system-ui,sans-serif;
+  --bg:transparent;--side:rgba(255,255,255,.2);--main:rgba(255,255,255,.26);
+  --card:rgba(255,255,255,.34);--input:rgba(255,255,255,.34);--input-line:rgba(255,255,255,.6);
+  --ink:#0C0D14;--ink-2:#2D2F3C;--muted:#5C5F72;--line:rgba(255,255,255,.55);--line-strong:rgba(255,255,255,.75);
+  --hover:rgba(255,255,255,.35);--active:rgba(255,255,255,.6);--chip:rgba(255,255,255,.45);--chip-line:rgba(255,255,255,.7);
+  --accent:rgba(0,113,227,.88);--accent-ink:#fff;--accent-line:#0071E3;--ok:#0F8A4F;--warn:#B45309;--warn-bg:rgba(255,220,150,.55);
+  --user-bg:rgba(0,113,227,.82);--user-ink:#fff;--user-line:rgba(255,255,255,.45);
+  --ico-bg:rgba(255,255,255,.5);--ico-ink:#1F2A44;--ico-line:rgba(255,255,255,.7);
+  --confirm-bg:rgba(255,255,255,.42);--confirm-line:rgba(255,255,255,.8);
+  --frame-line:rgba(255,255,255,.8);
+  --frame-shadow:0 30px 70px -28px rgba(30,40,80,.4),inset 0 1px 1px rgba(255,255,255,.95),inset 0 -1px 1px rgba(255,255,255,.35);
+  --card-shadow:inset 0 1px 1px rgba(255,255,255,.9),0 10px 30px -18px rgba(30,40,80,.35);
+  --btn-shadow:inset 0 1px 1px rgba(255,255,255,.6),inset 0 -1px 1px rgba(0,0,0,.08),0 8px 20px -8px rgba(0,113,227,.6);
+  --r:12px;--r-lg:20px;--frame-r:28px;--btn-r:999px;
+  backdrop-filter:blur(18px) saturate(200%) brightness(1.04);-webkit-backdrop-filter:blur(18px) saturate(200%) brightness(1.04);
+}
+/* Gradient rim on floating surfaces */
+.g5 .run,.g5 .composer{
+  border-color:transparent;
+  background:linear-gradient(var(--card),var(--card)) padding-box,
+             linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.25) 45%,rgba(255,255,255,.8)) border-box;
+}
+.g5 .btn-ghost{background:rgba(255,255,255,.45);border-color:rgba(255,255,255,.8);box-shadow:inset 0 1px 1px rgba(255,255,255,.9)}
+.g5 .btn-primary:hover{box-shadow:inset 0 1px 1px rgba(255,255,255,.6),0 12px 26px -8px rgba(0,113,227,.75)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+</svg>
+
+<div class="page">
+  <header class="intro">
+    <h1>Donna: Soft Glass variations</h1>
+    <p>Five new takes on the Soft Glass direction, shown on the same Donna screen. The original comes first for reference and is unchanged, both here and in <code>ui-demos.html</code>. The new variants add slowly drifting light behind the glass. Use the Ambient light button to pause it.</p>
+  </header>
+  <nav class="jump" aria-label="Variants">
+    <a href="#original">Original · Soft Glass</a>
+    <a href="#glass1">1 · Midnight Glass</a>
+    <a href="#glass2">2 · Aurora Mint</a>
+    <a href="#glass3">3 · Sunset Frost</a>
+    <a href="#glass4">4 · Clear Glass</a>
+    <a href="#glass5">5 · Liquid Glass</a>
+    <button class="toggle" id="ambient-toggle" aria-pressed="true">Ambient light: on</button>
+  </nav>
+
+  <section class="demo t3" id="original">
+    <div class="demo-meta"><div><span class="label">Original · Demo 3</span><h2>Soft Glass</h2><p>The one you picked. Frosted white panels over a peach-lilac gradient, violet accent, pill buttons.</p>
+      <div class="specs"><span>General Sans · Fontshare</span><span>Inspired by Arc, Apple</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage s3"></div>
+  </section>
+
+  <section class="demo g1" id="glass1">
+    <div class="demo-meta"><div><span class="label">Glass 1</span><h2>Midnight Glass</h2><p>The dark version. Smoky tinted panels over a violet, blue and magenta aurora, with a glowing accent. Good for night use and long sessions.</p>
+      <div class="specs"><span>Manrope · Google Fonts</span><span>Inspired by Raycast, Arc dark mode</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage sg1 ambient"></div>
+  </section>
+
+  <section class="demo g2" id="glass2">
+    <div class="demo-meta"><div><span class="label">Glass 2</span><h2>Aurora Mint</h2><p>Cool and fresh. Frosted white over mint and sky, with a calm teal accent and softer square-cornered buttons.</p>
+      <div class="specs"><span>Switzer · Fontshare</span><span>Inspired by Arc spaces, Apple Weather</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage sg2 ambient"></div>
+  </section>
+
+  <section class="demo g3" id="glass3">
+    <div class="demo-meta"><div><span class="label">Glass 3</span><h2>Sunset Frost</h2><p>The warmest of the set. Cream-tinted glass over peach, rose and amber, with a coral accent.</p>
+      <div class="specs"><span>Figtree · Google Fonts</span><span>Inspired by Framer, Apple Music</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage sg3 ambient"></div>
+  </section>
+
+  <section class="demo g4" id="glass4">
+    <div class="demo-meta"><div><span class="label">Glass 4</span><h2>Clear Glass</h2><p>Neutral grey glass with white text over a vivid scene. Very rounded shapes, pill-shaped sidebar items, white primary buttons.</p>
+      <div class="specs"><span>Inter Tight · Google Fonts</span><span>Inspired by Apple visionOS</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage sg4 ambient"></div>
+  </section>
+
+  <section class="demo g5" id="glass5">
+    <div class="demo-meta"><div><span class="label">Glass 5</span><h2>Liquid Glass</h2><p>The most transparent option. Nearly clear panels with gradient edges, a highlight along the top of each surface, and a tinted blue accent.</p>
+      <div class="specs"><span>Hanken Grotesk · Google Fonts</span><span>Inspired by Apple Liquid Glass (iOS 26 / macOS Tahoe)</span></div></div>
+      <button class="replay">Replay</button></div>
+    <div class="stage sg5 ambient"></div>
+  </section>
+</div>
+
+<template id="app-tpl">
+  <div class="app">
+    <aside class="side">
+      <div class="brand"><span class="logo">D</span><span class="bname">Donna</span><kbd>⌘K</kbd></div>
+      <button class="btn btn-primary new"><svg class="i"><use href="#i-plus"/></svg>New chat</button>
+      <div class="search"><svg class="i"><use href="#i-search"/></svg>Search chats</div>
+      <div class="grp">Today</div>
+      <ul class="convs"><li class="active" tabindex="0">Morning briefing</li><li tabindex="0">Trip to Pune</li></ul>
+      <div class="grp">This week</div>
+      <ul class="convs"><li tabindex="0">Notion cleanup</li><li tabindex="0">Invoices from September</li></ul>
+      <div class="conns">
+        <div class="grp">Connections</div>
+        <div class="conn"><svg class="i"><use href="#i-mail"/></svg>Gmail<span class="dot"></span></div>
+        <div class="conn"><svg class="i"><use href="#i-cal"/></svg>Calendar<span class="dot"></span></div>
+        <div class="conn"><svg class="i"><use href="#i-doc"/></svg>Notion<span class="setup">Set up</span></div>
+      </div>
+    </aside>
+    <main class="chat">
+      <header class="chat-head">
+        <div><h4>Morning briefing</h4><p>3 agents · finished in 1.6 s</p></div>
+        <span class="chip mono">gpt-oss-120b</span>
+      </header>
+      <div class="thread">
+        <div class="msg user">Summarize my unread emails, check tomorrow's weather in Pune, and add a 30-min prep block before my first meeting.</div>
+        <div class="run">
+          <div class="run-head"><svg class="i"><use href="#i-spark"/></svg>Plan · 3 tasks in parallel<span class="run-meta mono">1.6 s</span></div>
+          <ol class="steps">
+            <li class="done" style="--i:0"><span class="ico"><svg class="i"><use href="#i-mail"/></svg></span><span class="st">Summarize 6 unread emails</span><span class="state mono">done · 1.2s</span></li>
+            <li class="done" style="--i:1"><span class="ico"><svg class="i"><use href="#i-sun"/></svg></span><span class="st">Weather in Pune tomorrow</span><span class="state mono">done · 0.4s</span></li>
+            <li class="wait" style="--i:2"><span class="ico"><svg class="i"><use href="#i-cal"/></svg></span><span class="st">Add “Prep” 09:00–09:30</span><span class="state mono">needs approval</span></li>
+          </ol>
+          <div class="confirm">
+            <p>Create event <b>Prep</b> tomorrow, 09:00–09:30?</p>
+            <div class="actions"><button class="btn btn-ghost reject">Reject</button><button class="btn btn-primary approve">Approve</button></div>
+          </div>
+        </div>
+        <div class="msg bot"><span class="avatar">D</span>
+          <p>You have <b>6 unread emails</b>. Two need a reply today: the Acme invoice and Priya's design review. Tomorrow in Pune it will be <b>24°C and clear</b>. Your first meeting is at 09:30, so Prep goes in at 09:00 once you approve.<span class="caret"></span></p>
+        </div>
+      </div>
+      <div class="composer">
+        <div class="field">Ask Donna anything…</div>
+        <div class="comp-row"><span class="chip">@gmail</span><span class="chip">@calendar</span>
+          <button class="btn btn-primary send" aria-label="Send"><svg class="i"><use href="#i-send"/></svg></button></div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<script>
+(function () {
+  document.documentElement.classList.add("js");
+  var tpl = document.getElementById("app-tpl");
+  var demos = document.querySelectorAll(".demo");
+
+  function mount(demo) {
+    demo.querySelector(".stage").replaceChildren(tpl.content.cloneNode(true));
+  }
+  demos.forEach(mount);
+
+  // Entrance: reveal each demo as it scrolls into view.
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.2 });
+    demos.forEach(function (d) { io.observe(d); });
+  } else {
+    demos.forEach(function (d) { d.classList.add("in"); });
+  }
+
+  // Pause or resume the drifting background light.
+  var toggle = document.getElementById("ambient-toggle");
+  toggle.addEventListener("click", function () {
+    var off = document.documentElement.classList.toggle("no-ambient");
+    toggle.setAttribute("aria-pressed", String(!off));
+    toggle.textContent = "Ambient light: " + (off ? "off" : "on");
+  });
+
+  document.addEventListener("click", function (ev) {
+    // Replay: remount fresh markup and re-run the entrance.
+    var replay = ev.target.closest(".replay");
+    if (replay) {
+      var demo = replay.closest(".demo");
+      demo.classList.remove("in");
+      mount(demo);
+      void demo.offsetWidth;
+      requestAnimationFrame(function () { demo.classList.add("in"); });
+      return;
+    }
+
+    // Confirmation flow: Approve / Reject.
+    var btn = ev.target.closest(".approve, .reject");
+    if (!btn) return;
+    var app = btn.closest(".app");
+    var step = app.querySelector(".steps li.wait");
+    var confirm = app.querySelector(".confirm");
+    var approved = btn.classList.contains("approve");
+    step.classList.remove("wait");
+    step.classList.add(approved ? "done" : "skip");
+    step.querySelector(".state").textContent = approved ? "done · approved" : "skipped";
+    confirm.classList.add("resolved");
+    confirm.innerHTML = approved
+      ? '<p><svg class="i"><use href="#i-check"/></svg>Added “Prep” to your calendar, 09:00–09:30.</p>'
+      : "<p>Skipped. Nothing was added to your calendar.</p>";
+    var caret = app.querySelector(".caret");
+    if (caret) caret.remove();
+  });
+})();
+</script>
+</body>
+</html>

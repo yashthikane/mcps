@@ -9,10 +9,18 @@ load_dotenv()
 
 # Initialize Notion client
 NOTION_API_KEY = os.getenv("NOTION_API_KEY") or os.getenv("INTERNAL_INTERGRATION_TOKEN")
-if not NOTION_API_KEY:
-    raise ValueError("NOTION_API_KEY or INTERNAL_INTERGRATION_TOKEN environment variable is not set.")
 
-notion = AsyncClient(auth=NOTION_API_KEY)
+
+class _NotionNotConfigured:
+    """Stand-in client so a missing key fails only the Notion tools, not the whole server."""
+
+    def __getattr__(self, name):
+        raise ValueError(
+            "Notion is not configured. Set INTERNAL_INTERGRATION_TOKEN (or NOTION_API_KEY) in .env."
+        )
+
+
+notion = AsyncClient(auth=NOTION_API_KEY) if NOTION_API_KEY else _NotionNotConfigured()
 
 
 @mcp.tool()

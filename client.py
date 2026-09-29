@@ -1,6 +1,7 @@
 # client.py
 import asyncio
 import json
+import sys
 from groq import Groq
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -14,7 +15,7 @@ groq_client = Groq()  # reads GROQ_API_KEY from env automatically
 
 async def run():
     server_params = StdioServerParameters(
-        command="python",
+        command=sys.executable,  # same interpreter (and venv) as the client
         args=["server.py"],
     )
 
@@ -57,14 +58,34 @@ async def run():
 
                 while True:
                     response = groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
+                        model="openai/gpt-oss-120b",  # llama-3.3-70b-versatile was retired by Groq on 2026-08-16
                         messages=messages,
                         tools=tools,
                         tool_choice="auto",
+                        temperature=1,
+                        top_p=1,
+                        max_completion_tokens=2048,
+                        reasoning_effort="medium",
                     )
 
                     msg = response.choices[0].message
-                    messages.append(msg)
+
+                    # Keep only role/content/tool_calls; gpt-oss also returns a
+                    # `reasoning` field that shouldn't be sent back in the history.
+                    assistant_msg = {"role": "assistant", "content": msg.content or ""}
+                    if msg.tool_calls:
+                        assistant_msg["tool_calls"] = [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            }
+                            for tc in msg.tool_calls
+                        ]
+                    messages.append(assistant_msg)
 
                     # If no tool calls → print answer
                     if not msg.tool_calls:

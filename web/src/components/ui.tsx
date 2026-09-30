@@ -4,15 +4,16 @@ import type { ConnState } from "../api";
 
 /* ------------------------------------------------------------------ toasts */
 type ToastKind = "ok" | "warn" | "err";
-interface ToastItem { id: number; text: string; kind: ToastKind }
-const ToastCtx = createContext<(text: string, kind?: ToastKind) => void>(() => {});
+interface ToastAction { label: string; run: () => void }
+interface ToastItem { id: number; text: string; kind: ToastKind; action?: ToastAction }
+const ToastCtx = createContext<(text: string, kind?: ToastKind, action?: ToastAction) => void>(() => {});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
-  const push = useCallback((text: string, kind: ToastKind = "ok") => {
+  const push = useCallback((text: string, kind: ToastKind = "ok", action?: ToastAction) => {
     const id = Date.now() + Math.random();
-    setItems((xs) => [...xs.slice(-2), { id, text, kind }]);
-    setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), kind === "err" ? 6000 : 3600);
+    setItems((xs) => [...xs.slice(-2), { id, text, kind, action }]);
+    setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), action ? 9000 : kind === "err" ? 6000 : 3600);
   }, []);
   return (
     <ToastCtx.Provider value={push}>
@@ -22,6 +23,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div key={t.id} className={`toast ${t.kind}`} role={t.kind === "err" ? "alert" : "status"}>
             <span className="dot" aria-hidden="true" />
             <span>{t.text}</span>
+            {t.action && (
+              <button className="btn btn-ghost btn-sm toast-act" onClick={() => {
+                t.action!.run();
+                setItems((xs) => xs.filter((x) => x.id !== t.id));
+              }}>{t.action.label}</button>
+            )}
           </div>
         ))}
       </div>

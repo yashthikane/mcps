@@ -7,4 +7,8 @@ Push-Location web
 npx tsc -b
 npm run build
 Pop-Location
+Push-Location scheduler
+npm run build
+npm test
+Pop-Location
 Write-Host "All checks passed."

@@ -15,4 +15,11 @@ if (-not (Test-Path "web\dist\index.html")) {
     npm run build
     Pop-Location
 }
+# The scheduler runs as its own process so restarting Donna doesn't stop scheduled tasks.
+if (Test-Path "scheduler\dist\server.js") {
+    Start-Process powershell -WindowStyle Hidden -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-File", "$root\scripts\scheduler.ps1", "-Log")
+} else {
+    Write-Host "Scheduled tasks are off. Run scripts\setup-scheduler.ps1 once to enable them."
+}
 & venv\Scripts\python.exe -m donna @args

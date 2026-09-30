@@ -1,5 +1,5 @@
 import { lazy, memo, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { Connection, Conversation, Message, ToolEvent } from "../api";
+import type { Connection, Conversation, Message, PermissionMode, ToolEvent } from "../api";
 import { Icon, PixelD, toolIcon } from "../icons";
 import { fmtMs } from "./ui";
 
@@ -43,7 +43,15 @@ interface Props {
   onOpenSide: () => void;
   onToggleRun: () => void;
   onOpenRun: () => void;
+  mode: PermissionMode;
+  onMode: (m: PermissionMode) => void;
 }
+
+export const MODES: { id: PermissionMode; label: string; hint: string }[] = [
+  { id: "plan", label: "Plan", hint: "Plan mode: Donna only reads and writes a plan. Nothing is sent, changed or deleted." },
+  { id: "manual", label: "Manual", hint: "Manual mode: actions that send, change or delete wait for your approval." },
+  { id: "auto", label: "Auto", hint: "Auto mode: every action runs without asking, including sending and deleting." },
+];
 
 export default function Chat(p: Props) {
   const threadRef = useRef<HTMLDivElement>(null);
@@ -82,7 +90,7 @@ export default function Chat(p: Props) {
       </div>
 
       <Composer busy={!!p.live} blocked={p.blocked} connections={p.connections} toolCount={toolCount}
-        onSend={p.onSend} onStop={p.onStop} onCommand={p.onCommand} />
+        onSend={p.onSend} onStop={p.onStop} onCommand={p.onCommand} mode={p.mode} onMode={p.onMode} />
     </div>
   );
 }
@@ -145,6 +153,7 @@ function ToolCard({ t, onOpenRun }: { t: ToolEvent; onOpenRun: () => void }) {
         <span className="tc-ic"><Icon name={toolIcon(t.name)} size={13} /></span>
         <span className="tc-name mono">{t.name}</span>
         <span className="tc-args">{argSummary(t.args)}</span>
+        {t.approved === "auto" && <span className="tag" title="Ran without asking (Auto mode)">auto</span>}
         <span className={`pill ${cls}`}>{label}</span>
         {t.ms > 0 && <span className="meta">{fmtMs(t.ms)}</span>}
         <Icon name="chevron" size={13} className={open ? "rot" : ""} />
@@ -210,10 +219,12 @@ function EmptyState({ connections, onSend, onCommand }: { connections: Connectio
   );
 }
 
-function Composer({ busy, blocked, connections, toolCount, onSend, onStop, onCommand }: {
+function Composer({ busy, blocked, connections, toolCount, onSend, onStop, onCommand, mode, onMode }: {
   busy: boolean; blocked: string | null; connections: Connection[]; toolCount: number;
   onSend: (t: string, forced: string[]) => void; onStop: () => void; onCommand: (c: string) => void;
+  mode: PermissionMode; onMode: (m: PermissionMode) => void;
 }) {
+  const cycleMode = () => onMode(MODES[(MODES.findIndex((m) => m.id === mode) + 1) % MODES.length].id);
   const [text, setText] = useState("");
   const [forced, setForced] = useState<string[]>([]);
   const [sel, setSel] = useState(0);
@@ -261,9 +272,15 @@ function Composer({ busy, blocked, connections, toolCount, onSend, onStop, onCom
               if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); runSlash(slash[sel].cmd); return; }
               if (e.key === "Escape") { setText(""); return; }
             }
+            if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); cycleMode(); return; }
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
           }} />
         <div className="comp-row">
+          <div className={`modesw m-${mode}`} role="radiogroup" aria-label="Permission mode">
+            {MODES.map((m) => (
+              <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} title={m.hint} onClick={() => onMode(m.id)}>{m.label}</button>
+            ))}
+          </div>
           {chips.map((c) => {
             const on = forced.includes(c.id);
             return (
@@ -279,7 +296,7 @@ function Composer({ busy, blocked, connections, toolCount, onSend, onStop, onCom
           </button>
         </div>
       </form>
-      <div className="comp-hint"><span className="meta">Enter to send · Shift + Enter for a new line</span><span className="meta">{toolCount} tools ready</span></div>
+      <div className="comp-hint"><span className={`meta mode-hint m-${mode}`}>{MODES.find((m) => m.id === mode)?.hint} <span className="kbdish">Shift+Tab</span> to switch</span><span className="meta">{toolCount} tools ready</span></div>
     </div>
   );
 }

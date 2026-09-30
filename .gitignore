@@ -28,3 +28,7 @@ data/
 web/node_modules/
 web/dist/
 .pytest_cache/
+
+# Donna scheduler
+scheduler/node_modules/
+scheduler/dist/

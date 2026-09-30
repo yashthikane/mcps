@@ -15,6 +15,8 @@ GROQ_KEY = "groq_api_key"
 NOTION_TOKEN = "notion_token"
 GOOGLE_CLIENT = "google_client"   # {"client_id", "client_secret", ...} from credentials.json
 GOOGLE_TOKEN = "google_token"     # {"refresh_token", "scopes", "email"}
+POSTGRES_URL = "postgres_url"     # scheduling database, written by scripts/setup-scheduler.ps1
+INTERNAL_TOKEN = "internal_api_token"  # shared by FastAPI and the scheduler service
 
 
 def _del(name: str) -> None:
@@ -56,6 +58,20 @@ def set(name: str, value: str) -> None:  # noqa: A001 - mirrors keyring's naming
 
 def has(name: str) -> bool:
     return bool(get(name))
+
+
+def internal_token() -> str:
+    """Token the scheduler uses to call /api/v1/internal/*. Generated once; env overrides (tests)."""
+    token = os.getenv("DONNA_INTERNAL_API_TOKEN") or get(INTERNAL_TOKEN)
+    if not token:
+        import secrets
+        token = secrets.token_urlsafe(32)
+        set(INTERNAL_TOKEN, token)
+    return token
+
+
+def postgres_url() -> str | None:
+    return os.getenv("DONNA_POSTGRES_URL") or get(POSTGRES_URL)
 
 
 def import_from_env() -> list[str]:

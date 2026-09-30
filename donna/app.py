@@ -1,24 +1,29 @@
 """FastAPI app: REST + Server-Sent Events API under /api/v1, and the built React UI at /."""
 import asyncio
+import hmac
 import json
 import logging
 import os
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
+import psycopg
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import DATA_DIR, ROOT, llm, vault
-from .agent import RUNS, Run, run_chat
+from . import DATA_DIR, ROOT, llm, pg, tasks, vault
+from .agent import MODES, RUNS, Run, run_chat
 from .hub import BUILTIN, MCPHub, env_key, split_args
+from .notify import Notifier
+from .scheduler_client import SchedulerClient, ScheduleInvalid, SchedulerUnavailable
 from .store import Store
 
 log = logging.getLogger("donna")
@@ -50,9 +55,24 @@ async def lifespan(app: FastAPI):
     app.state.store = Store(app.state.db_path) if getattr(app.state, "db_path", None) else Store()
     app.state.hub = MCPHub(app.state.store, mcp)
     await app.state.hub.start()
+
+    # Scheduling (PostgreSQL + the Node scheduler). Donna works without it; only /scheduled-tasks fails.
+    app.state.internal_token = vault.internal_token()
+    app.state.pg = getattr(app.state, "pg_override", None) or pg.from_vault()
+    if await app.state.pg.open():
+        try:
+            await app.state.pg.migrate()
+        except Exception as e:  # noqa: BLE001
+            log.warning("PostgreSQL migrations failed: %s", e)
+    app.state.notifier = Notifier(app.state.pg)
+    app.state.tasks = tasks.TaskService(app.state.pg, getattr(app.state, "scheduler_override", None) or SchedulerClient(),
+                                        app.state.notifier, app.state.store, app.state.hub)
+    tasks.service = app.state.tasks
     log.info("Donna started with %d tools", len(app.state.hub.all_tools()))
     yield
+    tasks.service = None
     await app.state.hub.stop()
+    await app.state.pg.close()
 
 
 app = FastAPI(title="Donna", lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -143,6 +163,7 @@ def conversation_messages(cid: str, request: Request):
 class ChatIn(BaseModel):
     text: str
     connections: list[str] = []
+    mode: str | None = None  # plan | manual | auto; defaults to the saved setting
 
 
 @app.post("/api/v1/conversations/{cid}/messages")
@@ -155,7 +176,10 @@ async def send_message(cid: str, body: ChatIn, request: Request):
         raise HTTPException(400, "Message is empty")
     if any(r.conversation_id == cid for r in RUNS.values()):
         raise HTTPException(409, "Donna is still answering in this conversation.")
-    run = Run(cid)
+    mode = body.mode or store.settings().get("permission_mode", "manual")
+    if mode not in MODES:
+        raise HTTPException(400, "mode must be plan, manual or auto")
+    run = Run(cid, mode=mode)
     RUNS[run.id] = run
 
     async def events():
@@ -244,7 +268,8 @@ async def connections(request: Request):
         detail = {"gmail": f"Signed in as {auth.get('email')}" if auth.get("email") else "",
                   "calendar": "Primary calendar" if auth["state"] == "connected" else "",
                   "weather": "No setup needed. Current weather for any city from Open-Meteo.",
-                  "utils": "square and get_jokes. Handy for checking that Donna works."}.get(c["id"], auth.get("detail", ""))
+                  "utils": "square and get_jokes. Handy for checking that Donna works.",
+                  "schedule": "Reminders and AI tasks from chat. Manage them on the Tasks page."}.get(c["id"], auth.get("detail", ""))
         out.append({"id": c["id"], "kind": "builtin", "name": c["name"], "icon": c["icon"], "source": c["source"],
                     "setup": c["setup"], "state": state, "auth_state": auth["state"], "detail": detail or "",
                     "tools": tools_by_group.get(c["id"], [])})
@@ -450,6 +475,175 @@ async def restart_server(sid: str, request: Request):
     return {"state": ext.state, "error": ext.error, "tools": len(ext.tools)}
 
 
+# =============================================================================== scheduled tasks
+def T(request: Request) -> tasks.TaskService:
+    return request.app.state.tasks
+
+
+async def _tasks_call(coro):
+    """Map task-service errors to HTTP: bad input 400, unknown task 404, a service down 503."""
+    try:
+        return await coro
+    except (tasks.TaskError, ScheduleInvalid) as e:
+        raise HTTPException(400, str(e)) from e
+    except LookupError as e:
+        raise HTTPException(404, str(e) or "Task not found.") from e
+    except SchedulerUnavailable as e:
+        raise HTTPException(503, str(e)) from e
+    except pg.Unavailable as e:
+        raise HTTPException(503, f"Scheduling isn't available: {e}") from e
+    except psycopg.OperationalError as e:
+        raise HTTPException(503, "Scheduling isn't available: PostgreSQL isn't reachable.") from e
+
+
+class TaskIn(BaseModel):
+    title: str
+    type: str = "reminder"
+    description: str | None = None
+    message: str = ""
+    prompt: str = ""
+    run_at: str | None = None
+    timezone: str | None = None
+    recurrence_type: str = "once"
+    recurrence_rule: str | None = None
+    notification_channels: list[str] | None = None
+    permission_mode: str | None = None
+
+
+class TaskPatch(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    message: str | None = None
+    prompt: str | None = None
+    run_at: str | None = None
+    timezone: str | None = None
+    recurrence_type: str | None = None
+    recurrence_rule: str | None = None
+    notification_channels: list[str] | None = None
+    permission_mode: str | None = None
+
+
+class PreviewIn(BaseModel):
+    run_at: str | None = None
+    timezone: str | None = None
+    recurrence_type: str = "once"
+    recurrence_rule: str | None = None
+
+
+class SnoozeIn(BaseModel):
+    minutes: int = 15
+
+
+@app.get("/api/v1/scheduler/health")
+async def scheduler_health(request: Request):
+    h = await T(request).scheduler.health()
+    pg_ok = await request.app.state.pg.available()
+    out = {"scheduler": "down" if h.get("status") == "down" else "ok", "redis": h.get("redis", "unknown"),
+           "worker": h.get("worker", "stopped"), "postgres": "ok" if pg_ok else "down"}
+    out["ok"] = out["scheduler"] == "ok" and out["redis"] == "ok" and out["worker"] == "running" and pg_ok
+    if not pg_ok:
+        out["detail"] = request.app.state.pg.error or "PostgreSQL isn't reachable."
+    elif out["scheduler"] != "ok":
+        out["detail"] = "The scheduler service isn't running. Start Donna with scripts\\start.ps1."
+    elif out["redis"] != "ok":
+        out["detail"] = "Redis (WSL Ubuntu) isn't running. Start Donna with scripts\\start.ps1."
+    return out
+
+
+@app.get("/api/v1/scheduled-tasks")
+async def list_tasks(request: Request, status: str | None = None):
+    return await _tasks_call(T(request).list(status))
+
+
+@app.post("/api/v1/scheduled-tasks")
+async def create_task(body: TaskIn, request: Request):
+    return await _tasks_call(T(request).create(body.model_dump(exclude_none=True)))
+
+
+@app.post("/api/v1/scheduled-tasks/preview")
+async def preview_task(body: PreviewIn, request: Request):
+    return {"runs": await _tasks_call(T(request).preview(body.model_dump(exclude_none=True)))}
+
+
+@app.get("/api/v1/scheduled-tasks/{tid}")
+async def get_task(tid: str, request: Request):
+    return await _tasks_call(T(request).get(tid))
+
+
+@app.patch("/api/v1/scheduled-tasks/{tid}")
+async def patch_task(tid: str, body: TaskPatch, request: Request):
+    return await _tasks_call(T(request).update(tid, body.model_dump(exclude_unset=True)))
+
+
+@app.delete("/api/v1/scheduled-tasks/{tid}")
+async def delete_task(tid: str, request: Request):
+    await _tasks_call(T(request).delete(tid))
+    return {"ok": True}
+
+
+@app.post("/api/v1/scheduled-tasks/{tid}/cancel")
+async def cancel_task(tid: str, request: Request):
+    return await _tasks_call(T(request).cancel(tid))
+
+
+@app.post("/api/v1/scheduled-tasks/{tid}/pause")
+async def pause_task(tid: str, request: Request):
+    return await _tasks_call(T(request).pause(tid))
+
+
+@app.post("/api/v1/scheduled-tasks/{tid}/resume")
+async def resume_task(tid: str, request: Request):
+    return await _tasks_call(T(request).resume(tid))
+
+
+@app.post("/api/v1/scheduled-tasks/{tid}/snooze")
+async def snooze_task(tid: str, body: SnoozeIn, request: Request):
+    return await _tasks_call(T(request).snooze(tid, body.minutes))
+
+
+@app.post("/api/v1/scheduled-tasks/{tid}/run")
+async def run_task(tid: str, request: Request):
+    return await _tasks_call(T(request).run_now(tid))
+
+
+# ----------------------------------------------------------------------------- notifications
+class ReadIn(BaseModel):
+    ids: list[str] | None = None
+
+
+@app.get("/api/v1/notifications")
+async def notifications(request: Request):
+    if not await request.app.state.pg.available():
+        return []  # polled by the UI; stay quiet while scheduling is down
+    return await _tasks_call(request.app.state.notifier.unread())
+
+
+@app.post("/api/v1/notifications/read")
+async def notifications_read(body: ReadIn, request: Request):
+    return {"updated": await _tasks_call(request.app.state.notifier.mark_read(body.ids))}
+
+
+# ----------------------------------------------------------------------------- internal (scheduler → Donna)
+def require_internal(request: Request) -> None:
+    """Only the local scheduler service holds this token (it comes from the vault)."""
+    got = request.headers.get("authorization", "").encode()
+    if not hmac.compare_digest(got, f"Bearer {request.app.state.internal_token}".encode()):
+        raise HTTPException(401, "Unauthorized.")
+
+
+class ExecuteIn(BaseModel):
+    execution_id: str
+    scheduled_for: datetime
+    mode: str = "run"
+
+
+@app.post("/api/v1/internal/scheduled-tasks/{tid}/execute", dependencies=[Depends(require_internal)], include_in_schema=False)
+async def execute_task(tid: str, body: ExecuteIn, request: Request):
+    if body.mode not in ("run", "missed"):
+        raise HTTPException(400, "mode must be run or missed")
+    return await _tasks_call(T(request).execute(tid, body.execution_id, body.scheduled_for, body.mode))
+
+
 # =============================================================================== settings
 class SettingsIn(BaseModel):
     model: str | None = None
@@ -458,6 +652,7 @@ class SettingsIn(BaseModel):
     pixel_grid: bool | None = None
     reduce_motion: bool | None = None
     onboarded: bool | None = None
+    permission_mode: str | None = None
 
 
 def _public_settings(store: Store) -> dict:
@@ -476,6 +671,8 @@ def get_settings(request: Request):
 @app.put("/api/v1/settings")
 def put_settings(body: SettingsIn, request: Request):
     values = {k: v for k, v in body.model_dump().items() if v is not None}
+    if values.get("permission_mode", "manual") not in MODES:
+        raise HTTPException(400, "permission_mode must be plan, manual or auto")
     if "timezone" in values:
         from zoneinfo import ZoneInfo
         try:

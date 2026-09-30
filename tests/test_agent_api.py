@@ -82,6 +82,40 @@ async def test_confirmation_gate(store, hub, fake_llm, approve):
         assert end["status"] == "rejected"
 
 
+async def test_auto_mode_runs_actions_without_asking(store, hub, fake_llm):
+    conv = store.create_conversation()
+    events = await collect(agent.run_chat(store, hub, agent.Run(conv["id"], mode="auto"), "create event Prep tomorrow", set()))
+    assert not any(e["type"] == "confirm.request" for e in events)
+    start = next(e for e in events if e["type"] == "tool.start")
+    assert start["name"] == "create_event" and start["approved"] == "auto"
+
+
+async def test_plan_mode_only_reads(store, hub, fake_llm, monkeypatch):
+    seen = {}
+
+    async def capture(api_key, model, messages, tools, effort="medium"):
+        seen["tools"] = {t["function"]["name"] for t in tools}
+        seen["system"] = messages[0]["content"]
+        yield "tool_calls", [{"id": "c1", "name": "create_event", "arguments": '{"summary": "x"}'}]
+    monkeypatch.setattr(llm, "stream_turn", capture)
+    conv = store.create_conversation()
+    events = await collect(agent.run_chat(store, hub, agent.Run(conv["id"], mode="plan"), "email Priya and create event", set()))
+    assert "list_emails" in seen["tools"] and "read_email" in seen["tools"]
+    assert not seen["tools"] & {"send_email", "create_draft", "mark_email", "create_event", "schedule_task"}
+    assert "PLAN MODE" in seen["system"]
+    # even if the model calls a write tool anyway, nothing runs and nobody is asked
+    assert not any(e["type"] in ("confirm.request", "tool.start") for e in events)
+    assert next(e for e in events if e["type"] == "tool.end")["preview"] == "Not run (plan mode)"
+
+
+def test_scheduling_an_auto_task_needs_approval():
+    from donna.hub import Tool
+    sched = Tool("schedule_task", "schedule_task", "donna", "schedule", "", {}, False, True)
+    assert agent.needs_approval(sched, {"permission_mode": "auto"})
+    assert not agent.needs_approval(sched, {"permission_mode": "manual"})
+    assert not agent.needs_approval(sched, {})
+
+
 async def test_cancel_stops_streaming(store, hub, fake_llm):
     conv = store.create_conversation()
     run = agent.Run(conv["id"])

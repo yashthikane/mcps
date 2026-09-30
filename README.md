@@ -15,6 +15,10 @@ local SQLite file, and keys and sign-ins are kept in Windows Credential Manager.
   - **Notion**: paste the integration secret, and Donna checks it and lists your shared pages.
   - **Any MCP server**: presets for Filesystem, Fetch, Git and Memory, or a custom command/URL. Donna tests the server, lists its tools, and lets you switch each one on or off.
 - **Settings**: Groq key (tested before saving), model, reasoning effort, timezone, pixel grid and reduced motion, **Export** (JSON download) and **Wipe**.
+- **Scheduled tasks**: reminders (no AI, no Groq quota) and AI tasks ("every weekday at 9, summarize my unread email"), once, every N minutes, or on a cron schedule in your timezone.
+  - Manage them on the **Tasks** page or by asking in chat.
+  - Results arrive as a Windows notification and inside Donna.
+  - They run even when the browser is closed, through a local BullMQ scheduler.
 - **Command palette** (Ctrl+K), `/` commands in the composer, an **offline banner**, first-time setup, and a layout that works on phones.
 
 ## Quick start (Windows)
@@ -40,6 +44,16 @@ Open **Connections** and follow the wizards. Links and exact clicks are shown in
 | Notion | An internal integration at notion.so/profile/integrations, shared with the pages Donna may use | ~2 min |
 | MCP servers | The server's command (`npx …` needs Node.js; `uvx …` needs [uv](https://docs.astral.sh/uv/)) or its HTTP URL | ~1 min |
 
+### Scheduled tasks (optional, one-time setup)
+
+Scheduling uses three more local pieces: PostgreSQL (install it from postgresql.org; it runs as a Windows service), Redis inside WSL Ubuntu, and a small Node service. Run this once:
+
+```powershell
+scripts\setup-scheduler.ps1   # installs Redis in WSL, creates the 'donna' database (asks for the postgres password), builds the scheduler
+```
+
+After that, `scripts\start.ps1` starts Redis and the scheduler automatically. Its log is `data\scheduler.log`. Without this setup, everything else in Donna works as before.
+
 ## Tools
 
 | Connection | Tools (✋ = asks for approval) |
@@ -49,6 +63,7 @@ Open **Connections** and follow the wizards. Links and exact clicks are shown in
 | Notion (8) | `search_notion`, `list_pages`, `read_page_content`, `create_page` (with content), `update_page_title`, `append_text_to_page`, `delete_page` ✋, `query_database` |
 | Weather (1) | `get_weather` |
 | Utilities (2) | `square`, `get_jokes` |
+| Scheduled tasks (4) | `schedule_task`, `list_scheduled_tasks`, `cancel_scheduled_task` ✋, `snooze_scheduled_task` |
 | Your MCP servers | Every tool the server exposes. Tools whose names look like writes (write, delete, move, commit, …) ask first. |
 
 ## How it works
@@ -58,12 +73,21 @@ Browser (React + Vite) ──REST + Server-Sent Events──► FastAPI on 127.0
                                                       ├─ agent   Groq streaming tool loop, approvals, Stop
                                                       ├─ hub     MCP clients: built-in tools (in-process) + your servers (stdio/HTTP)
                                                       ├─ store   SQLite data/donna.db (conversations, FTS search, servers, settings)
-                                                      └─ vault   Windows Credential Manager (Groq key, Notion secret, Google sign-in)
+                                                      ├─ vault   Windows Credential Manager (Groq key, Notion secret, Google sign-in)
+                                                      └─ tasks   scheduled-task CRUD + execution ──► PostgreSQL
+                                                                     ▲ "run task X"      │ "sync task X"
+                                                                     │                   ▼
+                                     Scheduler (Node, 127.0.0.1:8766) ── BullMQ ── Redis (WSL Ubuntu)
 ```
+
+The scheduler decides **when** a task runs; Donna decides **how**. Reminders are sent without the AI. AI tasks run Donna
+unattended: they can read and summarize, and anything that needs your approval is flagged instead of done.
+Details: `docs/ARCHITECTURE.md` §4.
 
 - `donna/`: the backend (`app.py` API, `agent.py` chat loop, `hub.py` MCP connections, `llm.py` Groq, `store.py`, `vault.py`).
 - `tools/`: the built-in MCP tools, served by `server.py` / `mcp_instance.py` (also usable from the terminal with `python client.py`).
 - `web/`: the React UI (Neon Dusk design).
+- `scheduler/`: the Node + TypeScript scheduler (BullMQ). `migrations/postgres/`: the scheduling tables.
 - `docs/ROADMAP.md`: the plan. `docs/design/`: design explorations.
 
 To stay within Groq's free tier (8K tokens/min), Donna only sends the tools that match your
@@ -73,7 +97,7 @@ message, for example Gmail tools when you mention email, and falls back to all t
 
 ```powershell
 scripts\dev.ps1             # backend with auto-reload (:8765) + Vite dev server (:5173)
-scripts\check.ps1           # pytest + TypeScript check + production build
+scripts\check.ps1           # pytest + TypeScript check + production build + scheduler build and tests
 venv\Scripts\python -m pytest -q
 ```
 

@@ -19,7 +19,7 @@ export interface ToolEvent {
   ok: boolean;
   preview: string;
   ms: number;
-  approved?: boolean;
+  approved?: boolean | "auto";
   description?: string;
 }
 
@@ -61,6 +61,9 @@ export interface Usage {
   tokens: number;
 }
 
+/** plan: read-only, writes a plan · manual: actions wait for approval · auto: actions run without asking */
+export type PermissionMode = "plan" | "manual" | "auto";
+
 export interface Settings {
   model: string;
   timezone: string;
@@ -68,6 +71,7 @@ export interface Settings {
   pixel_grid: boolean;
   reduce_motion: boolean;
   onboarded: boolean;
+  permission_mode: PermissionMode;
   groq_key_set: boolean;
   groq_key_hint: string;
   usage: Usage;
@@ -79,6 +83,81 @@ export interface Health {
   groq: "ok" | "no_key" | "invalid_key" | "unreachable" | "error";
   online: boolean;
   usage: Usage;
+}
+
+export type TaskType = "reminder" | "ai_task";
+export type TaskStatus = "scheduled" | "running" | "completed" | "cancelled" | "failed" | "paused";
+export type RecurrenceType = "once" | "interval" | "cron";
+export type ExecutionStatus = "pending" | "running" | "succeeded" | "failed" | "skipped" | "missed" | "approval_required";
+
+export interface TaskExecution {
+  id: string;
+  scheduled_for: string;
+  trigger: "schedule" | "manual";
+  status: ExecutionStatus;
+  attempts: number;
+  started_at: string | null;
+  completed_at: string | null;
+  result: string | null;
+  error: string | null;
+  conversation_id: string | null;
+}
+
+export interface ScheduledTask {
+  id: string;
+  title: string;
+  description: string | null;
+  type: TaskType;
+  status: TaskStatus;
+  run_at: string | null;
+  timezone: string;
+  recurrence_type: RecurrenceType;
+  recurrence_rule: string | null;
+  message: string;
+  prompt: string;
+  conversation_id: string | null;
+  notification_channels: string[];
+  permission_mode: PermissionMode;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  last_status?: ExecutionStatus | null;
+  last_result?: string | null;
+  last_error?: string | null;
+  executions?: TaskExecution[];
+  warning?: string | null;
+}
+
+/** Create/edit body. run_at is local time without an offset (read in `timezone`). */
+export interface TaskInput {
+  title: string;
+  type: TaskType;
+  message?: string;
+  prompt?: string;
+  run_at?: string | null;
+  timezone?: string;
+  recurrence_type: RecurrenceType;
+  recurrence_rule?: string | null;
+  notification_channels?: string[];
+  permission_mode?: PermissionMode;
+}
+
+export interface SchedulerHealth {
+  ok: boolean;
+  scheduler: "ok" | "down";
+  redis: string;
+  postgres: "ok" | "down";
+  worker: string;
+  detail?: string;
+}
+
+export interface Notice {
+  id: string;
+  task_id: string | null;
+  title: string;
+  body: string;
+  level: "info" | "warn" | "error";
+  conversation_id: string | null;
+  created_at: string;
 }
 
 export type ChatEvent =
@@ -160,6 +239,20 @@ export const api = {
   saveGroqKey: (key?: string) => request<{ ok: boolean; models: string[]; hint: string }>("PUT", "/settings/groq-key", { key }),
   wipe: () => request<{ ok: boolean; deleted: number }>("POST", "/wipe"),
   openDataFolder: () => request("POST", "/open-data-folder"),
+
+  schedulerHealth: () => request<SchedulerHealth>("GET", "/scheduler/health"),
+  tasks: () => request<ScheduledTask[]>("GET", "/scheduled-tasks"),
+  task: (id: string) => request<ScheduledTask>("GET", `/scheduled-tasks/${id}`),
+  createTask: (t: TaskInput) => request<ScheduledTask>("POST", "/scheduled-tasks", t),
+  updateTask: (id: string, patch: Partial<TaskInput>) => request<ScheduledTask>("PATCH", `/scheduled-tasks/${id}`, patch),
+  deleteTask: (id: string) => request("DELETE", `/scheduled-tasks/${id}`),
+  previewTask: (t: Pick<TaskInput, "run_at" | "timezone" | "recurrence_type" | "recurrence_rule">) =>
+    request<{ runs: string[] }>("POST", "/scheduled-tasks/preview", t),
+  taskAction: (id: string, action: "cancel" | "pause" | "resume" | "run") =>
+    request<ScheduledTask>("POST", `/scheduled-tasks/${id}/${action}`),
+  snoozeTask: (id: string, minutes: number) => request<ScheduledTask>("POST", `/scheduled-tasks/${id}/snooze`, { minutes }),
+  notifications: () => request<Notice[]>("GET", "/notifications"),
+  markNotificationsRead: (ids: string[]) => request("POST", "/notifications/read", { ids }),
 };
 
 export interface ServerConfig {
@@ -178,13 +271,14 @@ export async function streamChat(
   text: string,
   connections: string[],
   onEvent: (ev: ChatEvent) => void,
+  mode?: PermissionMode,
 ): Promise<void> {
   let res: Response;
   try {
     res = await fetch(`/api/v1/conversations/${conversationId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, connections }),
+      body: JSON.stringify({ text, connections, mode }),
     });
   } catch {
     throw new ApiError("Donna's server isn't running. Start it with scripts\\start.ps1.", 0);

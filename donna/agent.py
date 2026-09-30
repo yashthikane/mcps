@@ -24,16 +24,36 @@ KEYWORDS = {
     "notion": r"notion|\bpages?\b|\bnotes?\b|database|\bdocs?\b|wiki|workspace",
     "weather": r"weather|temperature|\brain|forecast|sunny|humid",
     "utils": r"square|joke|funny",
+    "schedule": r"remind|schedul|snooze|recurring|\btasks?\b|every (day|morning|evening|night|week|hour|\d+ ?(min|hour))|every (mon|tue|wed|thu|fri|sat|sun)",
 }
 STOP_WORDS = {"get", "list", "read", "create", "update", "delete", "set", "the", "a", "of", "to", "info", "multiple", "allowed"}
 
 
+# Permission modes, chosen per chat message (composer switch) or per scheduled task:
+#   plan    read-only tools only; Donna writes a plan instead of acting
+#   manual  actions that send, change or delete wait for Approve / Reject (refused in scheduled runs)
+#   auto    every action runs without asking
+MODES = ("plan", "manual", "auto")
+
+
+def needs_approval(tool: Tool, args: dict) -> bool:
+    """Approval-gated in manual mode. Scheduling an auto-mode task is gated too: it hands future,
+    unattended runs permission to act, so the user must agree to that once, when it's created."""
+    if tool.confirm:
+        return True
+    return tool.name in ("schedule_task",) and str(args.get("permission_mode", "")).lower() == "auto"
+
+
 class Run:
-    def __init__(self, conversation_id: str):
+    def __init__(self, conversation_id: str, unattended: bool = False, mode: str = "manual"):
         self.id = "r_" + uuid.uuid4().hex[:8]
         self.conversation_id = conversation_id
         self.cancelled = False
         self.pending: dict[str, asyncio.Future] = {}
+        # Scheduled runs have nobody to approve actions: in manual mode they're refused and flagged.
+        self.unattended = unattended
+        self.mode = mode if mode in MODES else "manual"
+        self.approval_needed = False
 
     def decide(self, call_id: str, approved: bool) -> bool:
         fut = self.pending.get(call_id)
@@ -76,7 +96,17 @@ def select_tools(tools: list[Tool], text: str, recent_groups: set[str], forced: 
     return picked or tools
 
 
-def system_prompt(settings: dict) -> str:
+MODE_PROMPTS = {
+    "plan": ("\nPLAN MODE: don't carry out any action. You may use the available read-only tools to look things up, "
+             "then answer with a short numbered plan: which steps and tools you would use and with what arguments. "
+             "Actions that send, change or delete aren't available in this mode. End by telling the user to switch "
+             "to Manual or Auto mode to run it."),
+    "manual": "",
+    "auto": "\nAUTO MODE: the user pre-approved every action; call tools directly without asking for confirmation.",
+}
+
+
+def system_prompt(settings: dict, mode: str = "manual") -> str:
     tz = settings.get("timezone") or "UTC"
     try:
         now = datetime.now(ZoneInfo(tz))
@@ -93,6 +123,7 @@ def system_prompt(settings: dict) -> str:
         "- If a tool says a service isn't connected or a sign-in expired, tell the user to fix it in Connections.\n"
         "- If the user rejected an action, acknowledge it and don't retry.\n"
         "- Call one tool at a time. Be concise and use Markdown lists for several items."
+        + MODE_PROMPTS.get(mode, "")
     )
 
 
@@ -148,9 +179,14 @@ async def run_chat(store, hub: MCPHub, run: Run, text: str, forced_groups: set[s
         yield {"type": "error", "message": msg}
         return
 
-    tools = select_tools(hub.enabled_tools(settings), text, groups, forced_groups)
+    available = hub.enabled_tools(settings)
+    if run.unattended:  # a scheduled task must not schedule more tasks
+        available = [t for t in available if t.group != "schedule"]
+    if run.mode == "plan":  # plan mode may only read
+        available = [t for t in available if not t.writes]
+    tools = select_tools(available, text, groups, forced_groups)
     specs = [t.spec() for t in tools]
-    messages = [{"role": "system", "content": system_prompt(settings)}, *prior, {"role": "user", "content": text}]
+    messages = [{"role": "system", "content": system_prompt(settings, run.mode)}, *prior, {"role": "user", "content": text}]
     answer: list[str] = []
     events: list[dict] = []
     error = None
@@ -238,7 +274,23 @@ async def _run_tool(hub: MCPHub, run: Run, settings: dict, call_id: str, call: d
         for ev in finish("error", f"Error: invalid JSON arguments ({bad_args}). Call the tool again with valid arguments."):
             yield ev
         return
-    if tool.confirm:
+    gated = needs_approval(tool, args)
+    if run.mode == "plan" and (tool.writes or gated):
+        for ev in finish("rejected", "Plan mode: this action was not executed. Describe it in the plan instead.",
+                         "Not run (plan mode)"):
+            yield ev
+        return
+    if gated and run.mode == "auto":
+        record["approved"] = "auto"
+        gated = False
+    if gated and run.unattended:
+        run.approval_needed = True
+        for ev in finish("rejected", "This action needs the user's approval, which isn't available in a scheduled run "
+                         "in manual mode. Don't retry it; tell the user to run it from chat or set the task to Auto mode.",
+                         "Needs approval (scheduled run, manual mode)"):
+            yield ev
+        return
+    if gated:
         fut = asyncio.get_running_loop().create_future()
         run.pending[call_id] = fut
         yield {"type": "confirm.request", "run_id": run.id, "call_id": call_id, "name": tool.name,

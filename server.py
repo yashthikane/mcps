@@ -10,6 +10,7 @@ import tools.calendar_tools    # Google Calendar
 import tools.gmail_tools       # Gmail management
 import tools.weather_tools     # Weather forecast
 import tools.misc_tools        # Square, jokes, etc.
+import tools.schedule_tools    # Scheduled tasks and reminders
 
 if __name__ == "__main__":
     mcp.run()

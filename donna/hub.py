@@ -31,12 +31,18 @@ BUILTIN = [
      "tools": ["get_weather"]},
     {"id": "utils", "name": "Utilities", "icon": "smile", "source": "Built-in", "setup": None,
      "tools": ["square", "get_jokes"]},
+    {"id": "schedule", "name": "Scheduled tasks", "icon": "clock", "source": "Scheduler · built-in", "setup": None,
+     "tools": ["schedule_task", "list_scheduled_tasks", "cancel_scheduled_task", "snooze_scheduled_task"]},
 ]
 TOOL_GROUP = {t: c["id"] for c in BUILTIN for t in c["tools"]}
 
 # Built-in tools that send, change or delete something always wait for the user's approval.
 CONFIRM = {"send_email", "reply_email", "forward_email", "send_draft", "delete_email",
-           "create_event", "update_event", "delete_event", "delete_page"}
+           "create_event", "update_event", "delete_event", "delete_page", "cancel_scheduled_task"}
+# Built-in tools that change something but don't need approval in manual mode. Plan mode hides
+# these and CONFIRM: it may only read.
+WRITES = CONFIRM | {"mark_email", "create_draft", "create_page", "update_page_title", "append_text_to_page",
+                    "schedule_task", "snooze_scheduled_task"}
 # External tools whose names look like writes get the same treatment.
 WRITE_WORDS = re.compile(r"(write|edit|delete|remove|move|rename|commit|push|drop|insert|update|create|send|post|put|exec|run)", re.I)
 
@@ -50,6 +56,7 @@ class Tool:
     description: str
     schema: dict
     confirm: bool
+    writes: bool = False  # changes something (hidden in plan mode); every confirm tool writes
 
     def spec(self) -> dict:
         return {"type": "function", "function": {
@@ -119,7 +126,7 @@ class MCPHub:
             self.builtin_tools.append(Tool(
                 name=t.name, remote=t.name, server="donna", group=TOOL_GROUP.get(t.name, "utils"),
                 description=t.description or "", schema=t.inputSchema or {"type": "object", "properties": {}},
-                confirm=t.name in CONFIRM))
+                confirm=t.name in CONFIRM, writes=t.name in WRITES))
         for cfg in self.store.list_mcp_servers():
             self.external[cfg["id"]] = External(cfg)
             if cfg["enabled"]:
@@ -153,10 +160,12 @@ class MCPHub:
             return ext
         prefix = slug(ext.config["name"])
         ext.client = client
-        ext.tools = [Tool(name=f"{prefix}__{t.name}"[:64], remote=t.name, server=sid, group=sid,
-                          description=t.description or "", schema=t.inputSchema or {"type": "object", "properties": {}},
-                          confirm=bool(WRITE_WORDS.search(t.name)) or bool(getattr(t.annotations, "destructiveHint", False)))
-                     for t in remote]
+        ext.tools = []
+        for t in remote:
+            confirm = bool(WRITE_WORDS.search(t.name)) or bool(getattr(t.annotations, "destructiveHint", False))
+            ext.tools.append(Tool(name=f"{prefix}__{t.name}"[:64], remote=t.name, server=sid, group=sid,
+                                  description=t.description or "", schema=t.inputSchema or {"type": "object", "properties": {}},
+                                  confirm=confirm, writes=confirm))  # name-based: write-like ⇒ both
         ext.state, ext.since = "connected", time.time()
         return ext
 

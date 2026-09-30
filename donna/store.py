@@ -51,6 +51,7 @@ DEFAULT_SETTINGS = {
     "disabled_connections": [],  # built-in connections switched off (weather, utils)
     "usage": {"date": "", "requests": 0, "tokens": 0},  # Groq usage today (free tier: 1,000 requests/day)
     "onboarded": False,
+    "permission_mode": "manual",  # chat mode: plan | manual | auto (composer switch)
 }
 
 

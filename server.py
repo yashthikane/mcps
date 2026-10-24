@@ -8,6 +8,7 @@ from mcp_instance import mcp
 import tools.notion_tools      # Notion workspace management
 import tools.calendar_tools    # Google Calendar
 import tools.gmail_tools       # Gmail management
+import tools.jira_tools        # Jira Cloud issues, sprints and worklogs
 import tools.weather_tools     # Weather forecast
 import tools.misc_tools        # Square, jokes, etc.
 

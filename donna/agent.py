@@ -22,9 +22,15 @@ KEYWORDS = {
     "gmail": r"e-?mails?|inbox|\bmail|gmail|unread|repl(y|ies)|draft|forward|sender|subject|message from",
     "calendar": r"calendar|meeting|event|schedul|appointment|agenda|\bbusy\b|\bfree\b|remind|invite",
     "notion": r"notion|\bpages?\b|\bnotes?\b|database|\bdocs?\b|wiki|workspace",
+    "jira": r"jira|tickets?|\bissues?\b|sprint|backlog|\bboard|\bepics?\b|\bstor(y|ies)\b|\bbugs?\b|stand-?up|worklog"
+            r"|time logged|logged time|log time|workload|\bteam\b|blocke[rd]|overdue|assigned|in progress|velocity",
     "weather": r"weather|temperature|\brain|forecast|sunny|humid",
     "utils": r"square|joke|funny",
 }
+ISSUE_KEY = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b")  # case-sensitive, so it runs on the original text
+# Large groups left out of the "nothing matched → every tool" fallback unless used in recent turns
+# (Jira's 13 schemas alone are ~1.6K tokens).
+FALLBACK_SKIP = {"jira"}
 STOP_WORDS = {"get", "list", "read", "create", "update", "delete", "set", "the", "a", "of", "to", "info", "multiple", "allowed"}
 
 
@@ -63,6 +69,8 @@ def select_tools(tools: list[Tool], text: str, recent_groups: set[str], forced: 
     for group, pattern in KEYWORDS.items():
         if re.search(pattern, low):
             groups.add(group)
+    if ISSUE_KEY.search(text):
+        groups.add("jira")
     for t in tools:
         if t.server != "donna":
             words = set(re.split(r"[_\W]+", t.remote.lower())) - STOP_WORDS
@@ -71,7 +79,7 @@ def select_tools(tools: list[Tool], text: str, recent_groups: set[str], forced: 
             if any(w and len(w) > 2 and w in low for w in words | server_words):
                 groups.add(t.group)
     if not groups:
-        return tools
+        return [t for t in tools if t.group not in FALLBACK_SKIP or t.group in recent_groups] or tools
     picked = [t for t in tools if t.group in groups | set(recent_groups)]
     return picked or tools
 
@@ -85,9 +93,9 @@ def system_prompt(settings: dict) -> str:
     return (
         "You are Donna, a capable personal assistant running locally for one user. "
         f"Current date and time: {now.strftime('%A, %d %B %Y, %H:%M')} ({tz}).\n"
-        "You can act on the user's Gmail, Google Calendar, Notion, the weather and any connected MCP servers through tools.\n"
+        "You can act on the user's Gmail, Google Calendar, Notion, Jira, the weather and any connected MCP servers through tools.\n"
         "Rules:\n"
-        "- Use IDs returned by tools (email, draft, event, page, database IDs). Never invent IDs; look them up first.\n"
+        "- Use IDs returned by tools (email, draft, event, page, database IDs, Jira issue and project keys). Never invent IDs; look them up first.\n"
         "- For calendar times use local time without an offset, e.g. 2026-10-01T09:00; all-day events use dates.\n"
         "- Tools that send, change or delete things ask the user for approval automatically. Just call them; don't ask for confirmation in text first.\n"
         "- If a tool says a service isn't connected or a sign-in expired, tell the user to fix it in Connections.\n"

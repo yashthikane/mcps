@@ -17,6 +17,8 @@ const ACTION_TITLES: Record<string, string> = {
   send_email: "Send email", reply_email: "Reply to email", forward_email: "Forward email", send_draft: "Send draft",
   delete_email: "Move email to trash", create_event: "Create calendar event", update_event: "Change calendar event",
   delete_event: "Delete calendar event", delete_page: "Move Notion page to trash",
+  jira_create_issue: "Create Jira issue", jira_update_issue: "Change Jira issue", jira_add_comment: "Comment on Jira issue",
+  jira_transition_issue: "Move Jira issue", jira_log_work: "Log time in Jira",
 };
 export const actionTitle = (name: string) =>
   ACTION_TITLES[name] ?? name.split("__").pop()!.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -191,6 +193,8 @@ function EmptyState({ connections, onSend, onCommand }: { connections: Connectio
   if (on("notion")) {
     sugg.push({ icon: "doc", t: "List my Notion pages", s: "Notion" });
   } else sugg.push({ icon: "doc", t: "Connect Notion", s: "Guided setup · about 2 minutes", cmd: "wizard:notion" });
+  if (on("jira")) sugg.push({ icon: "ticket", t: "What did my team do yesterday?", s: "Jira" });
+  else sugg.push({ icon: "ticket", t: "Connect Jira", s: "Guided setup · about 2 minutes", cmd: "wizard:jira" });
   sugg.push({ icon: "sun", t: "What's the weather in Pune right now?", s: "Weather" });
   if (sugg.length < 4) sugg.push({ icon: "terminal", t: "Add an MCP server", s: "Filesystem, Git, Fetch or any server", cmd: "wizard:mcp" });
   return (

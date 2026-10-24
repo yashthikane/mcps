@@ -45,6 +45,11 @@ def test_select_tools_routes_by_keywords():
     assert len(agent.select_tools(tools, "list folders you can access", {"gmail"}, set())) == 3
     fs = Tool("files__list_directory", "list_directory", "srv1", "srv1", "", {}, False)
     assert agent.select_tools(tools + [fs], "which folders can you see", set(), set()) == [fs]
+    jira = [mk("jira_team_digest", "jira")]
+    assert agent.select_tools(tools + jira, "what did my team do yesterday?", set(), set()) == jira
+    assert agent.select_tools(tools + jira, "summarize DON-142 for me", set(), set()) == jira  # issue key, case-sensitive
+    assert len(agent.select_tools(tools + jira, "don-142 is a number", set(), set())) == 3  # fallback skips Jira…
+    assert len(agent.select_tools(tools + jira, "and for Rahul?", {"jira"}, set())) == 4  # …unless it was just used
 
 
 async def test_tool_call_streams_and_saves(store, hub, fake_llm):
@@ -126,6 +131,8 @@ def test_http_api(tmp_path, fake_llm):
         conns = {x["id"]: x for x in c.get("/api/v1/connections").json()}
         assert conns["gmail"]["state"] == "not_set_up" and conns["weather"]["state"] == "connected"
         assert len(conns["gmail"]["tools"]) == 12 and len(conns["calendar"]["tools"]) == 5 and len(conns["notion"]["tools"]) == 8
+        assert conns["jira"]["state"] == "not_set_up" and len(conns["jira"]["tools"]) == 13
+        assert sum(t["confirm"] for t in conns["jira"]["tools"]) == 5
         c.patch("/api/v1/connections/weather", json={"enabled": False})
         assert {x["id"]: x for x in c.get("/api/v1/connections").json()}["weather"]["state"] == "off"
 
@@ -137,6 +144,17 @@ def test_http_api(tmp_path, fake_llm):
 
         assert c.post("/api/v1/connections/notion", json={"token": "short"}).status_code == 400
         assert c.post("/api/v1/connections/notion", json={"token": "ntn_" + "a" * 40}).json()["pages"]
+
+        jira = {"site": "acme.atlassian.net", "email": "me@acme.com", "token": "ATATT" + "a" * 40}
+        assert c.post("/api/v1/connections/jira", json={**jira, "site": "jira.acme.com"}).status_code == 400
+        assert c.post("/api/v1/connections/jira", json={**jira, "token": "short"}).status_code == 400
+        assert c.post("/api/v1/connections/jira", json={**jira, "token": "x" * 40}).status_code == 400  # rejected by fake Jira
+        ok = c.post("/api/v1/connections/jira", json=jira).json()
+        assert ok["site"] == "https://acme.atlassian.net" and ok["projects"]
+        conns = {x["id"]: x for x in c.get("/api/v1/connections").json()}
+        assert conns["jira"]["state"] == "connected" and "acme.atlassian.net" in conns["jira"]["detail"]
+        assert c.delete("/api/v1/connections/jira").json()["ok"]
+        assert {x["id"]: x for x in c.get("/api/v1/connections").json()}["jira"]["state"] == "not_set_up"
         bad = c.post("/api/v1/connections/google/credentials", files={"file": ("credentials.json", b"{}", "application/json")})
         assert bad.status_code == 400 and "OAuth client" in bad.json()["detail"]
 

@@ -38,6 +38,7 @@ const PATHS: Record<string, string> = {
   brain: '<path d="M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 5 3 3 0 0 0 3 5 3 3 0 0 0 5 1V4.5A2.5 2.5 0 0 0 9 4zM15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 2 5 3 3 0 0 1-3 5 3 3 0 0 1-5 1"/>',
   chevron: '<path d="m9 6 6 6-6 6"/>',
   alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  ticket: '<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M9 6v12" stroke-dasharray="2 2"/>',
 };
 
 export function Icon({ name, size = 15, className }: { name: string; size?: number; className?: string }) {
@@ -63,6 +64,7 @@ export function PixelD({ size = 18 }: { size?: number }) {
 
 /** Icon for a tool, from the connection it belongs to. */
 export function toolIcon(name: string): string {
+  if (/^jira_/.test(name)) return "ticket";
   if (/email|draft|mail/.test(name)) return "mail";
   if (/event/.test(name)) return "cal";
   if (/page|notion|database/.test(name)) return "doc";

@@ -79,6 +79,12 @@ Keep `requirements.txt` UTF-8. PowerShell's `pip freeze >` writes UTF-16.
   - `in_trash=True` to delete.
   
   The client is built per call from the vault, so a missing token only fails the Notion tools.
+- Jira (`tools/jira_tools.py`) calls Jira Cloud REST v3 and Agile 1.0 with plain `httpx` (Basic auth with email + API token):
+  - credentials are one vault value `jira` = JSON `{site, email, token}`;
+  - search is `POST /rest/api/3/search/jql`, paged with `nextPageToken` (the old `/search` is gone);
+  - descriptions and comments are ADF (`text_to_adf` / `adf_to_text`), and people are accountIds (`_user_id` resolves names, emails and "me");
+  - tests swap `jira_tools._TRANSPORT` for an `httpx.MockTransport`;
+  - Jira is in `agent.FALLBACK_SKIP`, so its 13 schemas are only sent when a message matches Jira keywords or an issue key (or Jira was used recently).
 - A new tool module must be imported in `server.py`, and its tool names added to `hub.BUILTIN`.
 
 ## Environment

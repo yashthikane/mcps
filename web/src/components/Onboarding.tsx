@@ -70,6 +70,7 @@ export default function Onboarding({ settings, connections, onSettings, onFinish
             <div className="toolrows">
               <Row icon="mail" title="Google" sub="Gmail + Calendar · 17 tools" state={state("gmail")} onSetup={() => onWizard("google")} />
               <Row icon="doc" title="Notion" sub="Pages and databases · 8 tools" state={state("notion")} onSetup={() => onWizard("notion")} />
+              <Row icon="ticket" title="Jira" sub="Issues, sprints, team digest and worklogs · 13 tools" state={state("jira")} onSetup={() => onWizard("jira")} />
               <Row icon="terminal" title="MCP servers" sub="Filesystem, Git, Fetch and more" state="optional" onSetup={() => onWizard("mcp")} />
             </div>
           </>)}

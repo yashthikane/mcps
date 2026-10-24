@@ -3,7 +3,14 @@ import { api, ApiError, type Connection, type ServerConfig, type ToolInfo } from
 import { Icon } from "../icons";
 import { Dialog, DialogHead, Result, StatePill, Switch, useToast } from "./ui";
 
-export type WizardKind = "google" | "notion" | "mcp";
+export type WizardKind = "google" | "notion" | "jira" | "mcp";
+
+// Built-in connections with their own sign-in: how to disconnect, and the name shown in the toast.
+const DISCONNECT: Record<string, { run: () => Promise<unknown>; label: string }> = {
+  google: { run: () => api.disconnectGoogle(), label: "Google" },
+  notion: { run: () => api.disconnectNotion(), label: "Notion" },
+  jira: { run: () => api.disconnectJira(), label: "Jira" },
+};
 
 /* ============================================================================ page */
 export default function ConnectionsPage({ connections, reload, openWizard, onTools }: {
@@ -80,8 +87,8 @@ function ConnCard({ c, reload, openWizard, onTools }: {
         <button className="btn btn-ghost btn-sm" onClick={() => setConfirm(false)}>Cancel</button>
         <button className="btn btn-danger btn-sm" onClick={() => {
           setConfirm(false);
-          act("remove", () => (c.kind === "mcp" ? api.removeServer(c.id) : google ? api.disconnectGoogle() : api.disconnectNotion()),
-            c.kind === "mcp" ? `Removed ${c.name}.` : `${google ? "Google" : c.name} disconnected.`);
+          act("remove", () => (c.kind === "mcp" ? api.removeServer(c.id) : DISCONNECT[c.setup ?? ""].run()),
+            c.kind === "mcp" ? `Removed ${c.name}.` : `${DISCONNECT[c.setup ?? ""].label} disconnected.`);
         }}>{c.kind === "mcp" ? "Remove" : "Disconnect"}</button>
       </>
     );
@@ -104,8 +111,9 @@ function ConnCard({ c, reload, openWizard, onTools }: {
         <button className="btn btn-ghost btn-sm" onClick={() => setConfirm(true)}>Remove</button>
       </>
     );
-  } else if (c.setup === "notion" && auth === "error") {
-    actions = <button className="btn btn-primary btn-sm" onClick={() => openWizard("notion")}>Update secret</button>;
+  } else if ((c.setup === "notion" || c.setup === "jira") && auth === "error") {
+    actions = <button className="btn btn-primary btn-sm" onClick={() => openWizard(c.setup as WizardKind)}>
+      {c.setup === "jira" ? "Update token" : "Update secret"}</button>;
   } else {
     actions = (
       <>
@@ -120,7 +128,7 @@ function ConnCard({ c, reload, openWizard, onTools }: {
           <button className="btn btn-secondary btn-sm" disabled={!!busy} onClick={() => act("restart", () => api.restartServer(c.id), `${c.name} restarted.`)}>
             {busy === "restart" ? "Restarting…" : "Restart"}</button>
         )}
-        {(c.setup === "google" || c.setup === "notion" || c.kind === "mcp") && (
+        {(c.setup && c.setup in DISCONNECT || c.kind === "mcp") && (
           <button className="btn btn-ghost btn-sm" onClick={() => setConfirm(true)}>{c.kind === "mcp" ? "Remove" : "Disconnect"}</button>
         )}
       </>
@@ -384,6 +392,70 @@ export function NotionWizard({ onDone, onClose }: { onDone: () => void; onClose:
         {res?.state === "err" && <Result kind="err"><span className="st-err mono" style={{ fontSize: 12 }}>✕ {res.text}</span></Result>}
         {res?.state === "ok" && <Result><span className="okline">✓ Connected · {res.pages?.length ? `${res.pages.length} shared item(s)` : "no pages shared yet"}</span>
           {res.pages?.length ? <ul>{res.pages.slice(0, 6).map((pg, k) => <li key={k}>{pg}</li>)}</ul> : <span className="help">Share pages in Notion (step 2) and Donna will see them right away.</span>}</Result>}
+      </>)}
+    </Wizard>
+  );
+}
+
+/* ============================================================================ Jira */
+export function JiraWizard({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
+  const toast = useToast();
+  const [i, setI] = useState(0);
+  const [c1, setC1] = useState(false);
+  const [site, setSite] = useState("");
+  const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
+  const [res, setRes] = useState<{ state: "busy" | "ok" | "err"; user?: string; projects?: string[]; text?: string } | null>(null);
+  const ready = !!(site.trim() && email.trim() && token.trim());
+  const connect = async () => {
+    setRes({ state: "busy" });
+    try {
+      const r = await api.connectJira(site.trim(), email.trim(), token.trim());
+      setRes({ state: "ok", user: r.user, projects: r.projects });
+    } catch (e) {
+      setRes({ state: "err", text: (e as Error).message });
+    }
+  };
+  const edit = (set: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => { set(e.target.value); setRes(null); };
+  const can = [c1, res?.state === "ok"][i];
+  return (
+    <Wizard eyebrow="■ Connect // Jira" title="Jira" steps={["API token", "Connect"]} index={i}
+      onBack={() => setI(i - 1)} onClose={onClose} canNext={!!can} busy={res?.state === "busy"} nextLabel={i === 1 ? "Finish" : "Continue"}
+      onNext={() => { if (i < 1) setI(i + 1); else { toast("Jira connected."); onDone(); } }}>
+      {i === 0 && (<>
+        <h3 className="wz-h">Create a Jira API token</h3>
+        <ol className="steps-list">
+          <li>Open {ext("https://id.atlassian.com/manage-profile/security/api-tokens", "id.atlassian.com → Security → API tokens")}.</li>
+          <li>Click <b>Create API token</b>, name it <b>Donna</b>, pick an expiry and click <b>Create</b>.</li>
+          <li>Copy the token. Atlassian shows it only once.</li>
+        </ol>
+        <p className="help">Donna acts as you: it sees the projects and issues your Jira account can see. Creating, editing, commenting,
+          moving and logging time always wait for your approval.</p>
+        <ul className="checks"><Check checked={c1} onChange={setC1}>I copied my API token</Check></ul>
+      </>)}
+      {i === 1 && (<>
+        <h3 className="wz-h">Connect your Jira site</h3>
+        <div className="field">
+          <label htmlFor="j-site">Jira site</label>
+          <input className="input mono" id="j-site" autoComplete="off" placeholder="yourteam.atlassian.net" value={site} onChange={edit(setSite)} />
+        </div>
+        <div className="field">
+          <label htmlFor="j-email">Atlassian account email</label>
+          <input className="input" id="j-email" type="email" autoComplete="off" placeholder="you@company.com" value={email} onChange={edit(setEmail)} />
+        </div>
+        <div className="field">
+          <label htmlFor="j-token">API token</label>
+          <div className="srow">
+            <input className="input mono grow" id="j-token" type="password" autoComplete="off" placeholder="ATATT…" value={token}
+              onChange={edit(setToken)} onKeyDown={(e) => { if (e.key === "Enter" && ready) connect(); }} />
+            <button className="btn btn-secondary" onClick={connect} disabled={!ready || res?.state === "busy"}>Connect</button>
+          </div>
+          <span className="help">Stored in Windows Credential Manager. Donna only talks to your Jira site.</span>
+        </div>
+        {res?.state === "busy" && <Result kind="busy"><span className="help">Checking with Jira…</span></Result>}
+        {res?.state === "err" && <Result kind="err"><span className="st-err mono" style={{ fontSize: 12 }}>✕ {res.text}</span></Result>}
+        {res?.state === "ok" && <Result><span className="okline">✓ Connected as {res.user} · {res.projects?.length ? `${res.projects.length} project(s)` : "no projects visible"}</span>
+          {res.projects?.length ? <ul>{res.projects.slice(0, 6).map((p, k) => <li key={k}>{p}</li>)}</ul> : null}</Result>}
       </>)}
     </Wizard>
   );

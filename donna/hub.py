@@ -27,6 +27,10 @@ BUILTIN = [
     {"id": "notion", "name": "Notion", "icon": "doc", "source": "Notion · built-in", "setup": "notion",
      "tools": ["search_notion", "list_pages", "read_page_content", "create_page", "update_page_title",
                "append_text_to_page", "delete_page", "query_database"]},
+    {"id": "jira", "name": "Jira", "icon": "ticket", "source": "Jira Cloud · built-in", "setup": "jira",
+     "tools": ["jira_list_projects", "jira_search_issues", "jira_get_issue", "jira_create_issue", "jira_update_issue",
+               "jira_add_comment", "jira_transition_issue", "jira_find_users", "jira_team_digest", "jira_workload",
+               "jira_sprint_status", "jira_get_worklogs", "jira_log_work"]},
     {"id": "weather", "name": "Weather", "icon": "sun", "source": "Open-Meteo · built-in", "setup": None,
      "tools": ["get_weather"]},
     {"id": "utils", "name": "Utilities", "icon": "smile", "source": "Built-in", "setup": None,
@@ -36,7 +40,8 @@ TOOL_GROUP = {t: c["id"] for c in BUILTIN for t in c["tools"]}
 
 # Built-in tools that send, change or delete something always wait for the user's approval.
 CONFIRM = {"send_email", "reply_email", "forward_email", "send_draft", "delete_email",
-           "create_event", "update_event", "delete_event", "delete_page"}
+           "create_event", "update_event", "delete_event", "delete_page",
+           "jira_create_issue", "jira_update_issue", "jira_add_comment", "jira_transition_issue", "jira_log_work"}
 # External tools whose names look like writes get the same treatment.
 WRITE_WORDS = re.compile(r"(write|edit|delete|remove|move|rename|commit|push|drop|insert|update|create|send|post|put|exec|run)", re.I)
 

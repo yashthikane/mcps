@@ -167,6 +167,28 @@ with sync_playwright() as p:
         card(page, "Notion").locator(".pill:text('Connected')").wait_for()
     check("07 Notion wizard: bad secret rejected, good secret connects", notion, page)
 
+    def jira():
+        card(page, "Jira").locator("button:text('Connect')").click()
+        page.check("dialog[open] input[type=checkbox]")
+        page.click("dialog[open] .dlg-foot .btn-primary")
+        page.fill("#j-site", "jira.example.com")
+        page.fill("#j-email", "me@example.com")
+        page.fill("#j-token", "ATATT" + "x" * 40)
+        page.click("dialog[open] button:text('Connect')")
+        has_text(page, "dialog[open] .result.err", "atlassian.net")
+        page.fill("#j-site", "acme")
+        page.fill("#j-token", "short")
+        page.click("dialog[open] button:text('Connect')")
+        has_text(page, "dialog[open] .result.err", "too short")
+        page.fill("#j-token", "ATATT" + "x" * 40)
+        page.click("dialog[open] button:text('Connect')")
+        has_text(page, "dialog[open] .result", "Connected as Test User")
+        page.click("dialog[open] .dlg-foot .btn-primary")
+        page.wait_for_selector("dialog[open]", state="detached")
+        card(page, "Jira").locator(".pill:text('Connected')").wait_for()
+        has_text(page, ".ccard", "acme.atlassian.net")
+    check("07b Jira wizard: bad site and short token rejected, good token connects", jira, page)
+
     def tools_and_toggles():
         card(page, "Notion").locator("button:text('Tools')").click()
         page.wait_for_selector("dialog[open] .toolrow")

@@ -47,7 +47,7 @@ export interface Connection {
   name: string;
   icon: string;
   source: string;
-  setup: "google" | "notion" | "mcp" | null;
+  setup: "google" | "notion" | "jira" | "mcp" | null;
   state: ConnState;
   auth_state?: ConnState;
   detail: string;
@@ -150,6 +150,9 @@ export const api = {
   disconnectGoogle: (forgetClient = false) => request("DELETE", `/connections/google?forget_client=${forgetClient}`),
   connectNotion: (token: string) => request<{ ok: boolean; pages: string[] }>("POST", "/connections/notion", { token }),
   disconnectNotion: () => request("DELETE", "/connections/notion"),
+  connectJira: (site: string, email: string, token: string) =>
+    request<{ ok: boolean; site: string; user: string; projects: string[] }>("POST", "/connections/jira", { site, email, token }),
+  disconnectJira: () => request("DELETE", "/connections/jira"),
   testServer: (cfg: ServerConfig) => request<{ ok: boolean; tools: ToolInfo[] }>("POST", "/mcp-servers/test", cfg),
   addServer: (cfg: ServerConfig) => request<{ id: string; state: string; error: string }>("POST", "/mcp-servers", cfg),
   removeServer: (id: string) => request("DELETE", `/mcp-servers/${id}`),

@@ -219,6 +219,33 @@ async def _notion_state() -> dict:
     return value
 
 
+_jira_cache: dict = {"t": 0.0, "raw": None, "value": None}
+
+
+async def _jira_state() -> dict:
+    raw = vault.get(vault.JIRA)
+    if not raw:
+        return {"state": "not_set_up"}
+    if _jira_cache["raw"] == raw and time.time() - _jira_cache["t"] < 120:
+        return _jira_cache["value"]
+    c = json.loads(raw)
+    host = c["site"].split("://")[-1]
+    if llm.FAKE:
+        value = {"state": "connected", "detail": f"Test site · {host}"}
+    else:
+        from tools import jira_tools
+        try:
+            name, _ = await jira_tools.check(c["site"], c["email"], c["token"])
+            value = {"state": "connected", "detail": f"{name} · {host}"}
+        except jira_tools.JiraError as e:
+            value = {"state": "error", "detail": "Jira rejected the API token. Add a new one."} if e.status in (401, 403) \
+                else {"state": "connected", "detail": str(e)[:120]}
+        except Exception as e:  # noqa: BLE001 - offline: assume the saved token still works
+            value = {"state": "connected", "detail": f"Couldn't reach Jira ({type(e).__name__})"}
+    _jira_cache.update(t=time.time(), raw=raw, value=value)
+    return value
+
+
 async def _google_state() -> dict:
     from tools import google_auth
     if llm.FAKE and os.getenv("DONNA_FAKE_GOOGLE"):
@@ -231,7 +258,8 @@ async def connections(request: Request):
     store, hub = S(request), H(request)
     settings = store.settings()
     off_conn, off_tools = set(settings["disabled_connections"]), set(settings["disabled_tools"])
-    google, notion = await _google_state(), await _notion_state()
+    google, notion, jira = await _google_state(), await _notion_state(), await _jira_state()
+    auth_by_setup = {"google": google, "notion": notion, "jira": jira}
     tools_by_group: dict[str, list] = {}
     for t in hub.builtin_tools:
         tools_by_group.setdefault(t.group, []).append(
@@ -239,7 +267,7 @@ async def connections(request: Request):
              "enabled": t.name not in off_tools})
     out = []
     for c in BUILTIN:
-        auth = google if c["setup"] == "google" else notion if c["setup"] == "notion" else {"state": "connected"}
+        auth = auth_by_setup.get(c["setup"], {"state": "connected"})
         state = "off" if c["id"] in off_conn else auth["state"]
         detail = {"gmail": f"Signed in as {auth.get('email')}" if auth.get("email") else "",
                   "calendar": "Primary calendar" if auth["state"] == "connected" else "",
@@ -381,6 +409,49 @@ async def notion_connect(body: NotionIn):
 def notion_disconnect():
     vault.delete(vault.NOTION_TOKEN)
     _notion_cache.update(t=0.0)
+    return {"ok": True}
+
+
+# ----------------------------------------------------------------------------- Jira
+class JiraIn(BaseModel):
+    site: str
+    email: str
+    token: str
+
+
+@app.post("/api/v1/connections/jira")
+async def jira_connect(body: JiraIn):
+    from tools import jira_tools
+    try:
+        site = jira_tools.normalize_site(body.site)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    email, token = body.email.strip(), body.token.strip()
+    if "@" not in email:
+        raise HTTPException(400, "Enter the email address you sign in to Atlassian with.")
+    if len(token) < 20:
+        raise HTTPException(400, "That API token looks too short. Copy the whole token from your Atlassian account.")
+    if llm.FAKE:
+        if not token.startswith("ATATT"):
+            raise HTTPException(400, "Jira rejected the email or API token. Check both and try again.")
+        user, projects = "Test User", ["Donna (DON)", "Website (WEB)"]
+    else:
+        try:
+            user, projects = await jira_tools.check(site, email, token)
+        except jira_tools.JiraError as e:
+            raise HTTPException(400, "Jira rejected the email or API token. Check both and try again."
+                                if e.status in (401, 403) else f"Jira error: {e}") from e
+        except httpx.HTTPError as e:
+            raise HTTPException(400, f"Can't reach {site}. Check the site address and your internet connection.") from e
+    vault.set(vault.JIRA, json.dumps({"site": site, "email": email, "token": token}))
+    _jira_cache.update(t=0.0)
+    return {"ok": True, "site": site, "user": user, "projects": projects}
+
+
+@app.delete("/api/v1/connections/jira")
+def jira_disconnect():
+    vault.delete(vault.JIRA)
+    _jira_cache.update(t=0.0)
     return {"ok": True}
 
 

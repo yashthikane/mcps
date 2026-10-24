@@ -15,6 +15,7 @@ GROQ_KEY = "groq_api_key"
 NOTION_TOKEN = "notion_token"
 GOOGLE_CLIENT = "google_client"   # {"client_id", "client_secret", ...} from credentials.json
 GOOGLE_TOKEN = "google_token"     # {"refresh_token", "scopes", "email"}
+JIRA = "jira"                     # {"site", "email", "token"}
 
 
 def _del(name: str) -> None:

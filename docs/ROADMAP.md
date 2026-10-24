@@ -57,6 +57,7 @@ Module boundaries are the "services". Each exposes a typed Python interface defi
 - `GET /connections` (built-in integrations + custom MCP servers, with status and tools).
 - `POST /connections/google/credentials` (upload `credentials.json`), `POST /connections/google/authorize` → returns an auth URL, `GET /oauth/google/callback`.
 - `POST /connections/notion` {token} → returns pages visible.
+- `POST /connections/jira` {site, email, token} → returns the signed-in user and visible projects; `DELETE` disconnects.
 - `POST /mcp-servers` {name, transport: stdio|http, command, args, env, url}, `POST /mcp-servers/{id}/test` → tools[], `PATCH /mcp-servers/{id}` (enable/disable, per-tool toggles), `DELETE /mcp-servers/{id}`.
 - `GET/PUT /settings` (Groq key via keyring, model roles, timezone, theme), `POST /settings/groq/test`.
 - `GET /health` → {groq_reachable, internet, connections}.

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { api, streamChat, type Connection, type Conversation, type Health, type Message, type Settings, type ToolEvent } from "./api";
 import { Icon, PixelD } from "./icons";
 import Chat, { type Live } from "./components/Chat";
-import ConnectionsPage, { GoogleWizard, McpWizard, NotionWizard, ToolsDialog, type WizardKind } from "./components/Connections";
+import ConnectionsPage, { GoogleWizard, JiraWizard, McpWizard, NotionWizard, ToolsDialog, type WizardKind } from "./components/Connections";
 import Onboarding from "./components/Onboarding";
 import Palette, { type Command } from "./components/Palette";
 import RunPanel from "./components/RunPanel";
@@ -186,6 +186,7 @@ export default function App() {
     { id: "settings", label: "Open Settings", icon: "sliders", run: () => setView("settings") },
     { id: "google", label: "Connect Google (Gmail + Calendar)", icon: "mail", run: () => openWizard("google") },
     { id: "notion", label: "Connect Notion", icon: "doc", run: () => openWizard("notion") },
+    { id: "jira", label: "Connect Jira", icon: "ticket", run: () => openWizard("jira") },
     { id: "mcp", label: "Add MCP server", icon: "terminal", run: () => openWizard("mcp") },
     { id: "tools", label: "Show all tools", icon: "wrench", run: () => setToolsDlg({ open: true }) },
     { id: "run", label: "Toggle activity panel", icon: "panel", run: () => command("run") },
@@ -263,7 +264,8 @@ export default function App() {
       <ToolsDialog open={toolsDlg.open} only={toolsDlg.only} connections={connections} reload={reloadConnections} onClose={() => setToolsDlg({ open: false })} />
       {wizard?.kind === "google" && <GoogleWizard startAt={wizard.startAt} onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {wizard?.kind === "notion" && <NotionWizard onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
-      {wizard?.kind === "mcp" && <McpWizard home={settings?.home ?? "C:\\Users\\you"} onClose={() => setWizard(null)} onDone={() => { setWizard(null); reloadConnections(); }} />}
+      {wizard?.kind === "jira" && <JiraWizard onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
+      {wizard?.kind === "mcp" &&<McpWizard home={settings?.home ?? "C:\\Users\\you"} onClose={() => setWizard(null)} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {onboarding && settings && !wizard && (
         <Onboarding settings={settings} connections={connections} onSettings={(s) => { setSettings(s); refreshHealth(); }}
           onWizard={(k) => openWizard(k)}

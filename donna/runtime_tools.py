@@ -6,9 +6,10 @@ offered to contacts (permissions.OWNER_ONLY).
 """
 from __future__ import annotations
 
+import asyncio
 import json
 
-from . import contact_requests, contacts, identity, memory
+from . import availability, contact_requests, contacts, identity, memory
 from .hub import Tool
 
 
@@ -70,6 +71,11 @@ TOOLS = [
            "duration_minutes": {"type": "integer"},
            "missing": {"type": "string"}, "status": {"type": "string"}},
           ["request_id"], writes=True),
+    _tool("suggest_meeting_slots", "requests",
+          "Free slots on the owner's calendar for a meeting request (free/busy only, never what the owner is doing). "
+          "No arguments: a few slots over the next working days. day (YYYY-MM-DD): that day's free slots. "
+          "at (YYYY-MM-DDTHH:MM, local): whether that exact time is free. duration_minutes: the meeting length.",
+          {"day": {"type": "string"}, "at": {"type": "string"}, "duration_minutes": {"type": "integer"}}, []),
 ]
 BY_NAME = {t.name: t for t in TOOLS}
 
@@ -107,8 +113,14 @@ async def _notify_owner(store, req: dict, created: bool) -> None:
         return
     conv = services.channels.conversation(req["channel_conversation_id"] or "") or {}
     title, body = contact_requests.notification(req)
+    ping = True
+    if req["type"] == "urgent" or req["urgency"] == "urgent":
+        # During Do not disturb / Sleeping an urgent request pings the phone only if the owner chose that;
+        # it always reaches the Inbox and the in-app notifications.
+        settings = store.settings()
+        ping = availability.urgent_ping_allowed(settings, await availability.effective(store))
     await services.channels.notify_owner(title, body, level="warn" if req["urgency"] in ("high", "urgent") else "info",
-                                         conversation_id=conv.get("conversation_id"))
+                                         conversation_id=conv.get("conversation_id"), chat=ping)
     contact_requests.mark_notified(store, req["id"])
 
 
@@ -193,6 +205,16 @@ async def call(tool: Tool, args: dict, ctx, store=None) -> tuple[bool, str]:
             req = contact_requests.update_from_contact(store, ctx, args.get("request_id", ""), args.get("details"),
                                                        str(args.get("summary") or ""), str(args.get("status") or ""),
                                                        args.get("missing"), args.get("start"), args.get("duration_minutes"))
+            if req["type"] == "meeting" and req["event_id"] and req["status"] == "cancelled":
+                # The contact cancelled their own booked meeting: removed from the calendar without asking the owner.
+                if not services.channels:
+                    return False, "Error: messaging channels aren't running."
+                ok, out = await services.channels.cancel_booking(req)
+                if not ok:
+                    return False, f"Error: couldn't remove it from the calendar ({out[:200]}). Tell them the owner will sort it out."
+                owner = identity.owner_name(store.settings(), store)
+                return True, (f"Cancelled {req['code']}: the meeting on {contact_requests.fmt_local(req['event_start'])} is off "
+                              f"{owner}'s calendar and {owner} has been told. Confirm that to them briefly.")
             await _notify_owner(store, req, False)
             if req["type"] == "meeting" and req["event_id"] and req["status"] == "waiting_for_owner":
                 owner = identity.owner_name(store.settings(), store)
@@ -201,6 +223,10 @@ async def call(tool: Tool, args: dict, ctx, store=None) -> tuple[bool, str]:
                               + f". It is still booked for {contact_requests.fmt_local(req['event_start'])} until {owner} "
                                 "moves it; say so, and that you'll confirm the new time.")
             return True, f"Updated {req['code']} ({req['status'].replace('_', ' ')})."
+        if tool.name == "suggest_meeting_slots":
+            return True, await asyncio.to_thread(
+                availability.free_slots, store.settings(), str(args.get("day") or ""), str(args.get("at") or ""),
+                int(args.get("duration_minutes") or 0))
     except (ValueError, LookupError) as e:
         return False, f"Error: {e}"
     return False, f"Error: unknown tool {tool.name}"

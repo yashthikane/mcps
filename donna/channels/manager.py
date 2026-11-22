@@ -26,7 +26,7 @@ import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from .. import approvals, audit, contact_requests, contacts, identity, llm, memory, openwa, runtime_tools
+from .. import approvals, audit, availability, contact_requests, contacts, identity, llm, memory, openwa, runtime_tools
 from ..agent import call_tool, find_tool
 from ..notify import Note
 from ..permissions import TurnContext
@@ -37,6 +37,8 @@ from .registry import REGISTRY
 log = logging.getLogger("donna.channels")
 HEALTH_SECONDS = 60
 APPROVAL_CMD = re.compile(r"^\s*(approve|reject)\b\s*([A-Za-z0-9]{4})?\s*[.!]?\s*$", re.I)
+# Requests (R12) answered from the owner's phone: "approve R12" books a meeting request, "decline R12" turns it down.
+REQUEST_CMD = re.compile(r"^\s*(approve|book|accept|decline|reject)\s+(R\d+)\s*[.!]?\s*$", re.I)
 DELIVERY_RANK = {"queued": 0, "sent": 1, "delivered": 2, "read": 3, "failed": 1}
 
 
@@ -343,14 +345,33 @@ class ChannelManager:
             return done("done", "Passed to you (human first).", "escalated")
         if not text.strip():
             return done("ignored", "Empty message.", "ignored")
-        if settings.get("require_trigger", True):
-            # The owner's own WhatsApp: people chat with him as usual and reach Donna only with the trigger word.
-            if not identity.mentions_trigger(text, settings):
+
+        # The away menu: a tapped poll option (or "2" right after the greeting) starts a guided flow, and the
+        # flow's follow-up messages reach Donna without the trigger word.
+        flow = self._flow(conv)
+        if msg.message_type == "choice" or (not flow and self._menu_open(conv)):
+            if opt := self._menu_choice(conv, msg, text, settings):
+                flow = opt["id"]
+                self.store.execute("UPDATE channel_conversations SET menu_flow=?, menu_flow_at=? WHERE id=?",
+                                   (flow, time.time(), conv["id"]))
+                audit.record(self.store, f"contact:{contact['id']}", "menu.choice", conv["id"], option=flow)
+                text = availability.option_text(opt)
+            elif msg.message_type == "choice":
+                return done("ignored", "A vote that isn't on Donna's current menu.", "ignored")
+        mentioned = identity.mentions_trigger(text, settings)
+        if mentioned:
+            text = identity.strip_trigger(text, settings) or "Hi"
+        elif not flow:
+            if await self._maybe_greet(conv, contact, settings):
+                return done("done", "You're away: sent the greeting and menu.", "answered")
+            if settings.get("require_trigger", True):
+                # The owner's own WhatsApp: people chat with him as usual and reach Donna only with the trigger word.
                 if not conv.get("trigger_hint_at"):  # told once per chat, never again
                     self.store.execute("UPDATE channel_conversations SET trigger_hint_at=? WHERE id=?", (time.time(), conv["id"]))
                     await self.send_text(conv, identity.trigger_hint(contact, settings, self.store), author="donna")
                 return done("ignored", f"No {identity.trigger_of(settings)}: left for you.", "ignored")
-            text = identity.strip_trigger(text, settings) or "Hi"
+        turn_started = time.time()
+        flow_note = availability.flow_instructions(flow, settings, self.store) if flow else ""
 
         mode, why = contact["mode"], ""
         if mode == "auto" and not contacts.in_working_hours(contact, settings.get("timezone") or "UTC"):
@@ -362,8 +383,8 @@ class ChannelManager:
                           channel_conversation_id=conv["id"],
                           capabilities=contacts.effective_capabilities(self.store, contact["id"], msg.channel_id),
                           suggest_only=mode == "suggest", persist_reply=mode == "auto",
-                          extra_prompt=self._summary_block(conv), history_since=conv["summary_upto"],
-                          intro_needed=intro_needed)
+                          extra_prompt=self._summary_block(conv) + (f"\n\n{flow_note}" if flow_note else ""),
+                          history_since=conv["summary_upto"], intro_needed=intro_needed)
         self.store.execute("UPDATE channel_messages SET status='processing' WHERE id=?", (inbound,))
         async with self._lock(conv["id"]), self._llm:
             res = await run_agent_turn(self.store, self.hub, conv["conversation_id"], text, ctx)
@@ -378,6 +399,8 @@ class ChannelManager:
                 self.store.execute("UPDATE messages SET content=? WHERE id=?", (reply, res.message["id"]))
         for code in res.approvals:
             await self._alert_approval(code)
+        if flow:
+            self._advance_flow(conv["id"], turn_started)
         if mode == "auto":
             if reply:
                 sent = await self.send_text(conv, reply, author="donna")
@@ -397,7 +420,24 @@ class ChannelManager:
         self.spawn(self._summarize(conv["id"]))
 
     async def _owner_turn(self, event_id, inbound, msg, contact, conv, text, settings) -> None:
-        """The owner writing from their own phone: approvals by command, everything else is a normal owner turn."""
+        """The owner writing from their own phone: status, request and approval commands are handled in code,
+        everything else is a normal owner turn."""
+        reply = None
+        try:
+            if parsed := availability.parse_command(text, settings):
+                availability.set_status(self.store, *parsed)
+                st = await availability.effective(self.store)
+                reply = f"Status set: {st['emoji']} {st['label']}" + (f" ({st['detail']})" if st["detail"] else "") \
+                    + availability.until_text(st["until"], settings) + "."
+                audit.record(self.store, "owner:chat", "availability.set", st["mode"])
+        except availability.AvailabilityError as e:
+            reply = str(e)
+        if reply is None and (m := REQUEST_CMD.match(text)):
+            reply = await self._request_command(m.group(1).lower(), m.group(2))
+        if reply is not None:
+            await self.send_text(conv, reply, author="donna")
+            self._finish(event_id, "done", reply, inbound, "answered")
+            return
         if m := APPROVAL_CMD.match(text):
             reply = await self._approval_command(m.group(1).lower(), m.group(2))
             await self.send_text(conv, reply, author="donna")
@@ -439,6 +479,139 @@ class ChannelManager:
             return f"Done ({row['id']}): {row['result'][:600]}"
         return f"Couldn't do it ({row['id']}): {row['result'][:600]}"
 
+    async def _request_command(self, verb: str, rid: str) -> str:
+        try:
+            req = contact_requests.get(self.store, rid)
+        except contact_requests.RequestError:
+            req = None
+        if not req:
+            return f"There's no request {rid.upper()}."
+        if req["status"] not in contact_requests.OPEN:
+            return f"{req['code']} is already {req['status'].replace('_', ' ')}."
+        if verb in ("decline", "reject"):
+            r = await self.decline_request(req, actor="owner:chat")
+            return f"Declined {r['code']}" + (f" and told {req.get('contact_name') or 'them'}." if r["contact_informed"] else ".")
+        if req["type"] != "meeting":
+            r = contact_requests.set_status(self.store, req["id"], "approved", None, "owner:chat")
+            informed = await self.inform_about_request(r)
+            return f"Marked {r['code']} as approved" + (f" and told {req.get('contact_name') or 'them'}." if informed else ".")
+        return (await self.approve_meeting(req, actor="owner:chat"))["message"]
+
+    # ================================================================== away greeting + menu
+    def _flow(self, conv: dict) -> str:
+        """The menu option this chat is working through, while it's still active."""
+        if conv.get("menu_flow") and time.time() - (conv.get("menu_flow_at") or 0) < availability.FLOW_SECONDS:
+            return conv["menu_flow"]
+        return ""
+
+    @staticmethod
+    def _menu_open(conv: dict) -> bool:
+        return bool(conv.get("greeted_at")) and time.time() - conv["greeted_at"] < availability.MENU_OPEN_SECONDS \
+            and conv.get("menu_options", "[]") != "[]"
+
+    def _menu_choice(self, conv: dict, msg: IncomingMessage, text: str, settings: dict) -> dict | None:
+        """The option picked: a poll vote (by its text) or a typed reply ("2", "meeting"), from the menu as sent."""
+        sent = json.loads(conv.get("menu_options") or "[]")
+        options = [{"id": i, **availability.MENU[i]} for i in sent if i in availability.MENU]
+        if not options:
+            options = availability.menu_options(settings)
+        if msg.message_type == "choice":
+            return availability.option_by_vote(text, options)
+        return availability.parse_choice(text, options)
+
+    def _advance_flow(self, channel_conversation_id: str, turn_started: float) -> None:
+        """Keep the flow going, or end it once its request reached the owner in this turn."""
+        done = self.store.row("SELECT 1 FROM requests WHERE channel_conversation_id=? AND updated_at>=? "
+                              "AND status IN ('waiting_for_owner', 'cancelled')", (channel_conversation_id, turn_started))
+        self.store.execute("UPDATE channel_conversations SET menu_flow=?, menu_flow_at=? WHERE id=?",
+                           ("" if done else self.conversation(channel_conversation_id)["menu_flow"], time.time(),
+                            channel_conversation_id))
+
+    async def _maybe_greet(self, conv: dict, contact: dict, settings: dict) -> bool:
+        """While the owner is away, a saved contact gets one greeting (and the menu) per status period."""
+        if not settings.get("greeting_enabled", True) or contact.get("discovered") or contact.get("is_owner"):
+            return False
+        status = await availability.effective(self.store)
+        if not status["away"] or conv.get("greeted_key") == status["key"]:
+            return False
+        options = availability.menu_options(settings)
+        text = availability.greeting(contact, settings, self.store, status)
+        self.store.execute("UPDATE channel_conversations SET greeted_key=?, greeted_at=?, menu_options=?, menu_flow='', "
+                           "trigger_hint_at=COALESCE(trigger_hint_at, ?) WHERE id=?",
+                           (status["key"], time.time(), json.dumps([o["id"] for o in options]), time.time(), conv["id"]))
+        self.store.add_message(conv["conversation_id"], "assistant", text)  # so a later turn knows what was said
+        sent = await self.send_text(conv, text, author="donna")
+        if sent.ok and options:
+            await self.send_menu(conv, options)
+        audit.record(self.store, f"contact:{contact['id']}", "menu.greeting", conv["id"], status=status["mode"],
+                     outcome="ok" if sent.ok else "failed")
+        return True
+
+    async def send_menu(self, conv: dict, options: list[dict]) -> SendResult:
+        """The away menu: a WhatsApp poll, or numbered text where polls aren't available."""
+        settings = self.store.settings()
+        channel = self.row(conv["channel_id"])
+        if not settings.get("messaging_enabled", True) or not channel or not channel["enabled"] or channel["paused"]:
+            return SendResult(ok=False, error="The channel isn't available.")
+        labels = [availability.option_text(o) for o in options]
+        fallback = availability.menu_fallback(options)
+        mid = uuid.uuid4().hex[:12]
+        self.store.execute("INSERT INTO channel_messages (id, channel_conversation_id, direction, author, message_type, content, "
+                           "status, created_at) VALUES (?,?,'out','donna','menu',?,'queued',?)", (mid, conv["id"], fallback, time.time()))
+        result = await self.adapter(conv["channel_id"]).send_menu(conv["external_chat_id"], availability.MENU_QUESTION, labels,
+                                                                  fallback, idempotency_key=mid)
+        self.store.execute("UPDATE channel_messages SET status=?, external_id=?, error=? WHERE id=?",
+                           ("sent" if result.ok else "unconfirmed" if result.uncertain else "failed", result.external_id,
+                            result.error[:500], mid))
+        return result
+
+    # ================================================================== meeting requests
+    async def approve_meeting(self, req: dict, start: str = "", end: str = "", title: str = "", actor: str = "owner") -> dict:
+        """Book a meeting request (at the time the contact confirmed, unless given), then send them the Meet link.
+        Returns {"ok", "message", "request", "booked", "informed"}."""
+        start = (start or req["details"].get("start") or "")[:16]
+        if not start:
+            return {"ok": False, "message": f"{req['code']} has no time yet; open it in the Inbox to pick one."}
+        if not end:
+            minutes = int(req["details"].get("duration_minutes") or self.store.settings().get("meeting_default_minutes") or 30)
+            end = (datetime.fromisoformat(start) + timedelta(minutes=minutes)).isoformat()[:16]
+        who = req.get("contact_name") or "contact"
+        topic = req["details"].get("topic", "")
+        booked = await self.book_for_request(req, start, end, title or (f"{topic} · {who}" if topic else ""), True)
+        if not booked["ok"]:
+            return {"ok": False, "message": f"Couldn't book {req['code']}: {booked['result'][:300]}"}
+        when = f"{contact_requests.fmt_local(booked['start'])} to {contact_requests.fmt_local(booked['end']).split(', ')[-1]}"
+        link = booked["meet"]
+        confirmation = f"📅 {when}" + (f"\nGoogle Meet: {link}" if link else "")
+        outcome = f"{'Moved to' if booked['moved'] else 'Booked for'} {when}." + (f" Google Meet link: {link}" if link else "")
+        r = contact_requests.set_status(self.store, req["id"], "completed", outcome, actor)
+        informed = await self.inform_about_request(r, must_include=confirmation)
+        return {"ok": True, "request": r, "booked": booked, "informed": informed,
+                "message": f"{'Moved' if booked['moved'] else 'Booked'} {req['code']} with {who}: {when}"
+                           + (f"\n{link}" if link else "") + ("\nI've sent them the details." if informed
+                                                              else "\nI couldn't message them; send the link yourself.")}
+
+    async def decline_request(self, req: dict, note: str = "", actor: str = "owner") -> dict:
+        r = contact_requests.set_status(self.store, req["id"], "rejected", note or None, actor)
+        r["contact_informed"] = await self.inform_about_request(r)
+        return r
+
+    async def cancel_booking(self, req: dict) -> tuple[bool, str]:
+        """A contact cancelled their own booked meeting: delete the event (invites are withdrawn) and tell the owner."""
+        tool = find_tool(self.hub, "delete_event", self.store.settings())
+        if not tool:
+            return False, "Google Calendar isn't connected."
+        ok, out = await call_tool(self.hub, tool, {"event_id": req["event_id"]}, None, self.store)
+        audit.record(self.store, f"contact:{req['contact_id']}", "request.meeting_cancelled", req["code"],
+                     outcome="ok" if ok else "failed", start=req["event_start"], result=(out or "")[:300])
+        if ok:
+            who = req.get("contact_name") or "A contact"
+            conv = self.conversation(req.get("channel_conversation_id") or "") or {}
+            await self.notify_owner(f"{who} cancelled the meeting",
+                                    f"{contact_requests.fmt_local(req['event_start'])}: {req['summary']}\n"
+                                    "It's been removed from your calendar.", conversation_id=conv.get("conversation_id"))
+        return ok, out or ""
+
     def _inbound(self, conv: dict, event_id: str, msg: IncomingMessage) -> str:
         existing = self.store.row("SELECT id FROM channel_messages WHERE event_id=?", (event_id,))
         if existing:  # a retried event keeps its message
@@ -455,7 +628,7 @@ class ChannelManager:
     @staticmethod
     def _agent_text(msg: IncomingMessage) -> str:
         text = (msg.text or "").strip()
-        if msg.message_type == "text":
+        if msg.message_type in ("text", "choice"):
             return text
         name = next((a.get("filename") for a in msg.attachments if a.get("filename")), "")
         note = (f"[They sent {_a(msg.message_type)}{f' ({name})' if name else ''}, which Donna can't open yet; "
@@ -689,6 +862,9 @@ class ChannelManager:
         else:
             args = {"summary": (title or f"Meeting with {who}")[:200], "start_time": start[:16], "end_time": end[:16],
                     "description": f"Requested by {who} via Donna ({req['code']}): {req['summary']}", "add_meet": add_meet}
+            email = str(req["details"].get("email") or "").strip()
+            if re.fullmatch(r"[^@\s,]+@[^@\s,]+\.[^@\s,]+", email):  # the contact gets a calendar invite too
+                args["attendees"] = email
         ok, out = await call_tool(self.hub, tool, args, None, self.store)
         out = out or ""
         # Read back what the calendar actually saved: "<start> → <end> | title | ID: <id>".

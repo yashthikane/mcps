@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Memory, type Settings } from "../api";
 import { Icon } from "../icons";
+import { AwaySettings } from "./Availability";
 import { Switch, useToast } from "./ui";
 
 export const MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"];
@@ -265,6 +266,7 @@ export default function SettingsPage({ settings, onChange, onWiped, onRunSetup }
           </div>
         </article>
 
+        <AwaySettings settings={settings} save={save} />
         <MemoryCard />
       </div>
     </div>

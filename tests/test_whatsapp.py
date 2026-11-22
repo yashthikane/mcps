@@ -45,7 +45,13 @@ class FakeOpenWA:
             return httpx.Response(200, json={"id": "sess-1", "status": "initializing"})
         if path == "/api/sessions/sess-1/messages/send-text":
             return httpx.Response(201, json={"messageId": "true_91999@c.us_ABC", "timestamp": 1})
+        if path == "/api/sessions/sess-1/messages/send-poll":
+            if self.refuse_polls:
+                return httpx.Response(400, json={"message": "polls unsupported"})
+            return httpx.Response(201, json={"messageId": "true_91999@c.us_POLL", "timestamp": 1})
         return httpx.Response(404, json={"message": "not found"})
+
+    refuse_polls = False
 
 
 def channel(openwa=None, config=None):
@@ -158,6 +164,32 @@ async def test_send_uses_the_chat_id_and_an_idempotency_key(secret):
     _, path, body, headers = openwa.requests[-1]
     assert path == "/api/sessions/sess-1/messages/send-text" and body == {"chatId": "12345@lid", "text": "hello"}
     assert headers["idempotency-key"] == "m1"
+
+
+async def test_menu_is_sent_as_a_single_choice_poll_with_text_fallback(secret):
+    openwa = FakeOpenWA()
+    ch, _ = channel(openwa, {"session_id": "sess-1"})
+    res = await ch.send_menu("91999@c.us", "How can I help?", ["📩 Pass a message", "📅 Schedule a meeting"], "1. … 2. …", "m9")
+    assert res.ok and res.external_id == "true_91999@c.us_POLL"
+    _, path, body, headers = openwa.requests[-1]
+    assert path.endswith("/send-poll") and body["allowMultipleAnswers"] is False and len(body["options"]) == 2
+    assert headers["idempotency-key"] == "m9-poll"
+    openwa.refuse_polls = True
+    res = await ch.send_menu("91999@c.us", "How can I help?", ["a", "b"], "1. a\n2. b", "m10")
+    assert res.ok and openwa.requests[-1][1].endswith("/send-text") and openwa.requests[-1][2]["text"] == "1. a\n2. b"
+
+
+def test_poll_vote_becomes_a_choice_message(secret):
+    ch, _ = channel(config={"session_id": "sess-1", "account": "+919000000000"})
+    vote = {"pollMessageId": "true_91999@c.us_POLL", "chatId": "91999@c.us", "voterId": "91999@c.us",
+            "selectedOptions": ["📅 Schedule a meeting"], "timestamp": 1764000000, "timestampMs": 1764000000123}
+    raw = envelope(vote, event="poll.vote")
+    [msg] = ch.parse_webhook(raw, {"x-openwa-signature": sign(SECRET, raw)})
+    assert msg.message_type == "choice" and msg.text == "📅 Schedule a meeting" and msg.chat_id == "91999@c.us"
+    assert msg.sender_phone == "91999" and msg.event_id == "vote:true_91999@c.us_POLL:91999@c.us:1764000000123"
+    assert ch.normalize_vote({**vote, "selectedOptions": []}) is None              # a cleared vote
+    assert ch.normalize_vote({**vote, "chatId": "1203@g.us"}) is None               # groups
+    assert ch.normalize_vote({**vote, "voterId": "919000000000@c.us"}) is None      # the owner's own vote
 
 
 async def test_missing_key_and_unreachable_gateway_are_readable_errors():

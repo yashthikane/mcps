@@ -293,3 +293,34 @@ dialog{background:rgba(16,16,24,.97);border-color:var(--donna-border);box-shadow
   .chat .empty{padding:0 16px 10vh}
 }
 @media (prefers-reduced-motion:reduce){.composer-wrap::before{transition:none}}
+
+/* ---------- your status (components/Availability.tsx) ---------- */
+.status-pop{margin-top:8px}
+.s-avail{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border-radius:12px;border:1px solid var(--donna-border);background:var(--donna-surface);
+  color:var(--donna-text-secondary);text-align:left;cursor:pointer;transition:border-color .14s,background .14s}
+.s-avail:hover,.s-avail[aria-expanded="true"]{border-color:rgba(255,255,255,.14);background:var(--donna-surface-elevated)}
+.s-avail.away{border-color:rgba(168,85,247,.28)}
+.s-avail .st-tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.s-avail b{font-weight:500;font-size:12.5px;color:var(--donna-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-avail small{font-size:11px;color:var(--donna-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-avail .st-chev{color:var(--donna-text-muted);transform:rotate(180deg)}
+.st-emoji{font-size:14px;line-height:1;width:18px;text-align:center;flex:none}
+.status-menu{min-width:290px;max-width:310px;bottom:calc(100% + 8px);z-index:60;max-height:calc(100vh - 24px);overflow:auto}
+.status-menu .mo .ck{margin-left:auto}
+.st-field{display:flex;flex-direction:column;gap:6px;padding:6px 9px}
+.st-field label,.st-field .lbl{font-size:11px;color:var(--donna-text-muted)}
+.st-chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{height:24px;padding:0 9px;border-radius:99px;border:1px solid var(--donna-border);background:var(--donna-surface);color:var(--donna-text-secondary);font-size:11.5px;cursor:pointer;transition:background .14s,color .14s,border-color .14s}
+.chip:hover{color:var(--donna-text-primary)}
+.chip.on{border-color:rgba(168,85,247,.5);color:var(--donna-text-primary);background:rgba(168,85,247,.12)}
+.st-act{display:flex;gap:6px;justify-content:flex-end;padding:6px 9px 4px}
+.st-pill .lb{max-width:240px;overflow:hidden;text-overflow:ellipsis}
+.st-time{width:112px}
+.st-chips.days{margin:2px 0 6px}
+.menu-opts .toolrow small,.scard .srow .grow small{display:block;margin-top:1px}
+.shell.rail .s-avail{justify-content:center;padding:9px 0}
+.shell.rail .s-avail :is(.st-tx,.st-chev){display:none}
+.shell.rail .status-menu{left:0}
+.clash{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;font-size:12px;background:rgba(52,211,153,.07);color:var(--donna-success)}
+.clash.bad{background:rgba(248,113,113,.08);color:var(--donna-error)}
+.st-sel{width:110px;flex:none}

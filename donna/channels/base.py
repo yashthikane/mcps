@@ -24,7 +24,8 @@ class IncomingMessage(BaseModel):
     sender_phone: str = ""             # digits, when the platform knows it
     chat_id: str                       # the conversation on the platform (a private chat = the sender)
     message_id: str
-    message_type: str = "text"         # text | image | audio | video | document | sticker | location | other
+    message_type: str = "text"         # text | image | audio | video | document | sticker | location | choice | other
+                                       # choice: an option picked in a menu (a poll vote); text = the option's text
     text: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     attachments: list[dict] = Field(default_factory=list)
@@ -129,6 +130,13 @@ class BaseChannel(ABC):
     @abstractmethod
     async def send(self, message: OutgoingMessage) -> SendResult:
         """Deliver one message (text at most max_text characters)."""
+
+    async def send_menu(self, recipient_id: str, question: str, options: list[str], fallback: str,
+                        idempotency_key: str = "") -> SendResult:
+        """A tap-to-choose menu (Donna's away menu). Default: the numbered text `fallback`. Channels with native
+        choices (WhatsApp polls) override this; a choice comes back as an IncomingMessage of type "choice"."""
+        return await self.send(OutgoingMessage(channel_id=self.id, recipient_id=recipient_id, text=fallback,
+                                               idempotency_key=idempotency_key))
 
     def identity_for(self, value: str) -> tuple[str, str]:
         """(external_id, phone digits) for what the owner typed when adding a contact."""

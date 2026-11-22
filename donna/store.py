@@ -75,6 +75,18 @@ DEFAULT_SETTINGS = {
     "unknown_contact_action": "ignore",  # ignore | notify: message from someone not in Contacts
     "openwa_url": "http://127.0.0.1:2785",
     "owner_channel": "whatsapp",      # where alerts, approvals and briefings reach you
+    # Availability and the away greeting (donna/availability.py).
+    "availability": {"mode": "available", "detail": "", "until": None, "set_at": 0},  # the status you set by hand
+    "greeting_enabled": True,         # greet saved contacts (with the quick menu) while you're not available
+    "greeting_mention_trigger": True, # the greeting says "or type @donna anytime"
+    "urgent_notify_dnd": False,       # an "It's urgent" request also pings your phone during Do not disturb
+    "urgent_notify_sleeping": False,  # … and while Sleeping (it always lands in the Inbox)
+    "calendar_auto_status": True,     # "In a meeting" while a Google Calendar event is on
+    "sleep_hours": {"enabled": False, "start": "23:00", "end": "07:00"},
+    "menu_options": [{"id": "message", "enabled": True}, {"id": "meeting", "enabled": True},
+                     {"id": "callback", "enabled": True}, {"id": "urgent", "enabled": True}],
+    "meeting_default_minutes": 30,
+    "meeting_hours": {"start": "10:00", "end": "18:00", "days": [0, 1, 2, 3, 4]},  # slots Donna offers (Mon=0)
 }
 
 

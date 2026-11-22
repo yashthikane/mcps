@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type Approval, type AuditRecord, type Channel, type ChannelMessage, type ContactRequest, type InboxConversation, type RequestStatus } from "../api";
+import { api, type Approval, type AuditRecord, type Channel, type ChannelMessage, type Clash, type ContactRequest, type InboxConversation, type RequestStatus } from "../api";
 import { Icon } from "../icons";
 import { Result, timeAgo, useToast } from "./ui";
 
@@ -330,7 +330,12 @@ function BookMeeting({ r, outcome, notify, reload }: { r: ContactRequest; outcom
   const booked = !!r.event_id;
   const [start, setStart] = useState(asked);
   const [minutes, setMinutes] = useState(Number(r.details.duration_minutes) || 30);
-  const [title, setTitle] = useState(`Meeting with ${r.contact_name ?? "contact"}`);
+  const [title, setTitle] = useState(r.details.topic ? `${r.details.topic} · ${r.contact_name ?? "contact"}` : `Meeting with ${r.contact_name ?? "contact"}`);
+  const [clash, setClash] = useState<Clash | null>(null);
+  useEffect(() => {  // is your calendar free at the time they confirmed? (free/busy only)
+    if (!asked || booked) return;
+    api.requestClash(r.id).then(setClash).catch(() => setClash(null));
+  }, [r.id, asked, booked]);
   const [meet, setMeet] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmDiff, setConfirmDiff] = useState(false);
@@ -359,6 +364,8 @@ function BookMeeting({ r, outcome, notify, reload }: { r: ContactRequest; outcom
         {booked && <>Booked now: <b>{human(r.event_start)}</b>{r.meet_link ? " · same Meet link is kept" : ""}. </>}
         {asked ? <>{r.contact_name} asked for <b>{human(asked)}</b>.</> : <>{r.contact_name} didn't give an exact time: pick one.</>}
       </span>
+      {clash?.checked && <span className={`clash${clash.free ? "" : " bad"}`}><Icon name={clash.free ? "check" : "alert"} size={14} />{clash.detail}</span>}
+      {r.details.email && <span className="help">The calendar invite goes to <b>{r.details.email}</b> too.</span>}
       <div className="srow wrap">
         <input className="input" aria-label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <input className="input mono" type="datetime-local" aria-label="Start" value={start}

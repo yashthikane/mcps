@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, streamChat, type PermissionMode, type Connection, type Conversation, type Health, type InboxCounts, type Message, type Settings, type ToolEvent } from "./api";
+import { api, streamChat, type Availability, type PermissionMode, type Connection, type Conversation, type Health, type InboxCounts, type Message, type Settings, type ToolEvent } from "./api";
 import { Icon } from "./icons";
 import Chat, { MODES, type Live } from "./components/Chat";
+import { StatusCard, StatusPill } from "./components/Availability";
 import ChannelsSection from "./components/Channels";
 import ContactsPage from "./components/Contacts";
 import InboxPage from "./components/Inbox";
@@ -35,11 +36,22 @@ export default function App() {
   const [onboarding, setOnboarding] = useState(false);
   const [taskSignal, setTaskSignal] = useState(0);
   const [counts, setCounts] = useState<InboxCounts | null>(null);
+  const [avail, setAvail] = useState<Availability | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const activeRef = useRef<string | null>(null);
   activeRef.current = activeId;
 
   /* ------------------------------------------------------------------ loading */
+  const refreshAvailability = useCallback(async () => {
+    try { setAvail(await api.availability()); } catch { /* the card shows "Loading…" until the API answers */ }
+  }, []);
+  useEffect(() => {  // a status set from the phone or the calendar shows up within a minute
+    refreshAvailability();
+    const t = setInterval(() => { if (!document.hidden) refreshAvailability(); }, 60000);
+    window.addEventListener("focus", refreshAvailability);
+    return () => { clearInterval(t); window.removeEventListener("focus", refreshAvailability); };
+  }, [refreshAvailability]);
   const reloadConnections = useCallback(async () => {
     try { setConnections(await api.connections()); } catch (e) { toast((e as Error).message, "err"); }
   }, [toast]);
@@ -273,6 +285,7 @@ export default function App() {
       <Sidebar view={view} onView={go} status={status} badge={(counts?.approvals ?? 0) + (counts?.escalated ?? 0) + (counts?.requests ?? 0)}
         conversations={conversations} activeId={activeId} runningId={live?.conversationId ?? null} query={query}
         usage={health?.usage ?? settings?.usage ?? null} searchRef={searchRef} onQuery={setQuery} onCollapse={toggleRail}
+        statusCard={<StatusCard data={avail} open={statusOpen} onOpen={() => setStatusOpen(true)} onClose={() => setStatusOpen(false)} onSaved={setAvail} />}
         onOpen={(id) => { setActiveId(id); setView("chat"); setDrawer(null); }} onNew={newChat}
         onPin={async (c) => { upsertConv(await api.updateConversation(c.id, { pinned: !c.pinned })); }}
         onRename={async (c, title) => { upsertConv(await api.updateConversation(c.id, { title })); }}
@@ -287,6 +300,7 @@ export default function App() {
       <main className="mainpanel">
         <TopBar view={view} title={view === "chat" ? active?.title ?? null : null} model={claude ? "Claude Code" : (settings?.model ?? "").split("/").pop() ?? ""}
           tone={status[0]} rail={rail} messagingOff={settings?.messaging_enabled === false}
+          statusPill={<StatusPill data={avail} onClick={() => { if (narrow()) setDrawer("side"); setStatusOpen(true); }} />}
           onMenu={() => setDrawer("side")} onExpand={toggleRail} onModel={() => go("settings")} onPalette={() => setPalette(true)} />
         {offline ? (
           <div className="banner" role="status">
@@ -360,8 +374,8 @@ export default function App() {
 }
 
 /** Slim bar at the top of the main panel: the model in use (new chat) or the chat title, and the command palette. */
-function TopBar({ view, title, model, tone, rail, messagingOff, onMenu, onExpand, onModel, onPalette }: {
-  view: View; title: string | null; model: string; tone: string; rail: boolean; messagingOff: boolean;
+function TopBar({ view, title, model, tone, rail, messagingOff, statusPill, onMenu, onExpand, onModel, onPalette }: {
+  view: View; title: string | null; model: string; tone: string; rail: boolean; messagingOff: boolean; statusPill?: React.ReactNode;
   onMenu: () => void; onExpand: () => void; onModel: () => void; onPalette: () => void;
 }) {
   return (
@@ -372,6 +386,7 @@ function TopBar({ view, title, model, tone, rail, messagingOff, onMenu, onExpand
         ? <h1 className="tb-title">{title}</h1>
         : <button className="tb-pill" onClick={onModel} title="Model · change it in Settings"><span className={`dot ${tone}`} />{model || "Model"}<Icon name="chevdown" size={13} /></button>)}
       <span className="tb-sp" />
+      {statusPill}
       {messagingOff && <span className="pill err" title="Settings → Messaging">Messaging off</span>}
       <button className="tb-pill" onClick={onPalette} aria-label="Open command palette"><Icon name="command" size={14} /><span className="lb">Commands</span><kbd>Ctrl K</kbd></button>
     </header>

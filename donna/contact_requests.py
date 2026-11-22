@@ -284,6 +284,9 @@ def notification(req: dict) -> tuple[str, str]:
     lines += [f"{k.replace('_', ' ').capitalize()}: {v}" for k, v in req["details"].items() if k not in ("start",)]
     if req["missing"]:
         lines.append(f"Donna is still asking for: {req['missing']}")
+    if req["type"] == "meeting" and req["details"].get("start") and not req["missing"]:
+        verb = "move it" if req.get("event_id") else "book it with a Google Meet link"
+        lines.append(f"Reply \"approve {code(req['id'])}\" to {verb}, or \"decline {code(req['id'])}\".")
     lines.append(f"({req['code']} · see Inbox → Requests)")
     return title, "\n".join(lines)
 

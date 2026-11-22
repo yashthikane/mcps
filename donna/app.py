@@ -7,7 +7,8 @@ import os
 import re
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -20,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import DATA_DIR, ROOT, approvals, audit, contact_requests, contacts, identity, inbox, llm, memory, permissions, pg, runtime_tools, tasks, vault
+from . import DATA_DIR, ROOT, approvals, audit, availability, contact_requests, contacts, identity, inbox, llm, memory, permissions, pg, runtime_tools, tasks, vault
 from .agent import MODES, RUNS, Run, run_chat
 from .channels.base import ChannelError, WebhookRejected
 from .channels.manager import ChannelManager
@@ -1208,6 +1209,47 @@ class SettingsIn(BaseModel):
     unknown_contact_action: str | None = None
     openwa_url: str | None = None
     owner_channel: str | None = None
+    greeting_enabled: bool | None = None
+    greeting_mention_trigger: bool | None = None
+    urgent_notify_dnd: bool | None = None
+    urgent_notify_sleeping: bool | None = None
+    calendar_auto_status: bool | None = None
+    sleep_hours: dict | None = None
+    menu_options: list[dict] | None = None
+    meeting_default_minutes: int | None = None
+    meeting_hours: dict | None = None
+
+
+def _check_away_settings(values: dict) -> None:
+    """Validate the availability / greeting settings (donna/availability.py)."""
+    if "sleep_hours" in values:
+        sh = values["sleep_hours"]
+        try:
+            availability._hhmm(sh.get("start", "")), availability._hhmm(sh.get("end", ""))
+        except availability.AvailabilityError as e:
+            raise HTTPException(400, f"Sleeping hours: {e}") from e
+        values["sleep_hours"] = {"enabled": bool(sh.get("enabled")), "start": sh["start"].strip(), "end": sh["end"].strip()}
+    if "meeting_hours" in values:
+        mh = values["meeting_hours"]
+        try:
+            s, e = availability._hhmm(mh.get("start", "")), availability._hhmm(mh.get("end", ""))
+        except availability.AvailabilityError as err:
+            raise HTTPException(400, f"Meeting hours: {err}") from err
+        days = sorted({int(d) for d in mh.get("days", []) if str(d).isdigit() and 0 <= int(d) <= 6})
+        if e <= s or not days:
+            raise HTTPException(400, "Meeting hours need an end after the start and at least one day.")
+        values["meeting_hours"] = {"start": mh["start"].strip(), "end": mh["end"].strip(), "days": days}
+    if "menu_options" in values:
+        seen, items = set(), []
+        for item in values["menu_options"]:
+            oid = item.get("id")
+            if oid in availability.MENU and oid not in seen:
+                seen.add(oid)
+                items.append({"id": oid, "enabled": bool(item.get("enabled", True))})
+        items += [{"id": k, "enabled": False} for k in availability.MENU if k not in seen]
+        values["menu_options"] = items
+    if "meeting_default_minutes" in values and not 5 <= values["meeting_default_minutes"] <= 480:
+        raise HTTPException(400, "meeting_default_minutes must be between 5 and 480")
 
 
 def _public_settings(store: Store) -> dict:
@@ -1243,7 +1285,8 @@ def put_settings(body: SettingsIn, request: Request):
     for k, lo, hi in (("contact_rate_per_hour", 1, 500), ("global_rate_per_hour", 1, 2000), ("approval_ttl_hours", 0.1, 168)):
         if k in values and not lo <= values[k] <= hi:
             raise HTTPException(400, f"{k} must be between {lo} and {hi}")
-    if "openwa_url" in values and urlsplit(values["openwa_url"]).hostname not in ALLOWED_HOSTS:
+    _check_away_settings(values)
+    if "openwa_url" in values and urlsplit(values["openwa_url"]).hostname not in ("127.0.0.1", "localhost"):
         raise HTTPException(400, "OpenWA must run on this computer (http://127.0.0.1:…).")
     for k in ("owner_name", "assistant_profile", "default_language", "default_tone"):
         if k in values:
@@ -1261,6 +1304,60 @@ def put_settings(body: SettingsIn, request: Request):
     if "llm_provider" in values:
         _health_cache.update(t=0.0)  # the status pill follows the provider at once
     return _public_settings(S(request))
+
+
+# ----------------------------------------------------------------------------- availability (your status)
+class AvailabilityIn(BaseModel):
+    mode: str
+    detail: str = ""
+    until: float | None = None  # epoch seconds; None = until you change it
+
+
+async def _availability(store: Store) -> dict:
+    settings = store.settings()
+    status = await availability.effective(store)
+    return {"status": {**status, "phrase": availability.phrase(status, settings, store),
+                       "until_text": availability.until_text(status["until"], settings).strip()},
+            "manual": settings.get("availability"),
+            "modes": [{"id": k, **v} for k, v in availability.MODES.items() if k in availability.MANUAL_MODES],
+            "menu": [{"id": k, **v} for k, v in availability.MENU.items()]}
+
+
+@app.get("/api/v1/availability")
+async def get_availability(request: Request):
+    return await _availability(S(request))
+
+
+@app.put("/api/v1/availability")
+async def put_availability(body: AvailabilityIn, request: Request):
+    try:
+        availability.set_status(S(request), body.mode, body.detail, body.until)
+    except availability.AvailabilityError as e:
+        raise HTTPException(400, str(e)) from e
+    audit.record(S(request), "owner", "availability.set", body.mode)
+    return await _availability(S(request))
+
+
+@app.get("/api/v1/requests/{rid}/clash")
+async def request_clash(rid: str, request: Request):
+    """Whether the owner's calendar is free at the time a meeting request asks for (free/busy only)."""
+    r = get_request(rid, request)
+    start = (r["details"].get("start") or "")[:16]
+    if not start:
+        return {"checked": False, "free": None, "detail": "No time yet."}
+    settings = S(request).settings()
+    minutes = int(r["details"].get("duration_minutes") or settings.get("meeting_default_minutes") or 30)
+    try:
+        tz = ZoneInfo(settings.get("timezone") or "UTC")
+        s = datetime.fromisoformat(start).replace(tzinfo=tz)
+        e = s + timedelta(minutes=minutes)
+        busy = await asyncio.to_thread(availability._busy, s, e)
+    except Exception as err:  # noqa: BLE001 - Google not connected: the card just doesn't show a check
+        return {"checked": False, "free": None, "detail": str(err)[:200]}
+    clash = [b for b in busy if b[0] < e and b[1] > s]
+    return {"checked": True, "free": not clash, "start": start, "minutes": minutes,
+            "end": (s + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M"),
+            "detail": "Your calendar is free at that time." if not clash else "You already have something at that time."}
 
 
 class KeyIn(BaseModel):

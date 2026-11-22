@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import os
 import re
 from datetime import datetime, timezone
@@ -25,8 +26,9 @@ from .. import vault
 from .base import (BaseChannel, ChannelError, ChannelEvent, DeliveryUpdate, IncomingMessage, OutgoingMessage, SendResult,
                    StatusUpdate, WebhookRejected)
 
+log = logging.getLogger("donna.whatsapp")
 SESSION_NAME = "donna"
-EVENTS = ["message.received", "message.ack", "session.status", "session.authenticated", "session.disconnected"]
+EVENTS = ["message.received", "message.ack", "session.status", "session.authenticated", "session.disconnected", "poll.vote"]
 MAX_BODY = 2 * 1024 * 1024
 REPLAY_WINDOW = 600  # seconds; OpenWA retries within ~1 minute
 STATUS = {"ready": "connected", "qr_ready": "qr", "created": "connecting", "initializing": "connecting",
@@ -174,6 +176,9 @@ class WhatsAppChannel(BaseChannel):
             return [msg] if msg else []
         if event == "message.ack" and (data.get("messageId") or data.get("id")):
             return [DeliveryUpdate(external_id=str(data.get("messageId") or data.get("id")), status=str(data.get("status", "")))]
+        if event == "poll.vote":
+            vote = self.normalize_vote(data)
+            return [vote] if vote else []
         if event == "session.authenticated":
             return [StatusUpdate(status="connected", account=str(data.get("phone") or ""))]
         if event == "session.disconnected":
@@ -205,7 +210,45 @@ class WhatsAppChannel(BaseChannel):
             timestamp=ts, attachments=attachments,
             metadata={k: d[k] for k in ("isForwarded", "isLidSender", "quotedMessage") if d.get(k)})
 
+    def normalize_vote(self, d: dict) -> IncomingMessage | None:
+        """A vote on one of Donna's polls → a "choice" message from the voter (the first option they picked).
+        A cleared vote, a vote in a group, or Donna's own vote from the phone is ignored."""
+        chat, voter, poll = str(d.get("chatId") or ""), str(d.get("voterId") or ""), str(d.get("pollMessageId") or "")
+        selected = [str(s) for s in d.get("selectedOptions") or [] if str(s).strip()]
+        if not chat or not voter or not poll or not selected or chat.endswith(("@g.us", "@broadcast", "@newsletter")):
+            return None
+        if voter.split("@")[0] == str(self.config.get("account") or "").lstrip("+"):
+            return None  # the owner voted from their own phone
+        stamp = d.get("timestampMs") or d.get("timestamp") or ""
+        try:
+            ts = datetime.fromtimestamp(int(d.get("timestamp")), timezone.utc)
+        except (TypeError, ValueError):
+            ts = datetime.now(timezone.utc)
+        phone = re.sub(r"\D", "", voter.split("@")[0]) if voter.endswith("@c.us") else ""
+        return IncomingMessage(event_id=f"vote:{poll}:{voter}:{stamp}", channel_id=self.id, channel_type=self.type,
+                               sender_id=chat, sender_phone=phone, chat_id=chat, message_id=f"vote:{poll}:{stamp}",
+                               message_type="choice", text=selected[0], timestamp=ts, metadata={"poll_id": poll})
+
     # ------------------------------------------------------------------ sending
+    async def send_menu(self, recipient_id: str, question: str, options: list[str], fallback: str,
+                        idempotency_key: str = "") -> SendResult:
+        """The menu as a single-choice WhatsApp poll (buttons aren't allowed on personal accounts). Falls back to
+        the numbered text when the poll is refused."""
+        sid = self.config.get("session_id")
+        if not sid:
+            return SendResult(ok=False, error="WhatsApp isn't connected.")
+        headers = {"Idempotency-Key": f"{idempotency_key}-poll"} if idempotency_key else {}
+        try:
+            r = await self._req("POST", f"/api/sessions/{sid}/messages/send-poll", headers=headers,
+                                json={"chatId": recipient_id, "name": question[:255], "options": [o[:100] for o in options[:12]],
+                                      "allowMultipleAnswers": False})
+            return SendResult(ok=True, external_id=str(r.get("messageId", "")))
+        except ChannelError as e:
+            if e.status in (409, 502):  # it may have been sent: don't add a second menu
+                return SendResult(ok=False, error=str(e), uncertain=True)
+            log.info("Poll refused (%s); sending the numbered menu instead", e)
+        return await super().send_menu(recipient_id, question, options, fallback, idempotency_key)
+
     async def send(self, message: OutgoingMessage) -> SendResult:
         sid = self.config.get("session_id")
         if not sid:

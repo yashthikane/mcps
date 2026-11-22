@@ -42,7 +42,7 @@ CAPABILITIES: dict[str, dict] = {
     "memory": {"label": "Remember things about them", "help": "Notes about this contact only.", "tools": {"remember"}},
     "requests": {"label": "Take requests for you", "help": "Callbacks, meeting requests, enquiries and messages: Donna "
                  "records them and tells you. Which types is set in their profile.",
-                 "tools": {"record_request", "update_request"}},
+                 "tools": {"record_request", "update_request", "suggest_meeting_slots"}},
     "initiate": {"label": "Message them first", "help": "Lets automations send this contact messages.", "tools": set()},
 }
 # External MCP servers (a future expense tracker, a task manager…) get one capability each.
@@ -51,7 +51,7 @@ CONTACT_DEFAULTS = {"general": "on", "memory": "on", "requests": "on"}
 # Runtime tools only the owner may use, whatever a contact's settings say.
 OWNER_ONLY = {"list_memories", "forget_memory", "list_contacts", "read_chat", "send_message", "list_requests", "resolve_request"}
 # Runtime tools only a contact's turn may use (they act on that contact's own conversation).
-CONTACT_ONLY = {"record_request", "update_request"}
+CONTACT_ONLY = {"record_request", "update_request", "suggest_meeting_slots"}
 
 
 @dataclass

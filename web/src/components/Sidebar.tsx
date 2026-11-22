@@ -28,6 +28,7 @@ interface Props {
   onRename: (c: Conversation, title: string) => void;
   onDelete: (c: Conversation) => void;
   onCollapse: () => void;
+  statusCard?: React.ReactNode;     // your availability (components/Availability.tsx)
 }
 
 function groupOf(c: Conversation): string {
@@ -93,6 +94,7 @@ export default function Sidebar(p: Props) {
         ))}
       </div>
 
+      {p.statusCard}
       <div className="s-status" title={`${(p.usage?.tokens ?? 0).toLocaleString()} tokens today`}>
         <div className="r"><span className={`dot ${p.status[0]}`} /><b>{p.status[1]}</b><span className="n">{req.toLocaleString()} / 1,000 req</span></div>
         <div className={`meter ${req >= 800 ? "warn" : ""}`}><i style={{ width: `${Math.min(100, req / 10)}%` }} /></div>

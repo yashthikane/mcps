@@ -95,7 +95,42 @@ export interface Settings {
   unknown_contact_action: "ignore" | "notify";
   openwa_url: string;
   owner_channel: string;
+  // availability and the away greeting
+  greeting_enabled: boolean;
+  greeting_mention_trigger: boolean;
+  urgent_notify_dnd: boolean;
+  urgent_notify_sleeping: boolean;
+  calendar_auto_status: boolean;
+  sleep_hours: { enabled: boolean; start: string; end: string };
+  menu_options: { id: MenuOptionId; enabled: boolean }[];
+  meeting_default_minutes: number;
+  meeting_hours: { start: string; end: string; days: number[] };
 }
+
+/* ------------------------------------------------------------------ availability (your status) */
+export type StatusMode = "available" | "sleeping" | "working" | "dnd" | "office" | "leave" | "custom" | "meeting";
+export type MenuOptionId = "message" | "meeting" | "callback" | "urgent";
+
+export interface EffectiveStatus {
+  mode: StatusMode;
+  detail: string;
+  until: number | null;          // epoch seconds
+  source: "manual" | "calendar" | "sleep_hours" | "default";
+  emoji: string;
+  label: string;
+  away: boolean;
+  phrase: string;                // "Yashraj is working on … until 6:00 PM", as contacts are told
+  until_text: string;            // "until 6:00 PM"
+}
+
+export interface Availability {
+  status: EffectiveStatus;
+  manual: { mode: StatusMode; detail: string; until: number | null; set_at: number };
+  modes: { id: StatusMode; emoji: string; label: string }[];
+  menu: { id: MenuOptionId; emoji: string; label: string; request: string }[];
+}
+
+export interface Clash { checked: boolean; free: boolean | null; detail: string; start?: string; end?: string; minutes?: number }
 
 /* ------------------------------------------------------------------ messaging channels */
 export type ChannelStatus = "not_set_up" | "connected" | "qr" | "connecting" | "disconnected" | "error";
@@ -482,6 +517,11 @@ export const api = {
   updateRequest: (id: number, patch: { status?: RequestStatus; outcome?: string; notify_contact?: boolean;
     book?: { start: string; end: string; title?: string; add_meet?: boolean } }) =>
     request<ContactRequest>("PATCH", `/requests/${id}`, patch),
+  requestClash: (id: number) => request<Clash>("GET", `/requests/${id}/clash`),
+
+  availability: () => request<Availability>("GET", "/availability"),
+  setAvailability: (mode: StatusMode, detail = "", until: number | null = null) =>
+    request<Availability>("PUT", "/availability", { mode, detail, until }),
 
   approvals: (status?: string) => request<Approval[]>("GET", `/approvals${status ? `?status=${status}` : ""}`),
   approve: (id: string, text?: string) => request<Approval>("POST", `/approvals/${id}/approve`, { text }),

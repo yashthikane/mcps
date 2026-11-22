@@ -5,8 +5,8 @@
 Donna (repo `mcps`) is a terminal prototype: `client.py` uses the Groq chat API, and `server.py` is a FastMCP stdio server with 17 tools (Notion ×6, Gmail ×6, Calendar ×2, weather, square, jokes). The goal is a full conversational system with a rich web UI, easy MCP connection, persistent memory, and parallel agents for decomposition, verification, and synthesis.
 
 **User constraints (binding):**
-- **Completely free.** No paid services, no cloud or hosting, no CI/CD.
-- **Runs on this laptop.** i5-1135G7, 7.7 GB RAM, integrated GPU, Windows 11. Node, Python 3.12 and Docker are installed (Docker is not needed).
+- **Completely free.** No paid services, no managed cloud services, no CI/CD.
+- **Runs on this laptop** (i5-1135G7, 7.7 GB RAM, integrated GPU, Windows 11; Node, Python 3.12 and Docker installed, Docker not needed) **or self-hosted on the owner's own Oracle Always Free VM** (Ampere A1, 2 OCPU / 12 GB, Ubuntu 24.04), for 24/7 scheduled tasks and channels. *(Updated 2026-11-22: was "no cloud or hosting".)* On the VM every service still binds to 127.0.0.1, and the UI is reached only privately over Tailscale; nothing is exposed publicly.
 - **LLM: Groq API only** (free tier). Chat needs internet; UI and history load offline.
 - **Frontend: React + Vite.** It must be rich and polished, with exact spacing and alignment, simple guided MCP connection, and loading optimized to the maximum.
 

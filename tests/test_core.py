@@ -19,6 +19,28 @@ def test_vault_roundtrip_short_and_chunked(memory_keyring):
     assert not memory_keyring.data
 
 
+def test_file_keyring_roundtrip(tmp_path):
+    """The Linux server's secrets file: values survive a new instance, delete works, the file is owner-only."""
+    import os
+
+    import keyring
+    import pytest
+    from keyring.errors import PasswordDeleteError
+
+    path = tmp_path / "cfg" / "secrets.json"
+    kr = vault.FileKeyring(path)
+    keyring.set_keyring(kr)  # the autouse memory_keyring fixture restores the previous backend afterwards
+    vault.set("k", "x" * 1234)  # chunked, like WinVault
+    assert vault.FileKeyring(path).get_password("donna", "k#count") == "3"
+    assert vault.get("k") == "x" * 1234
+    if os.name != "nt":
+        assert path.stat().st_mode & 0o777 == 0o600
+    vault.delete("k")
+    assert vault.get("k") is None and json.loads(path.read_text()) == {"donna": {}}
+    with pytest.raises(PasswordDeleteError):
+        kr.delete_password("donna", "missing")
+
+
 def test_vault_imports_env_once(monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "gsk_env")
     monkeypatch.setenv("INTERNAL_INTERGRATION_TOKEN", "ntn_env")

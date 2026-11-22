@@ -77,9 +77,20 @@ def running(port: int = PORT) -> bool:
         return False
 
 
+def chromium() -> str | None:
+    """The system Chromium on Linux servers: Puppeteer has no Chrome download for ARM Linux, so OpenWA uses
+    this one (PUPPETEER_EXECUTABLE_PATH). Windows keeps Puppeteer's own download."""
+    if os.name == "nt":
+        return None
+    return os.getenv("PUPPETEER_EXECUTABLE_PATH") or next(
+        (p for p in map(shutil.which, ("chromium", "chromium-browser", "google-chrome")) if p), None)
+
+
 def problems() -> list[str]:
     """What's missing on this computer, as instructions. Empty when OpenWA can be installed."""
     out = []
+    if os.name != "nt" and not chromium():
+        out.append("Install Chromium (sudo snap install chromium), then restart Donna.")
     node = shutil.which("node")
     if not node:
         out.append("Install Node.js 22 LTS or newer from https://nodejs.org, then restart Donna.")
@@ -94,16 +105,16 @@ def problems() -> list[str]:
             out.append(f"OpenWA needs Node.js {MIN_NODE[0]}.{MIN_NODE[1]} or newer (found {raw or 'unknown'}). "
                        "Update it from https://nodejs.org, then restart Donna.")
     if not installed() and not shutil.which("git"):
-        out.append("Install Git for Windows from https://git-scm.com, then restart Donna.")
+        out.append("Install Git from https://git-scm.com (Linux: sudo apt install git), then restart Donna.")
     return out
 
 
 # ------------------------------------------------------------------------------ install
-def _run(cmd: list[str], cwd, say: Log) -> None:
+def _run(cmd: list[str], cwd, say: Log, env: dict | None = None) -> None:
     say(f"$ {' '.join(cmd)}")
     exe = resolve_command(cmd[0])  # npm → npm.cmd on Windows
     try:
-        proc = subprocess.Popen([exe, *cmd[1:]], cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        proc = subprocess.Popen([exe, *cmd[1:]], cwd=str(cwd), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 stdin=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace",
                                 creationflags=_NO_WINDOW)
     except OSError as e:
@@ -135,8 +146,10 @@ def install(say: Log = print) -> None:
     # package already ships prebuilds/win32-x64.node (Node-API), which it loads first, so skip install
     # scripts and run only the ones OpenWA needs: puppeteer's postinstall downloads Chromium.
     _run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], DIR, say)
-    say("Downloading Chromium for WhatsApp Web…")
-    _run(["npm", "rebuild", *SCRIPTED, "--foreground-scripts"], DIR, say)
+    system_chromium = chromium()
+    say(f"Using {system_chromium} for WhatsApp Web…" if system_chromium else "Downloading Chromium for WhatsApp Web…")
+    _run(["npm", "rebuild", *SCRIPTED, "--foreground-scripts"], DIR, say,
+         env={**os.environ, "PUPPETEER_SKIP_DOWNLOAD": "1"} if system_chromium else None)
     _run(["node", "-e", "new (require('better-sqlite3'))(':memory:').close()"], DIR, say)  # the prebuilt loads
     # OpenWA's own postinstall patches whatsapp-web.js for current WhatsApp Web. Without it every send
     # reports "the engine returned no message" even when the message was delivered.
@@ -183,12 +196,14 @@ def _start(say: Log, timeout: float) -> None:
     env = {**os.environ, "API_MASTER_KEY": vault.secret(vault.OPENWA_KEY, 40),
            # NODE_OPTIONS treats backslashes as escapes: use forward slashes for the path.
            "NODE_OPTIONS": f'--require "{PRELOAD.as_posix()}"'}
+    if system_chromium := chromium():
+        env["PUPPETEER_EXECUTABLE_PATH"] = system_chromium
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     log_path = DATA_DIR / "openwa.log"
     logfile = open(log_path, "ab")  # noqa: SIM115 - handed to the child process
     say("Starting OpenWA…")
     proc = subprocess.Popen([node, "dist/main.js"], cwd=str(DIR), env=env, stdout=logfile, stderr=subprocess.STDOUT,
-                            stdin=subprocess.DEVNULL, close_fds=True,
+                            stdin=subprocess.DEVNULL, close_fds=True, start_new_session=os.name != "nt",
                             creationflags=_NO_WINDOW | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
     logfile.close()
     deadline = time.time() + timeout

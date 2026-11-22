@@ -32,7 +32,10 @@ from .store import Store
 log = logging.getLogger("donna")
 WEB_DIST = ROOT / "web" / "dist"
 # Browsers send Origin on cross-site requests; only pages served from this machine may call the API.
-ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
+# On the self-hosted server, DONNA_ALLOWED_HOSTS adds the private Tailscale name (e.g. donna.tailXXXX.ts.net)
+# that `tailscale serve` proxies to 127.0.0.1.
+ALLOWED_HOSTS = {"127.0.0.1", "localhost",
+                 *(h.strip().lower() for h in os.getenv("DONNA_ALLOWED_HOSTS", "").split(",") if h.strip())}
 
 
 def _setup_logging() -> None:

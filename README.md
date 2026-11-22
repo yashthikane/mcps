@@ -123,6 +123,28 @@ Details: `docs/ARCHITECTURE.md` §4. Messaging channels: §12.
 To stay within Groq's free tier (8K tokens/min), Donna only sends the tools that match your
 message, for example Gmail tools when you mention email, and falls back to all tools when nothing matches.
 
+## Self-hosting on a Linux server
+
+Donna can run 24/7 on your own free Ubuntu 24.04 VM (for example an Oracle Always Free Ampere A1),
+so scheduled tasks and WhatsApp/Telegram keep working when your laptop is off. Everything still listens on
+127.0.0.1; you open the UI privately from your own devices over [Tailscale](https://tailscale.com).
+
+1. Install Tailscale on the server (`curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`),
+   and enable **HTTPS Certificates** in the Tailscale admin console under DNS.
+2. On the server:
+   ```bash
+   git clone https://github.com/yashthikane/mcps.git ~/donna && ~/donna/scripts/linux/setup.sh
+   ```
+   It installs Python, Node 22, PostgreSQL 18, Redis, Chromium and the Claude Code CLI, builds everything,
+   and starts the `donna`, `donna-scheduler` and nightly `donna-backup` systemd services.
+3. Open `https://<server>.<tailnet>.ts.net` on any device signed in to your tailnet; on a phone, use
+   "Add to Home Screen". If you use the Claude Code provider, run `claude` on the server once to sign in.
+
+Secrets live in `~/.config/donna/secrets.json` (owner-only) instead of Windows Credential Manager.
+Backups go to `~/backups` (last 14 nights). Logs: `journalctl -u donna -f`. To update: `git pull` and run
+`scripts/linux/setup.sh` again. Don't run the laptop copy's WhatsApp, Telegram or scheduler at the same
+time, or both copies will answer messages and run tasks.
+
 ## Development
 
 ```powershell

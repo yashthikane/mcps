@@ -9,11 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Scheduled tasks (reminders, AI tasks) use a separate Node + TypeScript service in `scheduler/` (BullMQ on Redis). Their state lives in PostgreSQL. Design: `docs/donna_architecture_conversion_bullmq.md`, and `docs/ARCHITECTURE.md` §4.
 
 **Hard constraints** (`docs/ROADMAP.md`):
-- free and local only: every service is bound to 127.0.0.1, no cloud, no CI/CD;
+- free and self-hosted only: every service is bound to 127.0.0.1, no paid or managed cloud services, no CI/CD. It runs on the owner's Windows laptop or on the owner's own Oracle Always Free Ubuntu VM (ARM, `scripts/linux/setup.sh`, systemd). The VM is reached only privately over Tailscale (`tailscale serve` → 127.0.0.1:8765, allowed via `DONNA_ALLOWED_HOSTS`); never expose a port publicly, because the UI has no login;
 - Groq free tier only: 8K tokens/min, 30 req/min, 1K req/day per model;
-- Windows laptop with 8 GB RAM. There are four processes (FastAPI, the scheduler, Redis in WSL Ubuntu, and PostgreSQL 18 as a Windows service), plus OpenWA (Node + Chromium, ~300–500 MB) when WhatsApp is set up. Keep each one small: worker concurrency 1, small DB pools, no Docker.
+- Windows laptop with 8 GB RAM (the VM has 12 GB, but keep the same budget). There are four processes (FastAPI, the scheduler, Redis in WSL Ubuntu, and PostgreSQL 18 as a Windows service), plus OpenWA (Node + Chromium, ~300–500 MB) when WhatsApp is set up. Keep each one small: worker concurrency 1, small DB pools, no Docker.
 
-Quality checks run locally via `scripts/check.ps1`.
+Quality checks run locally via `scripts/check.ps1`. Server deployment: README "Self-hosting on a Linux server".
 
 ## Commands
 
@@ -25,6 +25,7 @@ scripts\scheduler.ps1                # start Redis if needed + the scheduler on 
 scripts\setup-whatsapp.ps1           # optional: python -m donna openwa-setup (clone + build OpenWA into external\openwa, key → vault)
 scripts\openwa.ps1                   # optional: python -m donna openwa-start (OpenWA on 127.0.0.1:2785, log data\openwa.log)
 scripts\check.ps1                    # pytest + tsc + vite build + scheduler build/tests
+scripts/linux/setup.sh               # on the Ubuntu VM: install/update everything, systemd services, tailscale serve
 venv\Scripts\python -m donna migrate # apply migrations/postgres/*.sql (also runs at FastAPI startup)
 cd scheduler; npm test               # scheduler unit tests (node:test via tsx)
 venv\Scripts\python -m pytest -q     # backend tests (tests/test_*.py)
@@ -137,6 +138,6 @@ Keep `requirements.txt` UTF-8. PowerShell's `pip freeze >` writes UTF-16.
 
 ## Environment
 
-Keys live in Windows Credential Manager, including `postgres_url`, `internal_api_token`, `openwa_api_key`, `openwa_webhook_secret` and `telegram_bot_token`. `DONNA_POSTGRES_URL` / `DONNA_INTERNAL_API_TOKEN` override them in tests. `.env` (gitignored; template in `.env.example`) is only read to import `GROQ_API_KEY` / `INTERNAL_INTERGRATION_TOKEN` on first start. Runtime data (`data/`: DB, logs) is gitignored.
+Keys live in Windows Credential Manager (on Linux: the owner-only file `~/.config/donna/secrets.json`, `vault.FileKeyring`, override with `DONNA_SECRETS_FILE`), including `postgres_url`, `internal_api_token`, `openwa_api_key`, `openwa_webhook_secret` and `telegram_bot_token`. `DONNA_POSTGRES_URL` / `DONNA_INTERNAL_API_TOKEN` override them in tests. `.env` (gitignored; template in `.env.example`) is only read to import `GROQ_API_KEY` / `INTERNAL_INTERGRATION_TOKEN` on first start. Runtime data (`data/`: DB, logs) is gitignored.
 
 PostgreSQL tests in `tests/test_tasks.py` run only when `DONNA_TEST_POSTGRES_URL` is set. They create and drop a throwaway schema.

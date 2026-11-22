@@ -299,7 +299,13 @@ export default function App() {
 
       <main className="mainpanel">
         <TopBar view={view} title={view === "chat" ? active?.title ?? null : null} model={claude ? "Claude Code" : (settings?.model ?? "").split("/").pop() ?? ""}
-          tone={status[0]} rail={rail} messagingOff={settings?.messaging_enabled === false}
+          tone={status[0]} rail={rail} messaging={settings ? settings.messaging_enabled : null}
+          onMessaging={async (on) => {
+            try {
+              setSettings(await api.saveSettings({ messaging_enabled: on }));
+              toast(on ? "Donna is on: she answers on WhatsApp and Telegram again." : "Donna is off: nothing is answered or sent. Messages are still saved.");
+            } catch (e) { toast((e as Error).message, "err"); }
+          }}
           statusPill={<StatusPill data={avail} onClick={() => { if (narrow()) setDrawer("side"); setStatusOpen(true); }} />}
           onMenu={() => setDrawer("side")} onExpand={toggleRail} onModel={() => go("settings")} onPalette={() => setPalette(true)} />
         {offline ? (
@@ -374,8 +380,9 @@ export default function App() {
 }
 
 /** Slim bar at the top of the main panel: the model in use (new chat) or the chat title, and the command palette. */
-function TopBar({ view, title, model, tone, rail, messagingOff, statusPill, onMenu, onExpand, onModel, onPalette }: {
-  view: View; title: string | null; model: string; tone: string; rail: boolean; messagingOff: boolean; statusPill?: React.ReactNode;
+function TopBar({ view, title, model, tone, rail, messaging, onMessaging, statusPill, onMenu, onExpand, onModel, onPalette }: {
+  view: View; title: string | null; model: string; tone: string; rail: boolean; statusPill?: React.ReactNode;
+  messaging: boolean | null; onMessaging: (on: boolean) => void;
   onMenu: () => void; onExpand: () => void; onModel: () => void; onPalette: () => void;
 }) {
   return (
@@ -387,7 +394,13 @@ function TopBar({ view, title, model, tone, rail, messagingOff, statusPill, onMe
         : <button className="tb-pill" onClick={onModel} title="Model · change it in Settings"><span className={`dot ${tone}`} />{model || "Model"}<Icon name="chevdown" size={13} /></button>)}
       <span className="tb-sp" />
       {statusPill}
-      {messagingOff && <span className="pill err" title="Settings → Messaging">Messaging off</span>}
+      {messaging !== null && (  // the global switch for WhatsApp/Telegram replies (settings.messaging_enabled)
+        <button className={`tb-pill msg-switch ${messaging ? "on" : "off"}`} role="switch" aria-checked={messaging}
+          onClick={() => onMessaging(!messaging)}
+          title={messaging ? "Donna answers on WhatsApp and Telegram. Click to turn her off." : "Donna is off: nothing is answered or sent. Click to turn her on."}>
+          <span className="msg-knob" aria-hidden /><span className="lb">Donna {messaging ? "on" : "off"}</span>
+        </button>
+      )}
       <button className="tb-pill" onClick={onPalette} aria-label="Open command palette"><Icon name="command" size={14} /><span className="lb">Commands</span><kbd>Ctrl K</kbd></button>
     </header>
   );

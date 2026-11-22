@@ -4,6 +4,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PY="$ROOT/venv/bin/python"
+cd "$ROOT"  # so `from donna import vault` resolves
 DEST="$HOME/backups/donna-$(date +%F)"
 umask 077
 mkdir -p "$DEST"

@@ -4,6 +4,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PY="$ROOT/venv/bin/python"
+cd "$ROOT"  # so `from donna import vault` resolves
 
 POSTGRES_URL="$("$PY" -c "from donna import vault; print(vault.postgres_url() or '')")"
 [ -n "$POSTGRES_URL" ] || { echo "PostgreSQL isn't set up for Donna. Run scripts/linux/setup.sh." >&2; exit 1; }

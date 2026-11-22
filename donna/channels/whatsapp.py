@@ -59,7 +59,7 @@ class WhatsAppChannel(BaseChannel):
     async def _req(self, method: str, path: str, **kwargs):
         key = vault.get(vault.OPENWA_KEY)
         if not key:
-            raise ChannelError("OpenWA isn't set up yet. Run scripts\\setup-whatsapp.ps1 once.", 503)
+            raise ChannelError("WhatsApp isn't set up yet. Open Connections → WhatsApp and click Connect.", 503)
         try:
             async with httpx.AsyncClient(base_url=self._base(), headers={"X-API-Key": key}, timeout=30,
                                          transport=self._transport) as c:

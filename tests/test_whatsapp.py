@@ -162,7 +162,7 @@ async def test_send_uses_the_chat_id_and_an_idempotency_key(secret):
 
 async def test_missing_key_and_unreachable_gateway_are_readable_errors():
     ch, _ = channel()
-    with pytest.raises(Exception, match="setup-whatsapp"):
+    with pytest.raises(Exception, match="click Connect"):
         await ch.connect()
     vault.set(vault.OPENWA_KEY, "key-1234567890")
 

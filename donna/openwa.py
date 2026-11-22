@@ -23,6 +23,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 
@@ -78,19 +79,29 @@ def running(port: int = PORT) -> bool:
 
 
 def chromium() -> str | None:
-    """The system Chromium on Linux servers: Puppeteer has no Chrome download for ARM Linux, so OpenWA uses
-    this one (PUPPETEER_EXECUTABLE_PATH). Windows keeps Puppeteer's own download."""
+    """A Chromium for Linux servers: Puppeteer has no Chrome download for ARM Linux, so OpenWA uses this one
+    (PUPPETEER_EXECUTABLE_PATH). Windows keeps Puppeteer's own download.
+
+    Snap packages (Ubuntu's chromium) can't start from a systemd service ("cannot track application process"),
+    so they're skipped; scripts/linux/setup.sh installs Playwright's Chromium build instead."""
     if os.name == "nt":
         return None
-    return os.getenv("PUPPETEER_EXECUTABLE_PATH") or next(
-        (p for p in map(shutil.which, ("chromium", "chromium-browser", "google-chrome")) if p), None)
+    if env := os.getenv("PUPPETEER_EXECUTABLE_PATH"):
+        return env
+    for name in ("chromium", "chromium-browser", "google-chrome"):
+        found = shutil.which(name)
+        if found and not os.path.realpath(found).startswith(("/snap/", "/usr/bin/snap")):
+            return found
+    builds = sorted(Path.home().glob(".cache/ms-playwright/chromium-*/chrome-linux*/chrome"),
+                    key=lambda p: int(re.sub(r"\D", "", p.parts[-3]) or 0))
+    return str(builds[-1]) if builds else None
 
 
 def problems() -> list[str]:
     """What's missing on this computer, as instructions. Empty when OpenWA can be installed."""
     out = []
     if os.name != "nt" and not chromium():
-        out.append("Install Chromium (sudo snap install chromium), then restart Donna.")
+        out.append("Install Chromium for WhatsApp: run scripts/linux/setup.sh (or: sudo npx -y playwright install-deps chromium && npx -y playwright install chromium), then restart Donna.")
     node = shutil.which("node")
     if not node:
         out.append("Install Node.js 22 LTS or newer from https://nodejs.org, then restart Donna.")

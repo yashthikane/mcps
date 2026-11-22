@@ -35,7 +35,11 @@ if ! dpkg -s postgresql-18 >/dev/null 2>&1; then
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-18
 fi
 
-command -v chromium >/dev/null || [ -x /snap/bin/chromium ] || { step "     Chromium (snap, for WhatsApp)"; sudo snap install chromium; }
+# Chromium for WhatsApp (OpenWA). Not the snap: snaps can't start from a systemd service. Playwright's build supports ARM.
+if ! ls "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux*/chrome >/dev/null 2>&1; then
+  step "     Chromium (Playwright build, for WhatsApp)"
+  (cd /tmp && sudo npx -y playwright install-deps chromium >/dev/null && npx -y playwright install chromium >/dev/null)
+fi
 
 if ! command -v claude >/dev/null && [ ! -x "$HOME/.local/bin/claude" ]; then
   step "     Claude Code CLI"

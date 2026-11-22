@@ -35,3 +35,6 @@ scheduler/dist/
 
 # OpenWA (WhatsApp gateway), installed by scripts/setup-whatsapp.ps1
 external/
+
+# TypeScript build cache (changes on every build)
+*.tsbuildinfo

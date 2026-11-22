@@ -90,7 +90,7 @@ def chromium() -> str | None:
         return env
     for name in ("chromium", "chromium-browser", "google-chrome"):
         found = shutil.which(name)
-        if found and not os.path.realpath(found).startswith(("/snap/", "/usr/bin/snap")):
+        if found and not found.startswith("/snap/") and "snap" not in os.path.realpath(found):
             return found
     builds = sorted(Path.home().glob(".cache/ms-playwright/chromium-*/chrome-linux*/chrome"),
                     key=lambda p: int(re.sub(r"\D", "", p.parts[-3]) or 0))

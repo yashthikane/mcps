@@ -133,7 +133,8 @@ so scheduled tasks and WhatsApp/Telegram keep working when your laptop is off. E
    and enable **HTTPS Certificates** in the Tailscale admin console under DNS.
 2. On the server:
    ```bash
-   git clone https://github.com/yashthikane/mcps.git ~/donna && ~/donna/scripts/linux/setup.sh
+   sudo install -d -o "$USER" -g "$USER" /opt/donna
+   git clone https://github.com/yashthikane/mcps.git /opt/donna && /opt/donna/scripts/linux/setup.sh
    ```
    It installs Python, Node 22, PostgreSQL 18, Redis, Chromium and the Claude Code CLI, builds everything,
    and starts the `donna`, `donna-scheduler` and nightly `donna-backup` systemd services.
@@ -141,8 +142,8 @@ so scheduled tasks and WhatsApp/Telegram keep working when your laptop is off. E
    "Add to Home Screen". If you use the Claude Code provider, run `claude` on the server once to sign in.
 
 Secrets live in `~/.config/donna/secrets.json` (owner-only) instead of Windows Credential Manager.
-Backups go to `~/backups` (last 14 nights). Logs: `journalctl -u donna -f`. To update: `git pull` and run
-`scripts/linux/setup.sh` again. Don't run the laptop copy's WhatsApp, Telegram or scheduler at the same
+Backups go to `~/backups` (last 14 nights). Logs: `journalctl -u donna -f`. To update: `cd /opt/donna && git pull` and run
+`scripts/linux/setup.sh` again (also after moving the folder: it rewrites the services' paths). Don't run the laptop copy's WhatsApp, Telegram or scheduler at the same
 time, or both copies will answer messages and run tasks.
 
 ## Development

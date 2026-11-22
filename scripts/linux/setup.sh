@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Set up (or update) Donna on an Ubuntu 24.04 server, e.g. the Oracle Always Free A1 VM. Safe to run again.
 #
-#   git clone https://github.com/yashthikane/mcps.git ~/donna && ~/donna/scripts/linux/setup.sh
+#   sudo install -d -o "$USER" -g "$USER" /opt/donna
+#   git clone https://github.com/yashthikane/mcps.git /opt/donna && /opt/donna/scripts/linux/setup.sh
 #
 # Installs: Python venv, Node 22, PostgreSQL 18 (PGDG), Redis, Chromium (for WhatsApp), the Claude Code CLI;
 # builds the web UI and the scheduler; creates the database (URL -> the secrets file); installs systemd

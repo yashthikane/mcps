@@ -192,6 +192,27 @@ async def test_owner_sets_status_from_chat(mgr, store):
     assert "couldn't read the time" in FakeChannel.sent[-1].text
 
 
+async def test_owner_turns_donna_off_and_on_from_the_phone(mgr, store, monkeypatch):
+    me = contact(store, sender="555", name="Yashraj")
+    contacts.set_owner(store, me["id"])
+    contact(store)  # Rahul
+    calls = count_llm_calls(monkeypatch)
+    await deliver(mgr, incoming("Donna off", sender="555", name="Yashraj"))
+    assert store.settings()["messaging_enabled"] is False and FakeChannel.sent[-1].text.startswith("Donna is off")
+    n = len(FakeChannel.sent)
+    await deliver(mgr, incoming("@donna are you there?"))                     # a contact while off: silence
+    await deliver(mgr, incoming("what's on my calendar?", sender="555", name="Yashraj"))  # the owner too
+    assert len(FakeChannel.sent) == n and calls == []
+    await deliver(mgr, incoming("@donna on", sender="555", name="Yashraj"))  # still heard while off
+    assert store.settings()["messaging_enabled"] is True and FakeChannel.sent[-1].text.startswith("Donna is on again")
+
+
+async def test_contacts_cannot_switch_donna_off(mgr, store):
+    contact(store)
+    await deliver(mgr, incoming("donna off"))
+    assert store.settings()["messaging_enabled"] is True
+
+
 async def test_owner_request_commands(mgr, store):
     me = contact(store, sender="555", name="Yashraj")
     contacts.set_owner(store, me["id"])

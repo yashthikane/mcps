@@ -38,6 +38,8 @@ log = logging.getLogger("donna.channels")
 HEALTH_SECONDS = 60
 APPROVAL_CMD = re.compile(r"^\s*(approve|reject)\b\s*([A-Za-z0-9]{4})?\s*[.!]?\s*$", re.I)
 # Requests (R12) answered from the owner's phone: "approve R12" books a meeting request, "decline R12" turns it down.
+# "donna off" / "donna on" (or "@donna off") from the owner's own number: the messaging switch, from the phone.
+ONOFF_CMD = re.compile(r"^\s*@?donna\s+(on|off)\s*[.!]?\s*$", re.I)
 REQUEST_CMD = re.compile(r"^\s*(approve|book|accept|decline|reject)\s+(R\d+)\s*[.!]?\s*$", re.I)
 DELIVERY_RANK = {"queued": 0, "sent": 1, "delivered": 2, "read": 3, "failed": 1}
 
@@ -323,6 +325,17 @@ class ChannelManager:
         def done(status: str, result: str, in_status: str) -> None:
             self._finish(event_id, status, result, inbound, in_status)
 
+        if contact["is_owner"] and (m := ONOFF_CMD.match(msg.text or "")):
+            # Checked before the switch itself, so the owner can turn Donna back on from the phone.
+            on = m.group(1).lower() == "on"
+            if not on:  # say it while sending still works
+                await self.send_text(conv, "Donna is off: I won't answer or send anything on WhatsApp or Telegram. "
+                                           "Messages are still saved. Send \"donna on\" to turn me back on.", author="donna")
+            self.store.set_settings(messaging_enabled=on)
+            audit.record(self.store, "owner:chat", "settings.switches", "", messaging_enabled=on)
+            if on:
+                await self.send_text(conv, "Donna is on again: I'm answering on WhatsApp and Telegram.", author="donna")
+            return done("done", f"Messaging switched {'on' if on else 'off'} from your phone.", "answered")
         if not settings.get("messaging_enabled", True):
             return done("ignored", "Messaging is switched off (kill switch).", "ignored")
         if channel.get("paused"):

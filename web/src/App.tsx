@@ -45,6 +45,8 @@ export default function App() {
   /* ------------------------------------------------------------------ loading */
   const refreshAvailability = useCallback(async () => {
     try { setAvail(await api.availability()); } catch { /* the card shows "Loading…" until the API answers */ }
+    // "donna off" sent from the phone flips the same switch: keep the top-bar button in step
+    api.settings().then((s) => setSettings((cur) => (cur && cur.messaging_enabled !== s.messaging_enabled ? { ...cur, messaging_enabled: s.messaging_enabled } : cur))).catch(() => {});
   }, []);
   useEffect(() => {  // a status set from the phone or the calendar shows up within a minute
     refreshAvailability();

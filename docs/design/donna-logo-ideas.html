@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · Logo exploration, round 1</title>
+<style>
+@font-face{font-family:"Geist Pixel";src:url("../../web/public/fonts/GeistPixel-Circle.woff2") format("woff2"),url("https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-pixel/GeistPixel-Circle.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Geist Pixel Square";src:url("https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-pixel/GeistPixel-Square.woff2") format("woff2");font-display:swap}
+:root{
+  --bg:#0E0E20;--bg-deep:#090918;--surface:#1B1B39;--surface-2:#222247;
+  --fg:#F6F3FF;--fg-2:#D8D5E8;--muted:#AAA8C9;--subtle:#74718E;
+  --violet:#8B5CF6;--violet-b:#A78BFA;--cyan:#67E8F9;--amber:#FBBF24;
+  --border:rgba(167,139,250,.22);--border-h:rgba(167,139,250,.45);--border-s:rgba(255,255,255,.06);
+  --pixel:"Geist Pixel","Geist Mono",ui-monospace,monospace;
+  --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --ui:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--fg);font:14px/1.55 var(--ui);-webkit-font-smoothing:antialiased;
+  background:radial-gradient(55% 40% at 0% 0%,rgba(139,92,246,.12),transparent 60%),radial-gradient(45% 40% at 100% 100%,rgba(103,232,249,.06),transparent 60%),var(--bg);
+  background-attachment:fixed;padding-bottom:110px}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(167,139,250,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(167,139,250,.03) 1px,transparent 1px);background-size:24px 24px}
+a{color:var(--violet-b)}
+.wrap{max-width:1320px;margin:0 auto;padding:48px 28px 0;position:relative}
+.eyebrow{font:500 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.eyebrow b{color:var(--violet-b);font-weight:500}
+h1{font:400 56px/1 var(--pixel);letter-spacing:.02em;margin:14px 0 14px}
+h1 span{color:var(--violet-b)}
+.lede{max-width:760px;color:var(--fg-2);font-size:15px;margin:0}
+.rules{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 0}
+.chip{font:500 11px/1 var(--mono);color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:7px 11px;background:rgba(255,255,255,.02)}
+.chip b{color:var(--cyan);font-weight:500}
+
+details.insp{margin:28px 0 8px;border:1px solid var(--border);border-radius:16px;background:rgba(27,27,57,.55);padding:0 20px}
+details.insp summary{cursor:pointer;padding:16px 0;font:500 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--fg-2);list-style:none}
+details.insp summary::before{content:"▸ ";color:var(--violet-b)}
+details.insp[open] summary::before{content:"▾ "}
+.insp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:0 0 20px}
+.insp-item{border:1px solid var(--border-s);border-radius:12px;padding:14px;background:rgba(9,9,24,.5)}
+.insp-item h4{margin:0 0 6px;font-size:13px}
+.insp-item p{margin:0 0 8px;color:var(--muted);font-size:12.5px}
+.insp-item .to{font:500 10.5px/1.3 var(--mono);color:var(--cyan)}
+
+.toolbar{display:flex;align-items:center;gap:10px;margin:26px 0 16px;flex-wrap:wrap}
+.toolbar .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--muted);font:500 11.5px/1 var(--mono);padding:9px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:rgba(139,92,246,.22);color:var(--fg)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:18px}
+.card{position:relative;border:1px solid var(--border);border-radius:20px;background:linear-gradient(180deg,rgba(34,34,71,.75),rgba(27,27,57,.75));overflow:hidden;transition:border-color .2s,box-shadow .2s,transform .2s}
+.card:hover{border-color:var(--border-h);transform:translateY(-2px)}
+.card.picked{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 40px rgba(103,232,249,.18)}
+.card.short:not(.picked){border-color:var(--amber)}
+.stage{height:250px;display:grid;place-items:center;position:relative;background:radial-gradient(60% 60% at 50% 45%,rgba(139,92,246,.16),transparent 70%),var(--bg-deep);border-bottom:1px solid var(--border-s)}
+.stage.light{background:#F3F0FF}
+.stage .mk{width:150px;height:150px}
+.stage .mk.wide{width:300px;height:110px}
+.stage .num{position:absolute;left:16px;top:14px;font:400 22px/1 var(--pixel);color:var(--subtle)}
+.stage.light .num{color:#9C97C2}
+.stage .flags{position:absolute;right:12px;top:12px;display:flex;gap:6px}
+.flag{font:500 10px/1 var(--mono);padding:5px 8px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:rgba(9,9,24,.6)}
+.flag.good{color:#86EFAC;border-color:rgba(134,239,172,.35)}
+.flag.ok{color:var(--amber);border-color:rgba(251,191,36,.35)}
+.flag.weak{color:#FCA5A5;border-color:rgba(252,165,165,.35)}
+.body{padding:16px 18px 18px}
+.title{display:flex;align-items:baseline;gap:10px}
+.title h3{margin:0;font:400 22px/1.1 var(--pixel);letter-spacing:.02em}
+.title .kind{font:500 10.5px/1 var(--mono);color:var(--subtle);text-transform:uppercase;letter-spacing:.1em}
+.idea{margin:8px 0 4px;color:var(--fg-2);font-size:13.5px}
+.why{margin:0;color:var(--muted);font-size:12.5px}
+.why b{color:var(--fg-2);font-weight:600}
+
+.previews{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:8px;margin:16px 0 14px}
+.pv{border:1px solid var(--border-s);border-radius:10px;background:rgba(9,9,24,.55);height:62px;display:grid;place-items:center;position:relative}
+.pv small{position:absolute;bottom:3px;left:0;right:0;text-align:center;font:500 8.5px/1 var(--mono);color:var(--subtle);letter-spacing:.06em;text-transform:uppercase}
+.pv .in{margin-top:-10px;display:flex;align-items:center;gap:7px}
+.navlock .m{width:18px;height:18px;display:block}
+.navlock .w{font:400 17px/1 var(--pixel);letter-spacing:.06em;color:var(--fg)}
+.ava{width:24px;height:24px;border-radius:7px;border:1px solid var(--border);background:var(--surface);display:grid;place-items:center}
+.ava .m{width:12px;height:12px;display:block}
+.tile{width:36px;height:36px;border-radius:10px;background:linear-gradient(145deg,#25204F,#0E0E20);border:1px solid rgba(167,139,250,.3);display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.tile .m{width:24px;height:24px;display:block}
+.pv.lt{background:#F3F0FF;border-color:#DCD6F5}
+.pv.lt small{color:#8A85B0}
+.pv.lt .m{width:28px;height:28px;display:block}
+.fav{display:flex;align-items:center;gap:5px;background:#2A2A52;border-radius:6px 6px 0 0;padding:4px 7px;font:500 9px/1 var(--ui);color:var(--fg-2)}
+.fav .m{width:14px;height:14px;display:block}
+
+.actions{display:flex;gap:8px}
+.btn{flex:1;height:36px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:500 12.5px/1 var(--ui);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{border-color:var(--border-h)}
+.btn.star[aria-pressed=true]{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,.08)}
+.btn.pick{background:linear-gradient(135deg,#7A4BEB,#5F52F0);border-color:transparent}
+.btn.pick[aria-pressed=true]{background:linear-gradient(135deg,#0891B2,#22D3EE);color:#04121A}
+
+.bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(980px,calc(100% - 32px));border:1px solid var(--border-h);border-radius:16px;background:rgba(14,14,32,.92);backdrop-filter:blur(14px);padding:12px 14px 12px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);z-index:10}
+.bar .m{width:30px;height:30px;flex:none}
+.bar .txt{flex:1;font-size:13px;color:var(--fg-2)}
+.bar .txt b{font-family:var(--pixel);font-weight:400;font-size:16px;color:var(--fg)}
+.bar .txt .s{font:500 11px/1.4 var(--mono);color:var(--amber)}
+.bar .btn{flex:none;padding:0 16px}
+
+.blink{animation:blink 1.05s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.gl-c,.gl-p{transition:transform .15s}
+.card:hover .gl-c{animation:jx 0.9s steps(2) infinite}
+.card:hover .gl-p{animation:jx 0.9s steps(2) infinite reverse}
+@keyframes jx{0%{transform:translate(0,0)}25%{transform:translate(-.5px,.3px)}50%{transform:translate(.6px,-.2px)}75%{transform:translate(-.2px,0)}}
+.eye-lid{animation:lid 4.2s infinite;transform-origin:50% 50%;transform-box:fill-box}
+@keyframes lid{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.12)}}
+@media (prefers-reduced-motion:reduce){.blink,.card:hover .gl-c,.card:hover .gl-p,.eye-lid{animation:none}}
+footer{margin:40px 0 0;color:var(--subtle);font:500 11px/1.6 var(--mono)}
+@media (max-width:520px){h1{font-size:38px}.grid{grid-template-columns:1fr}.previews{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow"><b>■</b> Donna · brand · round 1 of n</div>
+  <h1>Logo <span>ideas</span></h1>
+  <p class="lede">15 pixel-built directions for Donna, a personal AI assistant. Every mark is drawn on a real pixel grid in the Neon Dusk palette. Each card also shows the mark where it will actually live: the 18px nav lockup, the 12px chat avatar, an app tile, a light background and a browser tab. Star the ones you like, then <b>Pick</b> one.</p>
+  <div class="rules">
+    <span class="chip">grid: <b>5–16 px</b></span>
+    <span class="chip">palette: <b>violet #8B5CF6 / #A78BFA · cyan #67E8F9</b></span>
+    <span class="chip">type: <b>Geist Pixel</b></span>
+    <span class="chip">must survive: <b>12px avatar</b></span>
+    <span class="chip">current mark: <b>5×5 hollow D</b> (icons.tsx PixelD)</span>
+  </div>
+
+  <details class="insp">
+    <summary>Research and inspiration (what each source fed into)</summary>
+    <div class="insp-grid">
+      <div class="insp-item"><h4>Vercel: Geist Pixel (Feb 2026)</h4><p>A bitmap face with five styles (Square, Grid, Circle, Triangle, Line), built as an extension of a type system rather than a novelty font.</p><div class="to">→ #03 Spark uses Circle-style dots; the wordmarks use Geist Pixel.</div><p><a href="https://vercel.com/blog/introducing-geist-pixel" target="_blank" rel="noopener">vercel.com/blog</a></p></div>
+      <div class="insp-item"><h4>Mistral AI's pixel "M"</h4><p>Cited as the clearest AI brand using a pixelated, striped mark that nods to early computing, in contrast to OpenAI's minimalism and Gemini's spark.</p><div class="to">→ #10 CRT (scanline stripes), #03 Spark (an AI spark, but pixel-built).</div><p><a href="https://www.ebaqdesign.com/blog/ai-company-branding" target="_blank" rel="noopener">ebaqdesign.com</a></p></div>
+      <div class="insp-item"><h4>Pixel and Y2K logo comeback</h4><p>Several 2026 trend write-ups say pixel logos are back. They read as gaming, technology and the 90s, and they stand out in crowded digital spaces.</p><div class="to">→ #05 Marquee, #09 Extrude, #13 Glitch.</div><p><a href="https://www.brandcrowd.com/blog/logo-design-trend-the-retro-pixel-logos" target="_blank" rel="noopener">brandcrowd.com</a> · <a href="https://dubaimonsters.com/pixel-art-y2k-inspired-logos-nostalgic-vibes-in-2026-branding/" target="_blank" rel="noopener">dubaimonsters.com</a> · <a href="https://dev.to/pixel_mosaic/top-logo-design-trends-in-2026-69d" target="_blank" rel="noopener">dev.to</a></p></div>
+      <div class="insp-item"><h4>Adaptive identity systems</h4><p>Inkbot Design's view of 2026: logos become systems with responsive variants and pixel-sharp precision at small sizes, and they can move.</p><div class="to">→ Every card is tested at 12/14/18/24/28px; several marks animate (cursor, orb, voice, eye).</div><p><a href="https://inkbotdesign.com/logo-trends/" target="_blank" rel="noopener">inkbotdesign.com</a></p></div>
+      <div class="insp-item"><h4>Dithering on the web (Codrops, CodePen, Awwwards)</h4><p>Bayer-matrix ordered dithering is back as a deliberate texture, for example the 4×4 Bayer pixel transitions in Codrops portfolios and the Awwwards "Pixel Effect" element.</p><div class="to">→ #08 Dither Orb is a real 4×4 Bayer dither, drawn live.</div><p><a href="https://tympanus.net/codrops/?p=106855" target="_blank" rel="noopener">codrops</a> · <a href="https://blog.codepen.io/2023/05/08/chris-corner-dithering/" target="_blank" rel="noopener">codepen</a> · <a href="https://www.awwwards.com/inspiration/pixel-effect" target="_blank" rel="noopener">awwwards</a></p></div>
+      <div class="insp-item"><h4>Dribbble pixel lettermarks</h4><p>Pixel letter logos by Pixasquare and the "Eight-Bit Inspiration" collection: single-letter marks with one accent pixel and a strong silhouette.</p><div class="to">→ #01 Keystone D, #14 dn ligature.</div><p><a href="https://dribbble.com/pixasquare/shots" target="_blank" rel="noopener">pixasquare</a> · <a href="https://dribbble.com/stevepolacek/collections/1713884-Eight-Bit-Inspiration" target="_blank" rel="noopener">8-bit collection</a></p></div>
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <span class="eyebrow">Stage</span>
+    <div class="seg" role="group" aria-label="Stage background">
+      <button aria-pressed="true" data-bg="dark">Dark</button><button aria-pressed="false" data-bg="light">Light</button>
+    </div>
+    <span class="eyebrow" style="margin-left:10px">Show</span>
+    <div class="seg" role="group" aria-label="Filter">
+      <button aria-pressed="true" data-f="all">All 15</button><button aria-pressed="false" data-f="star">Starred</button>
+    </div>
+    <span class="sp"></span>
+    <span class="eyebrow">Hover a card to animate glitch · reduced motion is respected</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <footer>docs/design/donna-logo-ideas.html · round 1 · all marks are original, generated from the grids in this file</footer>
+</div>
+
+<div class="bar" id="bar">
+  <div class="m" id="barMark"></div>
+  <div class="txt" id="barTxt">Nothing picked yet. Star a few, then press <b style="font-size:13px">Pick</b>.</div>
+  <button class="btn" id="copy">Copy choice</button>
+</div>
+
+<script>
+const PAL={v:'#A78BFA',V:'#8B5CF6',d:'#4C3FB8',D:'#2E2670',c:'#67E8F9',C:'#22D3EE',w:'#F6F3FF',k:'#67E8F9',m:'#26264C',p:'#F472B6'};
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function cells(rows,shape='sq',map={}){
+  let s='';
+  rows.forEach((r,y)=>[...r].forEach((ch,x)=>{
+    if(ch==='.')return;
+    const f=map[ch]||PAL[ch], c=ch==='k'?' class="blink"':'';
+    if(shape==='dot')s+=`<circle cx="${x+.5}" cy="${y+.5}" r=".44" fill="${f}"${c}/>`;
+    else if(shape==='rnd')s+=`<rect x="${x+.05}" y="${y+.05}" width=".9" height=".9" rx=".24" fill="${f}"${c}/>`;
+    else s+=`<rect x="${x}" y="${y}" width="1.03" height="1.03" fill="${f}"${c}/>`;
+  }));
+  return s;
+}
+function svg(w,h,body,{pad=.6,smooth=false}={}){
+  return `<svg viewBox="${-pad} ${-pad} ${w+2*pad} ${h+2*pad}" width="100%" height="100%" shape-rendering="${smooth?'geometricPrecision':'crispEdges'}" aria-hidden="true">${body}</svg>`;
+}
+const G=(rows,shape,opt)=>svg(rows[0].length,rows.length,cells(rows,shape),opt);
+const lerp=(a,b,t)=>{const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const A=p(a),B=p(b);return'#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('')};
+
+/* ---------- shared grids ---------- */
+const KEY=["vvvvv..","vv..vv.","vv...vv","vv.c.vv","vv...vv","vv..vv.","vvvvv.."];
+
+/* ---------- dot-matrix glyphs (5x7) ---------- */
+const GL={D:["11110","10001","10001","10001","10001","10001","11110"],O:["01110","10001","10001","10001","10001","10001","01110"],N:["10001","11001","10101","10011","10001","10001","10001"],A:["01110","10001","10001","11111","10001","10001","10001"]};
+function matrix(word,{gap=1}={}){
+  const W=word.length*5+(word.length-1)*gap;let s='';
+  [...word].forEach((L,i)=>{const ox=i*(5+gap);GL[L].forEach((r,y)=>[...r].forEach((b,x)=>{
+    const col=b==='1'?(i===0?PAL.c:PAL.v):PAL.m;
+    s+=`<circle cx="${ox+x+.5}" cy="${y+.5}" r=".4" fill="${col}"/>`;}));
+    if(i<word.length-1)for(let y=0;y<7;y++)for(let g=0;g<gap;g++)s+=`<circle cx="${ox+5+g+.5}" cy="${y+.5}" r=".4" fill="${PAL.m}"/>`;
+  });
+  return svg(W,7,s,{pad:.8,smooth:true});
+}
+
+/* ---------- Bayer dither orb ---------- */
+const BAYER=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+function orb(t=0){
+  const N=16,R=7.7,cx=7.5,cy=7.5,cols=['#2A2366','#5B4BD6','#8B5CF6','#A78BFA','#67E8F9','#E6FCFF'];
+  let lx=-.55+.35*Math.cos(t),ly=-.6+.3*Math.sin(t),lz=.62;const n=Math.hypot(lx,ly,lz);lx/=n;ly/=n;lz/=n;
+  let s='';
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const dx=(x-cx)/R,dy=(y-cy)/R,d2=dx*dx+dy*dy;if(d2>1)continue;
+    const nz=Math.sqrt(1-d2);let v=Math.max(0,dx*lx+dy*ly+nz*lz);v=Math.pow(v,1.25);
+    const q=v*(cols.length-1),b=Math.floor(q),fr=q-b,th=(BAYER[y%4][x%4]+.5)/16;
+    const i=Math.min(cols.length-1,b+(fr>th?1:0));
+    s+=`<rect x="${x}" y="${y}" width="1.03" height="1.03" fill="${cols[i]}"/>`;
+  }
+  return svg(N,N,s,{pad:.5});
+}
+
+/* ---------- logos ---------- */
+const LOGOS=[
+ {name:'Keystone D',kind:'lettermark',small:'good',
+  idea:'The current hollow D, rebuilt on a 7×7 grid with a two-pixel stem and one cyan "keystone" pixel at its centre.',
+  why:'<b>Evolution, not revolution.</b> It keeps the recognition you already have and fixes the 5×5 version\'s thin, spidery look. The cyan pixel is Donna: the one thing at the centre that holds everything together.',
+  mark:()=>G(KEY)},
+ {name:'Bubble D',kind:'lettermark + chat',small:'good',
+  idea:'The D\'s bowl is a speech bubble, with a tail at the bottom left and three typing dots inside.',
+  why:'<b>Says "assistant you talk to"</b> at a glance, which suits chat, WhatsApp and Telegram. The typing dots can animate while Donna is thinking.',
+  mark:()=>G(["vvvvvvv..","v......v.","v.......v","v.c.c.c.v","v.......v","v......v.","vvvvvvv..","vv.......","v........"])},
+ {name:'Spark',kind:'symbol',small:'good',
+  idea:'A four-point AI sparkle made of round dots (Geist Pixel Circle style), with a small cyan twin.',
+  why:'<b>Speaks the "AI" visual language</b> (sparkles) without copying Gemini\'s smooth star, because the dots make it unmistakably pixel. It pairs with the Circle font already in the app.',
+  mark:()=>G(["....v..c.","....v.ccc","...vVv.c.","..vVVVv..","vvVVwVVvv","..vVVVv..","...vVv...","....v....","....v...."],'dot')},
+ {name:'Prompt',kind:'lettermark · animated',small:'good',
+  idea:'A hollow D with a blinking terminal cursor inside.',
+  why:'<b>Donna is always ready for the next instruction.</b> The caret is the most honest symbol for a tool that works from text and commands. It can blink while she listens and stay solid while she works.',
+  mark:()=>G(["vvvvvv..","v....vv.","v.k...vv","v.k....v","v.k...vv","v....vv.","vvvvvv.."])},
+ {name:'Marquee',kind:'wordmark',small:'ok',
+  idea:'An LED dot-matrix board that spells DONNA. Unlit LEDs stay faintly visible, and the D glows cyan.',
+  why:'<b>The strongest wordmark</b>: a station departure board or an old pager, meaning "messages arriving". The icon on its own is the matrix D. It is weaker below 14px because the unlit dots turn to noise.',
+  hero:()=>matrix('DONNA'),wide:true,mark:()=>matrix('D')},
+ {name:'Companion',kind:'mascot',small:'good',
+  idea:'A small rounded pixel face with blinking eyes and a cyan smile.',
+  why:'<b>Personality first.</b> A personal assistant you trust is a "someone", not a "something". It works as an avatar in contact chats and can carry expressions (thinking, waiting for approval, done).',
+  mark:()=>svg(10,9,cells([".vvvvvvvv.","vvvvvvvvvv","vv..vv..vv","vv..vv..vv","vvvvvvvvvv","vvcvvvvcvv","vvvccccvvv","vvvvvvvvvv",".vvvvvvvv."])+
+    `<g class="eye-lid"><rect x="2" y="2" width="2" height="2" fill="${PAL.w}"/><rect x="6" y="2" width="2" height="2" fill="${PAL.w}"/></g>`)},
+ {name:'Watchful',kind:'symbol · animated',small:'ok',
+  idea:'A pixel eye with a cyan iris and a white glint. It blinks now and then.',
+  why:'<b>"She already knows."</b> Donna watches the inbox, calendar and chats so you don\'t have to. Strong and memorable, but it can read as surveillance, so it needs a warm palette.',
+  mark:()=>svg(11,7,cells(["...vvvvv...",".vv.....vv.","v.........v","v.........v","v.........v",".vv.....vv.","...vvvvv..."])+
+    `<g class="eye-lid">${cells(["...........","...........","....CCC....","...CCwCC...","....CCC....","...........","..........."])}</g>`)},
+ {name:'Dither Orb',kind:'symbol · animated',small:'good',
+  idea:'A 16×16 sphere shaded with a real 4×4 Bayer dither, violet to cyan. The light source slowly orbits.',
+  why:'<b>The "voice assistant orb", in pixels.</b> The orb is the AI-presence shape people already know, and the dither makes it ours. Animated, it can show idle, thinking and speaking states.',
+  mark:t=>orb(t||0),anim:true},
+ {name:'Extrude',kind:'lettermark',small:'ok',
+  idea:'The Keystone D with a stepped two-pixel extrusion in deep indigo, like a game title screen.',
+  why:'<b>Solid and confident.</b> The depth gives it physical weight, and it looks great big (splash, onboarding). At 12px the depth becomes a smudge, so a flat variant would be needed.',
+  mark:()=>{const sh=(k,c)=>`<g transform="translate(${k} ${k})">${cells(KEY,'sq',{v:c,c:c})}</g>`;return svg(9,9,sh(2,PAL.D)+sh(1,PAL.d)+cells(KEY))}},
+ {name:'CRT',kind:'lettermark',small:'ok',
+  idea:'A solid D made of horizontal scanlines that shade from violet down to cyan.',
+  why:'<b>Retro-computing with restraint</b>, in the same family as Mistral\'s striped M but a different letter, direction and palette. It is very "screen". Lines can merge below 14px.',
+  mark:()=>{const R=["vvvvvvv..","vvvvvvvv.","vvv...vvv","vvv...vvv","vvv...vvv","vvv...vvv","vvv...vvv","vvvvvvvv.","vvvvvvv.."];let s='';
+    R.forEach((r,y)=>{const f=lerp('#8B5CF6','#67E8F9',y/(R.length-1));[...r].forEach((ch,x)=>{if(ch!=='.')s+=`<rect x="${x}" y="${y+.18}" width="1.03" height=".64" fill="${f}"/>`})});return svg(9,9,s)}},
+ {name:'Concierge',kind:'symbol',small:'good',
+  idea:'A pixel service bell with a white shine and a cyan button.',
+  why:'<b>"Ring, and she\'s there."</b> It is about service, not technology, which fits an assistant that handles your people and errands. Friendly and instantly readable.',
+  mark:()=>G([".....c.....","....ccc....","...vvvvv...","..vwvvvvv..",".vwvvvvvvv.",".vwvvvvvvv.",".vvvvvvvvv.","vvvvvvvvvvv","...........","ddddddddddd"])},
+ {name:'Hub',kind:'symbol',small:'weak',
+  idea:'The D as a constellation: the outline\'s nodes all connect to one cyan hub in the middle.',
+  why:'<b>Literally the architecture</b>: every connection (Gmail, Calendar, Notion, WhatsApp, MCP servers) routes through Donna\'s hub. Good for the Connections page and the docs. Too thin for a 12px avatar.',
+  mark:()=>{const P=[[1.5,1.5],[5,1.5],[8,3.6],[8,6.4],[5,8.5],[1.5,8.5],[1.5,5]],H=[4.6,5];let s='';
+    P.forEach(p=>s+=`<line x1="${H[0]}" y1="${H[1]}" x2="${p[0]}" y2="${p[1]}" stroke="#5B4BD6" stroke-width=".32"/>`);
+    P.forEach((p,i)=>{const q=P[(i+1)%P.length];s+=`<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="${PAL.v}" stroke-width=".5"/>`});
+    P.forEach(p=>s+=`<rect x="${p[0]-.75}" y="${p[1]-.75}" width="1.5" height="1.5" fill="${PAL.v}"/>`);
+    s+=`<rect x="${H[0]-1}" y="${H[1]-1}" width="2" height="2" fill="${PAL.c}"/>`;return svg(10,10,s,{pad:.3,smooth:true})}},
+ {name:'Glitch',kind:'lettermark · hover',small:'ok',
+  idea:'The Keystone D with cyan and pink channel offsets, as if the signal is slightly out of register. It jitters on hover.',
+  why:'<b>Y2K energy, very 2026.</b> It is loud and fun and looks great in the nav and on a splash screen. The risk is that it feels "broken" in an app where trust matters.',
+  mark:()=>{const one=c=>cells(KEY,'sq',{v:c,c:c});return svg(7,7,`<g style="mix-blend-mode:screen"><g class="gl-c" transform="translate(-.55 0)">${one('#22D3EE')}</g><g class="gl-p" transform="translate(.55 0)">${one('#F472B6')}</g><g>${one('#C4B5FD')}</g></g>`,{pad:1})}},
+ {name:'dn',kind:'ligature',small:'good',
+  idea:'A lowercase "d" and "n" sharing one stem. The d is violet and the n is cyan.',
+  why:'<b>Friendly lowercase, like an app icon</b>. The shared stem says "Donna is the link between you and everything else". It is a distinctive shape no other AI brand uses.',
+  mark:()=>G(["...v.....","...v.....",".vvvccc..","v..v...c.","v..v...c.","v..v...c.",".vvv...c."])},
+ {name:'Voice',kind:'symbol · animated',small:'good',
+  idea:'Equaliser bars whose heights trace the silhouette of a D. In the app they can move with Donna\'s replies.',
+  why:'<b>A D that talks.</b> It reads as audio or voice, which helps if voice comes later. Animated it becomes a "Donna is speaking" indicator, and static it is still clearly a D.',
+  mark:t=>{const H=[11,11,11,11,11,10,9,7,4];let s='';H.forEach((h,i)=>{const a=t==null||i===0?1:.72+.28*Math.abs(Math.sin(t*2.2+i*.9));const hh=Math.max(2,Math.round(h*a));
+    s+=`<rect x="${i+.15}" y="${(11-hh)/2}" width=".7" height="${hh}" rx=".2" fill="${lerp('#8B5CF6','#67E8F9',i/8)}"/>`});return svg(9,11,s,{pad:.5,smooth:true})},anim:true},
+];
+
+/* ---------- render ---------- */
+const st=JSON.parse(localStorage.getItem('donna-logo')||'{"star":[],"pick":null,"bg":"dark","f":"all"}');
+const save=()=>localStorage.setItem('donna-logo',JSON.stringify(st));
+const SMALL={good:['good','sharp at 12px'],ok:['ok','ok at 12px'],weak:['weak','weak at 12px']};
+const grid=document.getElementById('grid');
+
+function card(L,i){
+  const n=String(i+1).padStart(2,'0'),m=L.mark(),hero=(L.hero||L.mark)(0),[sc,sl]=SMALL[L.small];
+  return `<article class="card" data-i="${i}">
+    <div class="stage"><span class="num">${n}</span><div class="flags"><span class="flag ${sc}">${sl}</span></div>
+      <div class="mk${L.wide?' wide':''}" data-hero>${hero}</div></div>
+    <div class="body">
+      <div class="title"><h3>${L.name}</h3><span class="kind">${L.kind}</span></div>
+      <p class="idea">${L.idea}</p>
+      <p class="why">${L.why}</p>
+      <div class="previews">
+        <div class="pv"><div class="in navlock"><span class="m">${m}</span><span class="w">DONNA</span></div><small>nav · 18px</small></div>
+        <div class="pv"><div class="in"><span class="ava"><span class="m">${m}</span></span></div><small>avatar · 12px</small></div>
+        <div class="pv"><div class="in"><span class="tile"><span class="m">${m}</span></span></div><small>app tile</small></div>
+        <div class="pv lt"><div class="in"><span class="m">${m}</span></div><small>light bg</small></div>
+      </div>
+      <div class="previews" style="grid-template-columns:1fr;margin-top:-6px">
+        <div class="pv" style="height:40px;place-items:end start;padding:0 0 0 10px"><div class="fav"><span class="m">${m}</span>Donna · Chat</div></div>
+      </div>
+      <div class="actions">
+        <button class="btn star" aria-pressed="false" data-star>☆ Star</button>
+        <button class="btn pick" aria-pressed="false" data-pick>Pick #${n}</button>
+      </div>
+    </div></article>`;
+}
+grid.innerHTML=LOGOS.map(card).join('');
+
+function sync(){
+  document.querySelectorAll('.card').forEach(c=>{const i=+c.dataset.i,s=st.star.includes(i),p=st.pick===i;
+    c.classList.toggle('short',s);c.classList.toggle('picked',p);
+    const sb=c.querySelector('[data-star]');sb.setAttribute('aria-pressed',s);sb.textContent=s?'★ Starred':'☆ Star';
+    const pb=c.querySelector('[data-pick]');pb.setAttribute('aria-pressed',p);pb.textContent=p?'✓ Picked':`Pick #${String(i+1).padStart(2,'0')}`;
+    c.style.display=st.f==='star'&&!s&&!p?'none':'';
+    c.querySelector('.stage').classList.toggle('light',st.bg==='light');});
+  document.querySelectorAll('[data-bg]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.bg===st.bg));
+  document.querySelectorAll('[data-f]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f===st.f));
+  const tx=document.getElementById('barTxt'),bm=document.getElementById('barMark');
+  const stars=st.star.slice().sort((a,b)=>a-b).map(i=>`#${String(i+1).padStart(2,'0')} ${LOGOS[i].name}`);
+  if(st.pick!=null){const L=LOGOS[st.pick];bm.innerHTML=L.mark();tx.innerHTML=`Picked <b>#${String(st.pick+1).padStart(2,'0')} ${L.name}</b>${stars.length?`<br><span class="s">★ ${stars.join(' · ')}</span>`:''}`}
+  else{bm.innerHTML='';tx.innerHTML=stars.length?`<span class="s">★ ${stars.join(' · ')}</span><br>Press <b style="font-size:13px">Pick</b> on your favourite.`:'Nothing picked yet. Star a few, then press <b style="font-size:13px">Pick</b>.'}
+  save();
+}
+grid.addEventListener('click',e=>{const c=e.target.closest('.card');if(!c)return;const i=+c.dataset.i;
+  if(e.target.closest('[data-star]')){st.star=st.star.includes(i)?st.star.filter(x=>x!==i):[...st.star,i];sync()}
+  if(e.target.closest('[data-pick]')){st.pick=st.pick===i?null:i;sync()}});
+document.querySelectorAll('[data-bg]').forEach(b=>b.onclick=()=>{st.bg=b.dataset.bg;sync()});
+document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{st.f=b.dataset.f;sync()});
+document.getElementById('copy').onclick=async()=>{
+  const p=st.pick!=null?`#${String(st.pick+1).padStart(2,'0')} ${LOGOS[st.pick].name}`:'none yet';
+  const s=st.star.slice().sort((a,b)=>a-b).map(i=>`#${String(i+1).padStart(2,'0')} ${LOGOS[i].name}`).join(', ')||'none';
+  const t=`Donna logo pick: ${p}. Shortlist: ${s}.`;
+  try{await navigator.clipboard.writeText(t);document.getElementById('copy').textContent='Copied ✓';setTimeout(()=>document.getElementById('copy').textContent='Copy choice',1400)}catch{prompt('Copy this:',t)}};
+sync();
+
+/* animate the big marks that have motion */
+if(!RM){let t=0;setInterval(()=>{t+=.12;LOGOS.forEach((L,i)=>{if(!L.anim)return;const el=grid.querySelector(`.card[data-i="${i}"] [data-hero]`);if(el)el.innerHTML=L.mark(t)})},110)}
+</script>
+</body>
+</html>

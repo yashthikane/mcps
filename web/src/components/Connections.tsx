@@ -6,8 +6,9 @@ import { Dialog, DialogHead, Result, StatePill, Switch, useToast } from "./ui";
 export type WizardKind = "google" | "notion" | "mcp";
 
 /* ============================================================================ page */
-export default function ConnectionsPage({ connections, reload, openWizard, onTools }: {
+export default function ConnectionsPage({ connections, reload, openWizard, onTools, channels }: {
   connections: Connection[]; reload: () => Promise<void>; openWizard: (k: WizardKind) => void; onTools: (c?: Connection) => void;
+  channels?: ReactNode;
 }) {
   const connected = connections.filter((c) => c.state === "connected");
   const ready = connected.reduce((n, c) => n + c.tools.filter((t) => t.enabled).length, 0);
@@ -29,6 +30,7 @@ export default function ConnectionsPage({ connections, reload, openWizard, onToo
         <Stat label="Need attention" value={attention} note={attention ? "see below" : "all healthy"} warn={attention > 0} />
         <Stat label="Ask first" value={askFirst} note="tools that wait for approval" />
       </div>
+      {channels}
       <div className="sec-h"><h2>Your connections</h2><button className="btn btn-secondary btn-sm" onClick={() => onTools()}><Icon name="wrench" />All tools</button></div>
       <div className="cgrid">
         {connections.map((c) => <ConnCard key={c.id} c={c} reload={reload} openWizard={openWizard} onTools={() => onTools(c)} />)}

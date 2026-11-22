@@ -75,7 +75,7 @@ export default function Onboarding({ settings, connections, onSettings, onFinish
           </>)}
           {i === 3 && (<>
             <h3 className="wz-h">Ask your first question</h3>
-            <p>Pick one to see Donna work. Tool calls appear in the activity panel on the right.</p>
+            <p>Pick one to see Donna work. Each tool call appears as a card in the chat; open it to see the arguments and the result.</p>
             <div className="sample-prompts">
               {SAMPLES.map((s) => (
                 <button key={s} className="sugg" onClick={() => onFinish(s)}><span className="ic"><Icon name="arrow" /></span><span><b>{s}</b></span></button>

@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { api, streamChat, type PermissionMode, type Connection, type Conversation, type Health, type Message, type Settings, type ToolEvent } from "./api";
-import { Icon, PixelD } from "./icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, streamChat, type PermissionMode, type Connection, type Conversation, type Health, type InboxCounts, type Message, type Settings, type ToolEvent } from "./api";
+import { Icon } from "./icons";
 import Chat, { MODES, type Live } from "./components/Chat";
+import ChannelsSection from "./components/Channels";
+import ContactsPage from "./components/Contacts";
+import InboxPage from "./components/Inbox";
 import ConnectionsPage, { GoogleWizard, McpWizard, NotionWizard, ToolsDialog, type WizardKind } from "./components/Connections";
 import Onboarding from "./components/Onboarding";
 import Palette, { type Command } from "./components/Palette";
-import RunPanel from "./components/RunPanel";
 import SettingsPage from "./components/Settings";
 import TasksPage from "./components/Tasks";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { type View } from "./components/Sidebar";
 import { useToast } from "./components/ui";
 
-type View = "chat" | "tasks" | "connections" | "settings";
-const narrow = () => window.matchMedia("(max-width:1180px)").matches;
+const narrow = () => window.matchMedia("(max-width:860px)").matches;
 
 export default function App() {
   const toast = useToast();
@@ -26,13 +27,14 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [live, setLive] = useState<Live | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [drawer, setDrawer] = useState<"side" | "run" | null>(null);
-  const [runOpen, setRunOpen] = useState(true);
+  const [drawer, setDrawer] = useState<"side" | null>(null);
+  const [rail, setRail] = useState(() => localStorage.getItem("donna.rail") === "1");
   const [palette, setPalette] = useState(false);
   const [wizard, setWizard] = useState<{ kind: WizardKind; startAt: number } | null>(null);
   const [toolsDlg, setToolsDlg] = useState<{ open: boolean; only?: Connection }>({ open: false });
   const [onboarding, setOnboarding] = useState(false);
   const [taskSignal, setTaskSignal] = useState(0);
+  const [counts, setCounts] = useState<InboxCounts | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const activeRef = useRef<string | null>(null);
   activeRef.current = activeId;
@@ -73,6 +75,16 @@ export default function App() {
     const t = setTimeout(() => reloadConversations(query), query ? 200 : 0);
     return () => clearTimeout(t);
   }, [query, reloadConversations]);
+
+  /* Inbox badge: pending approvals and messages waiting for the owner. */
+  const refreshCounts = useCallback(async () => {
+    try { setCounts(await api.inboxCounts()); } catch { /* the badge is optional */ }
+  }, []);
+  useEffect(() => {
+    refreshCounts();
+    const t = setInterval(() => { if (!document.hidden) refreshCounts(); }, 20000);
+    return () => clearInterval(t);
+  }, [refreshCounts]);
 
   /* Scheduled-task notifications (the in-app channel): show each once as a toast, then mark it read. */
   const openConversation = (id: string) => { setView("chat"); setDrawer(null); setActiveId(id); reloadConversations(); };
@@ -195,10 +207,7 @@ export default function App() {
     setWizard({ kind, startAt });
   }, [connections]);
 
-  const toggleRun = () => {
-    if (narrow()) setDrawer(drawer === "run" ? null : "run");
-    else setRunOpen(!runOpen);
-  };
+  const toggleRail = () => setRail((r) => { localStorage.setItem("donna.rail", r ? "0" : "1"); return !r; });
 
   const command = (cmd: string) => {
     if (cmd.startsWith("wizard:")) return openWizard(cmd.slice(7) as WizardKind);
@@ -208,18 +217,22 @@ export default function App() {
       case "connections": return setView("connections");
       case "settings": return setView("settings");
       case "tasks": return setView("tasks");
-      case "search": setView("chat"); if (narrow()) setDrawer("side"); setTimeout(() => searchRef.current?.focus(), 50); return;
+      case "inbox": return setView("inbox");
+      case "contacts": return setView("contacts");
+      case "new-task": setView("tasks"); setTaskSignal((n) => n + 1); return;
+      case "search": if (rail) toggleRail(); if (narrow()) setDrawer("side"); setTimeout(() => searchRef.current?.focus(), 50); return;
       case "setup": return setOnboarding(true);
-      case "run": setView("chat"); return toggleRun();
     }
   };
 
   const commands: Command[] = useMemo(() => [
-    { id: "new", label: "New chat", icon: "plus", run: () => command("new") },
+    { id: "new", label: "New chat", icon: "newchat", run: () => command("new") },
     { id: "search", label: "Search conversations", icon: "search", run: () => command("search") },
     { id: "chat", label: "Open Chat", icon: "chat", run: () => setView("chat") },
-    ...MODES.map((m) => ({ id: `mode-${m.id}`, label: `Mode: ${m.label}`, icon: m.id === "plan" ? "doc" : m.id === "auto" ? "bolt" : "shield", run: () => setMode(m.id) })),
-    { id: "tasks", label: "Open Tasks", icon: "clock", run: () => setView("tasks") },
+    ...MODES.map((m) => ({ id: `mode-${m.id}`, label: `Mode: ${m.label}`, icon: m.icon, run: () => setMode(m.id) })),
+    { id: "inbox", label: "Open Inbox (WhatsApp, Telegram, approvals)", icon: "inbox", run: () => setView("inbox") },
+    { id: "contacts", label: "Open Contacts", icon: "users", run: () => setView("contacts") },
+    { id: "tasks", label: "Open Tasks", icon: "tasks", run: () => setView("tasks") },
     { id: "new-task", label: "New scheduled task", icon: "clock", run: () => { setView("tasks"); setTaskSignal((n) => n + 1); } },
     { id: "conn", label: "Open Connections", icon: "plug", run: () => setView("connections") },
     { id: "settings", label: "Open Settings", icon: "sliders", run: () => setView("settings") },
@@ -227,11 +240,11 @@ export default function App() {
     { id: "notion", label: "Connect Notion", icon: "doc", run: () => openWizard("notion") },
     { id: "mcp", label: "Add MCP server", icon: "terminal", run: () => openWizard("mcp") },
     { id: "tools", label: "Show all tools", icon: "wrench", run: () => setToolsDlg({ open: true }) },
-    { id: "run", label: "Toggle activity panel", icon: "panel", run: () => command("run") },
+    { id: "sidebar", label: "Collapse or expand the sidebar", icon: "panel", run: toggleRail },
     { id: "export", label: "Export conversations", icon: "download", run: () => { window.location.href = "/api/v1/export"; } },
     { id: "setup", label: "Run first-time setup", icon: "key", run: () => setOnboarding(true) },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [openWizard, drawer, runOpen, mode]);
+  ], [openWizard, drawer, rail, mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -245,55 +258,75 @@ export default function App() {
   /* ------------------------------------------------------------------ status */
   const offline = !online || health?.groq === "unreachable";
   const blocked = offline ? "You're offline. History and search still work."
-    : health?.groq === "no_key" ? "Add your Groq API key in Settings to start chatting."
+    : health?.groq === "no_key" ? (health.provider === "claude_code" ? "Claude Code isn't installed on this computer. Install it or switch to Groq in Settings."
+      : "Add your Groq API key in Settings to start chatting.")
     : health?.groq === "invalid_key" ? "Groq rejected your API key. Update it in Settings." : null;
   const active = conversations.find((c) => c.id === activeId) ?? null;
   const showLive = live && live.conversationId === activeId ? live : null;
+  const claude = health?.provider === "claude_code";
+  const status: [string, string] = offline ? ["warn", "Offline"] : health?.groq === "ok" ? ["ok", claude ? "Claude · Ready" : "Groq · Online"]
+    : health?.groq === "no_key" ? ["warn", claude ? "Claude Code missing" : "No API key"] : health?.groq === "invalid_key" ? ["err", "Key rejected"] : ["off", "Checking…"];
+  const go = (v: View) => { setView(v); setDrawer(null); };
 
   return (
-    <div className="shell">
-      <TopNav view={view} setView={(v) => { setView(v); setDrawer(null); }} health={health} offline={offline} onPalette={() => setPalette(true)} />
-      {offline ? (
-        <div className="banner" role="status">
-          <b>■ OFFLINE</b><span>Donna can't reach Groq. Your history and search still work, and you can send again once you're back online.</span>
-          <button className="btn btn-sm btn-secondary" style={{ marginLeft: "auto" }} onClick={refreshHealth}>Retry</button>
-        </div>
-      ) : health && health.groq !== "ok" ? (
-        <div className="banner" role="status">
-          <b>■ SETUP</b><span>{health.groq === "no_key" ? "Add your free Groq API key to start chatting." : "Groq rejected your API key."}</span>
-          <button className="btn btn-sm btn-secondary" style={{ marginLeft: "auto" }} onClick={() => setView("settings")}>Open Settings</button>
-        </div>
-      ) : null}
+    <div className={`shell${rail ? " rail" : ""}${drawer === "side" ? " side-open" : ""}`}>
+      <Sidebar view={view} onView={go} status={status} badge={(counts?.approvals ?? 0) + (counts?.escalated ?? 0) + (counts?.requests ?? 0)}
+        conversations={conversations} activeId={activeId} runningId={live?.conversationId ?? null} query={query}
+        usage={health?.usage ?? settings?.usage ?? null} searchRef={searchRef} onQuery={setQuery} onCollapse={toggleRail}
+        onOpen={(id) => { setActiveId(id); setView("chat"); setDrawer(null); }} onNew={newChat}
+        onPin={async (c) => { upsertConv(await api.updateConversation(c.id, { pinned: !c.pinned })); }}
+        onRename={async (c, title) => { upsertConv(await api.updateConversation(c.id, { title })); }}
+        onDelete={async (c) => {
+          await api.deleteConversation(c.id);
+          setConversations((xs) => xs.filter((x) => x.id !== c.id));
+          if (c.id === activeId) newChat();
+          toast(`Deleted “${c.title}”.`);
+        }} />
+      <div className="scrim" onClick={() => setDrawer(null)} />
 
-      <section className={`view${runOpen ? "" : " run-closed"}${drawer === "side" ? " side-open" : ""}${drawer === "run" ? " run-open" : ""}`}
-        id="view-chat" hidden={view !== "chat"} aria-label="Chat">
-        <Sidebar conversations={conversations} activeId={activeId} runningId={live?.conversationId ?? null} query={query}
-          usage={health?.usage ?? settings?.usage ?? null} searchRef={searchRef} onQuery={setQuery}
-          onOpen={(id) => { setActiveId(id); setDrawer(null); }} onNew={newChat}
-          onPin={async (c) => { upsertConv(await api.updateConversation(c.id, { pinned: !c.pinned })); }}
-          onRename={async (c, title) => { upsertConv(await api.updateConversation(c.id, { title })); }}
-          onDelete={async (c) => {
-            await api.deleteConversation(c.id);
-            setConversations((xs) => xs.filter((x) => x.id !== c.id));
-            if (c.id === activeId) newChat();
-            toast(`Deleted “${c.title}”.`);
-          }} />
-        <Chat conversation={active} messages={messages} live={showLive} connections={connections} blocked={blocked} runOpen={runOpen}
-          onSend={send} onStop={stop} onDecide={decide} onCommand={command} mode={mode} onMode={setMode}
-          onOpenSide={() => setDrawer("side")} onToggleRun={toggleRun}
-          onOpenRun={() => { if (narrow()) setDrawer("run"); else setRunOpen(true); }} />
-        <RunPanel live={showLive} messages={messages} usage={health?.usage ?? null} model={settings?.model ?? ""} onClose={() => setDrawer(null)} />
-        <div className="scrim" onClick={() => setDrawer(null)} />
-      </section>
+      <main className="mainpanel">
+        <TopBar view={view} title={view === "chat" ? active?.title ?? null : null} model={claude ? "Claude Code" : (settings?.model ?? "").split("/").pop() ?? ""}
+          tone={status[0]} rail={rail} messagingOff={settings?.messaging_enabled === false}
+          onMenu={() => setDrawer("side")} onExpand={toggleRail} onModel={() => go("settings")} onPalette={() => setPalette(true)} />
+        {offline ? (
+          <div className="banner" role="status">
+            <Icon name="alert" size={15} /><span>Donna can't reach Groq. Your history and search still work, and you can send again once you're back online.</span>
+            <button className="btn btn-sm btn-secondary" style={{ marginLeft: "auto" }} onClick={refreshHealth}>Retry</button>
+          </div>
+        ) : health && health.groq !== "ok" ? (
+          <div className="banner" role="status">
+            <Icon name="key" size={15} /><span>{health.groq === "no_key" ? (health.provider === "claude_code" ? "Claude Code isn't installed. Install it, or switch to Groq in Settings."
+              : "Add your free Groq API key to start chatting.") : "Groq rejected your API key."}</span>
+            <button className="btn btn-sm btn-secondary" style={{ marginLeft: "auto" }} onClick={() => go("settings")}>Open Settings</button>
+          </div>
+        ) : null}
 
+        <section className="view" id="view-chat" hidden={view !== "chat"} aria-label="Chat">
+          <Chat conversation={active} messages={messages} live={showLive} connections={connections} blocked={blocked}
+            reducedMotion={settings?.reduce_motion ?? false}
+            onSend={send} onStop={stop} onDecide={decide} onCommand={command} mode={mode} onMode={setMode} />
+        </section>
+
+      {view === "inbox" && (
+        <section className="view scroll" id="view-inbox" aria-label="Inbox">
+          <InboxPage onCounts={refreshCounts} />
+        </section>
+      )}
+      {view === "contacts" && (
+        <section className="view scroll" id="view-contacts" aria-label="Contacts">
+          <ContactsPage />
+        </section>
+      )}
       {view === "tasks" && (
         <section className="view scroll" id="view-tasks" aria-label="Tasks">
-          <TasksPage defaultTimezone={settings?.timezone || "UTC"} newSignal={taskSignal} onOpenConversation={openConversation} />
+          <TasksPage defaultTimezone={settings?.timezone || "UTC"} newSignal={taskSignal} onOpenConversation={openConversation}
+            automationsOff={settings?.automations_enabled === false} />
         </section>
       )}
       {view === "connections" && (
         <section className="view scroll" id="view-connections" aria-label="Connections">
-          <ConnectionsPage connections={connections} reload={reloadConnections} openWizard={openWizard} onTools={(c) => setToolsDlg({ open: true, only: c })} />
+          <ConnectionsPage connections={connections} reload={reloadConnections} openWizard={openWizard} onTools={(c) => setToolsDlg({ open: true, only: c })}
+            channels={<ChannelsSection />} />
         </section>
       )}
       {view === "settings" && settings && (
@@ -302,6 +335,8 @@ export default function App() {
             onWiped={() => { setConversations([]); newChat(); setView("settings"); }} onRunSetup={() => setOnboarding(true)} />
         </section>
       )}
+
+      </main>
 
       <Palette open={palette} commands={commands} onClose={() => setPalette(false)} />
       <ToolsDialog open={toolsDlg.open} only={toolsDlg.only} connections={connections} reload={reloadConnections} onClose={() => setToolsDlg({ open: false })} />
@@ -324,41 +359,21 @@ export default function App() {
   );
 }
 
-function TopNav({ view, setView, health, offline, onPalette }: {
-  view: View; setView: (v: View) => void; health: Health | null; offline: boolean; onPalette: () => void;
+/** Slim bar at the top of the main panel: the model in use (new chat) or the chat title, and the command palette. */
+function TopBar({ view, title, model, tone, rail, messagingOff, onMenu, onExpand, onModel, onPalette }: {
+  view: View; title: string | null; model: string; tone: string; rail: boolean; messagingOff: boolean;
+  onMenu: () => void; onExpand: () => void; onModel: () => void; onPalette: () => void;
 }) {
-  const tabs = useRef<HTMLElement>(null);
-  const [ind, setInd] = useState({ w: 0, x: 0 });
-  useLayoutEffect(() => {
-    const measure = () => {
-      const el = tabs.current?.querySelector<HTMLElement>('[aria-selected="true"]');
-      if (el) setInd({ w: el.offsetWidth, x: el.offsetLeft });
-    };
-    measure();
-    document.fonts?.ready.then(measure);
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [view]);
-  const status = offline ? ["warn", "Offline"] : health?.groq === "ok" ? ["ok live", "Groq · Online"]
-    : health?.groq === "no_key" ? ["warn", "No API key"] : health?.groq === "invalid_key" ? ["err", "Key rejected"] : ["off", "Checking…"];
-  const items: [View, string, string][] = [["chat", "chat", "Chat"], ["tasks", "clock", "Tasks"], ["connections", "plug", "Connections"], ["settings", "sliders", "Settings"]];
   return (
-    <header className="topnav">
-      <a className="brand" href="#" aria-label="Donna home" onClick={(e) => { e.preventDefault(); setView("chat"); }}>
-        <span className="logo"><PixelD size={18} /></span><span className="word">DONNA</span>
-      </a>
-      <nav className="tabs" role="tablist" aria-label="Sections" ref={tabs}>
-        <span className="tab-ind" aria-hidden="true" style={{ width: ind.w, transform: `translateX(${ind.x}px)` }} />
-        {items.map(([v, icon, label]) => (
-          <button key={v} className="tab" role="tab" aria-selected={view === v} onClick={() => setView(v)}>
-            <Icon name={icon} /><span className="lbl">{label}</span>
-          </button>
-        ))}
-      </nav>
-      <div className="nav-right">
-        <span className={`pill nav-status ${status[0]}`}>{status[1]}</span>
-        <button className="nav-k" onClick={onPalette} aria-label="Open command palette"><Icon name="search" /><span className="lbl">Commands</span><kbd>Ctrl K</kbd></button>
-      </div>
+    <header className="topbar">
+      <button className="icon-btn menu-btn" onClick={onMenu} aria-label="Show navigation"><Icon name="menu" size={17} /></button>
+      {rail && <button className="icon-btn expand-btn" onClick={onExpand} aria-label="Expand sidebar" title="Expand sidebar"><Icon name="panel" size={17} /></button>}
+      {view === "chat" && (title
+        ? <h1 className="tb-title">{title}</h1>
+        : <button className="tb-pill" onClick={onModel} title="Model · change it in Settings"><span className={`dot ${tone}`} />{model || "Model"}<Icon name="chevdown" size={13} /></button>)}
+      <span className="tb-sp" />
+      {messagingOff && <span className="pill err" title="Settings → Messaging">Messaging off</span>}
+      <button className="tb-pill" onClick={onPalette} aria-label="Open command palette"><Icon name="command" size={14} /><span className="lb">Commands</span><kbd>Ctrl K</kbd></button>
     </header>
   );
 }

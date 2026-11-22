@@ -159,7 +159,7 @@ def test_http_api(tmp_path, fake_llm):
 
         conns = {x["id"]: x for x in c.get("/api/v1/connections").json()}
         assert conns["gmail"]["state"] == "not_set_up" and conns["weather"]["state"] == "connected"
-        assert len(conns["gmail"]["tools"]) == 12 and len(conns["calendar"]["tools"]) == 5 and len(conns["notion"]["tools"]) == 8
+        assert len(conns["gmail"]["tools"]) == 12 and len(conns["calendar"]["tools"]) == 6 and len(conns["notion"]["tools"]) == 8
         c.patch("/api/v1/connections/weather", json={"enabled": False})
         assert {x["id"]: x for x in c.get("/api/v1/connections").json()}["weather"]["state"] == "off"
 

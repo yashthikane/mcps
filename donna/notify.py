@@ -3,6 +3,8 @@
 Channels:
 - windows: a Windows toast (WinRT via PowerShell, no extra dependency). Best effort.
 - in_app:  a row in PostgreSQL `notifications`, which the UI polls and shows as a toast.
+- owner_chat: a message in the owner's own WhatsApp/Telegram chat (registered by the app once the
+  ChannelManager exists).
 
 Add a channel by writing an async `send(note)` class and registering it in `Notifier.channels`.
 """
@@ -39,6 +41,7 @@ class Note:
     task_id: str | None = None
     execution_id: str | None = None
     conversation_id: str | None = None
+    full_text: str = ""  # chat channels get the whole text (an AI task's full reply), not the short body
 
 
 class WindowsToast:
@@ -66,6 +69,15 @@ class InApp:
             "INSERT INTO notifications (id, task_id, execution_id, title, body, level, conversation_id) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (uuid.uuid4(), note.task_id, note.execution_id, note.title, note.body, note.level, note.conversation_id))
+
+
+class OwnerChat:
+    def __init__(self, channels):
+        self.channels = channels  # channels.manager.ChannelManager
+
+    async def send(self, note: Note) -> None:
+        if not await self.channels.send_to_owner(f"{note.title}\n{note.full_text or note.body}".strip()):
+            raise RuntimeError("the owner's chat isn't available (set yourself as the owner in Contacts)")
 
 
 class Notifier:

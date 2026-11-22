@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · Logo (final)</title>
+<style>
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2") format("woff2");font-weight:400}
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2") format("woff2");font-weight:600}
+@font-face{font-family:"Geist Pixel";src:url("../../web/public/fonts/GeistPixel-Circle.woff2") format("woff2")}
+:root{--bg:#0E0E20;--fg:#F6F3FF;--fg2:#D8D5E8;--muted:#AAA8C9;--sub:#74718E;--b:rgba(167,139,250,.2);--bs:rgba(255,255,255,.06);--mono:"Geist Mono",ui-monospace,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(60% 45% at 50% 0%,rgba(139,92,246,.16),transparent 65%),var(--bg);color:var(--fg);font:14px/1.55 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:56px 28px 80px}
+.eyebrow{font:500 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.hero{display:grid;grid-template-columns:320px 1fr;gap:40px;align-items:center}
+.hero .big{width:320px;height:320px}
+h1{font:600 54px/1 Inter;letter-spacing:-.04em;margin:12px 0}
+p{color:var(--fg2);max-width:62ch}
+h2{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:46px 0 14px}
+.panel{border:1px solid var(--b);border-radius:20px;background:rgba(27,27,57,.45);padding:24px}
+.row{display:flex;gap:28px;align-items:flex-end;flex-wrap:wrap}
+.cap{font:500 10.5px/1.3 var(--mono);color:var(--sub);text-align:center;margin-top:8px}
+.states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.states .panel{text-align:center}
+.states .o{width:140px;height:140px;margin:0 auto}
+.states b{display:block;margin-top:6px}
+.states span{color:var(--muted);font-size:12.5px}
+.tiles{display:flex;gap:18px;flex-wrap:wrap}
+.tiles img{width:120px;height:120px;border-radius:27px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.lock{display:flex;align-items:center;gap:12px;padding:22px 26px;border-radius:16px}
+.lock .o{width:40px;height:40px}
+.lock .w{font:400 26px/1 "Geist Pixel",var(--mono);letter-spacing:.06em}
+.lock .w2{font:600 30px/1 Inter;letter-spacing:-.035em}
+.dark{background:#0B0A18;border:1px solid var(--bs)}.light{background:#fff;color:#14112B}
+.sw{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.sw div{border-radius:14px;padding:46px 12px 10px;font:500 11px/1.4 var(--mono);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:9px 10px;border-top:1px solid var(--bs);vertical-align:top}
+td:first-child{font-family:var(--mono);color:var(--fg2);white-space:nowrap}
+td:last-child{color:var(--muted)}
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.rules li{margin:4px 0;color:var(--fg2)}
+.orb .orb-body{animation:b 4.5s ease-in-out infinite;transform-origin:50px 50px}
+.orb .orb-drift{animation:s 16s linear infinite;transform-origin:50px 50px}
+.orb .orb-drift-r{animation:s 22s linear infinite reverse;transform-origin:50px 50px}
+.orb .orb-eyes{animation:k 5s infinite;transform-box:fill-box;transform-origin:center}
+.orb.thinking .orb-drift{animation-duration:3.5s}.orb.thinking .orb-drift-r{animation-duration:4.5s}
+.orb.thinking .orb-eyes{animation:g 1.8s ease-in-out infinite}
+.orb.static *{animation:none}
+@keyframes b{50%{transform:scale(1.035)}}@keyframes s{to{transform:rotate(360deg)}}
+@keyframes k{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.12)}}@keyframes g{0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)}}
+@media (prefers-reduced-motion:reduce){.orb *{animation:none!important}}
+@media (max-width:760px){.hero,.rules{grid-template-columns:1fr}.states{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="big" id="hero"></div>
+    <div>
+      <div class="eyebrow">Donna · brand · final logo</div>
+      <h1>Companion orb</h1>
+      <p>Chosen from round 6 (<code>donna-logo-ideas-r6.html</code>, #02). A glass sphere with violet, cyan and pink light drifting inside, and two soft eyes. It is an AI presence with a personality: it breathes when idle, its eyes blink, and while Donna works the colours speed up and the eyes glance from side to side.</p>
+      <p style="color:var(--muted)">In the app it is <code>DonnaOrb</code> in <code>web/src/icons.tsx</code>. Below 28px it switches to a simplified version without blur filters and with bigger eyes, so it stays crisp in the nav, chat avatars and favicon.</p>
+    </div>
+  </div>
+
+  <h2>States</h2>
+  <div class="states">
+    <div class="panel"><div class="o" data-orb="idle" data-size="140"></div><b>Idle</b><span>Breathes and blinks. Used in the empty chat and by default.</span></div>
+    <div class="panel"><div class="o" data-orb="thinking" data-size="140"></div><b>Thinking</b><span>Faster colour drift, eyes glancing. Used for the live reply avatar.</span></div>
+    <div class="panel"><div class="o" data-orb="static" data-size="140"></div><b>Static</b><span>No motion. Used for past messages, files and reduced motion.</span></div>
+  </div>
+
+  <h2>Sizes</h2>
+  <div class="panel row" id="sizes"></div>
+
+  <h2>App icon</h2>
+  <div class="tiles"><img src="../../web/public/app-icon.svg" alt="Donna app icon"><img src="../../web/public/icon-512.png" alt="Donna app icon PNG" style="width:96px;height:96px;border-radius:22px"><img src="../../web/public/apple-touch-icon.png" alt="Apple touch icon" style="width:60px;height:60px;border-radius:14px"></div>
+
+  <h2>Lockups</h2>
+  <div class="row">
+    <div class="lock dark"><div class="o" data-orb="idle" data-size="40"></div><span class="w">DONNA</span></div>
+    <div class="lock dark"><div class="o" data-orb="idle" data-size="40"></div><span class="w2">Donna</span></div>
+    <div class="lock light"><div class="o" data-orb="static" data-size="40"></div><span class="w2">Donna</span></div>
+  </div>
+  <p style="color:var(--muted);font-size:12.5px">In the app the wordmark stays in Geist Pixel (DONNA), so the pixel theme lives in the UI and the orb is the mark. Inter is the alternative for anything outside the app.</p>
+
+  <h2>Colours</h2>
+  <div class="sw">
+    <div style="background:#8B5CF6">Violet<br>#8B5CF6</div>
+    <div style="background:#22D3EE;color:#04121A">Cyan<br>#22D3EE</div>
+    <div style="background:#F472B6;color:#2A0A1A">Pink<br>#F472B6</div>
+    <div style="background:#2A1F6E">Core<br>#2A1F6E</div>
+    <div style="background:#140F3A">Deep<br>#140F3A</div>
+  </div>
+
+  <h2>Files</h2>
+  <div class="panel"><table>
+    <tr><td>web/src/icons.tsx</td><td>DonnaOrb React component (size, state: idle / thinking / static, title)</td></tr>
+    <tr><td>web/public/donna-logo.svg</td><td>Full logo with glow, transparent, 512 px</td></tr>
+    <tr><td>web/public/favicon.svg</td><td>Small variant, cropped to the orb (browser tab)</td></tr>
+    <tr><td>web/public/app-icon.svg</td><td>Orb on the midnight squircle tile</td></tr>
+    <tr><td>web/public/icon-512.png · icon-192.png · apple-touch-icon.png</td><td>App icon rendered as PNG at 512, 192 and 180 px</td></tr>
+  </table></div>
+
+  <h2>Usage</h2>
+  <div class="rules">
+    <div class="panel"><b>Do</b><ul><li>Use it on dark backgrounds; that is where the glow lives.</li><li>Keep a quarter of the orb's width as clear space.</li><li>Use the small variant (under 28px) for UI chrome.</li><li>Use <i>thinking</i> only while Donna is actually working.</li></ul></div>
+    <div class="panel"><b>Don't</b><ul><li>Recolour the inner lights outside the palette.</li><li>Remove the eyes: they are what make it Donna.</li><li>Put it inside another circle or badge.</li><li>Animate many orbs at once (past messages stay static).</li></ul></div>
+  </div>
+</div>
+<script>
+const V="#8B5CF6",C="#22D3EE",P="#F472B6";let n=0;
+function orb(size,state){const u="o"+(++n),small=size<28,url=x=>`url(#${x}${u})`,bl=(x,c)=>`<radialGradient id="${x}${u}"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient>`;
+ return `<svg class="orb ${state}" viewBox="${small?'13 13 74 74':'0 0 100 100'}" width="${size}" height="${size}" overflow="visible"><defs>
+ <radialGradient id="dp${u}" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#2A1F6E"/><stop offset="1" stop-color="#140F3A"/></radialGradient>
+ <radialGradient id="sh${u}"><stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>
+ <radialGradient id="hl${u}"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <linearGradient id="rim${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset=".8" stop-color="${C}" stop-opacity="0"/><stop offset="1" stop-color="${C}" stop-opacity=".7"/></linearGradient>
+ <clipPath id="cp${u}"><circle cx="50" cy="50" r="36"/></clipPath>
+ ${small?bl('bv',V)+bl('bc',C)+bl('bp',P):`<filter id="bl${u}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter><filter id="gl${u}" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9"/></filter>`}</defs>
+ ${small?'':`<circle cx="50" cy="52" r="36" fill="${V}" opacity=".45" filter="${url('gl')}"/>`}
+ <g class="orb-body"><g clip-path="${url('cp')}"><circle cx="50" cy="50" r="36" fill="${url('dp')}"/>
+ ${small?`<circle cx="36" cy="38" r="30" fill="${url('bv')}"/><circle cx="66" cy="60" r="27" fill="${url('bc')}"/><circle cx="46" cy="76" r="22" fill="${url('bp')}"/>`
+  :`<g filter="${url('bl')}" style="mix-blend-mode:screen"><g class="orb-drift"><circle cx="36" cy="38" r="22" fill="${V}"/><circle cx="66" cy="60" r="19" fill="${C}"/></g><g class="orb-drift-r"><circle cx="48" cy="70" r="15" fill="${P}"/><circle cx="62" cy="32" r="11" fill="${C}" opacity=".8"/></g></g>`}</g>
+ <circle cx="50" cy="50" r="36" fill="${url('sh')}"/><ellipse cx="38" cy="34" rx="15" ry="8" fill="${url('hl')}" transform="rotate(-28 38 34)" opacity="${small?.6:.8}"/>
+ <circle cx="50" cy="50" r="35.5" fill="none" stroke="${url('rim')}" stroke-width="${small?2:1.2}"/>
+ <g class="orb-eyes" fill="#fff">${small?'<rect x="36.5" y="40" width="10" height="20" rx="5"/><rect x="53.5" y="40" width="10" height="20" rx="5"/>':'<rect x="39" y="43" width="7.5" height="15" rx="3.75"/><rect x="53.5" y="43" width="7.5" height="15" rx="3.75"/>'}</g></g></svg>`}
+document.getElementById('hero').innerHTML=orb(320,'idle');
+document.querySelectorAll('[data-orb]').forEach(el=>el.innerHTML=orb(+el.dataset.size,el.dataset.orb));
+document.getElementById('sizes').innerHTML=[16,22,24,32,48,76,128,200].map(s=>`<div><div style="width:${s}px;height:${s}px;margin:0 auto">${orb(s,'idle')}</div><div class="cap">${s}px${s<28?' · small':''}</div></div>`).join('');
+</script>
+</body>
+</html>

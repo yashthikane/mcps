@@ -23,7 +23,7 @@ BUILTIN = [
      "tools": ["list_emails", "read_email", "search_emails", "get_unread_emails", "send_email", "reply_email",
                "forward_email", "mark_email", "delete_email", "create_draft", "list_drafts", "send_draft"]},
     {"id": "calendar", "name": "Google Calendar", "icon": "cal", "source": "Google · built-in", "setup": "google",
-     "tools": ["get_events", "list_events", "create_event", "update_event", "delete_event"]},
+     "tools": ["get_events", "list_events", "check_availability", "create_event", "update_event", "delete_event"]},
     {"id": "notion", "name": "Notion", "icon": "doc", "source": "Notion · built-in", "setup": "notion",
      "tools": ["search_notion", "list_pages", "read_page_content", "create_page", "update_page_title",
                "append_text_to_page", "delete_page", "query_database"]},

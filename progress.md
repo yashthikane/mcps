@@ -3,7 +3,7 @@
 What is built, what works, and what is still left, with the roadmap phase each item belongs to (`docs/ROADMAP.md`).
 Update this file whenever a feature lands or its status changes.
 
-**Last updated:** 2026-09-30 · **Latest commit:** `dba8274` + uncommitted scheduler work · **Branch:** `main`
+**Last updated:** 2026-11-20 · **Latest commit:** `8b5a8a3` + uncommitted multi-channel work · **Branch:** `multi-channel`
 
 **Status key:**
 - ✅ Working: implemented and verified (automated test, live run, or confirmed by the user in the app)
@@ -19,6 +19,7 @@ Update this file whenever a feature lands or its status changes.
 | Scheduled tasks: BullMQ scheduler (Node) + Redis (WSL) + PostgreSQL, Tasks page, chat tools | 🟡 Built and unit-tested; live run needs `scripts\setup-scheduler.ps1` (PostgreSQL password) |
 | Google (Gmail + Calendar), Notion, custom MCP servers | ✅ Connect from the UI and use from chat |
 | Groq model (`openai/gpt-oss-120b`, free tier) | ✅ Live streaming with tool calls |
+| Multi-channel: WhatsApp (OpenWA) + Telegram, contacts and permissions, Inbox, approvals, memory | 🟡 Built and tested (77 pytest, live smoke test against a stand-in OpenWA); not yet run against a real WhatsApp number or Telegram bot |
 | Parallel agents (planner, workers, verifier) | ⬜ Roadmap Phase 4, not started |
 | Semantic memory, backups, eval harness | ⬜ Not started |
 
@@ -123,9 +124,29 @@ Bold = added in the web-app release. The terminal client (`python client.py`) st
 ## Changelog
 | Date | Commit | Change |
 |---|---|---|
+| 2026-11-21 | — | UI redesign (mockup `docs/design/donna-ui-redesign.html`): sidebar navigation, rounded main panel, animated wireframe + ASCII mountain on the welcome screen, Thinking Orbs for live status, new composer (+ connections menu, mode dropdown), Hugeicons, Geist; activity panel removed (details in tool cards). Browser e2e 14/14 and `check.ps1` pass |
+| 2026-11-21 | — | New logo: the "Companion" orb (`DonnaOrb` in `web/src/icons.tsx`) replaces the pixel D in the nav, chat avatars (animated while Donna works) and the empty chat; favicon, app icons and brand sheet `docs/design/donna-logo-final.html` |
 | 2026-09-30 | — | Permission modes (Plan / Manual / Auto) for chat and scheduled AI tasks |
 | 2026-09-30 | — | Scheduler subsystem: `scheduler/` (Node, BullMQ, Redis), PostgreSQL migrations, task API + internal execute API, reminders (no Groq) and unattended AI tasks, notifications (Windows toast, in-app), Tasks page, chat scheduling tools, setup/start scripts, docs |
 | 2026-09-30 | — | Added this progress file |
 | 2026-09-29 | `7ce67b3` | Web app: chat UI, conversations, connections and setup wizards, settings, 11 new tools, tests |
 | 2026-09-28 | `1537507` | Switched to `openai/gpt-oss-120b` (old model retired), startup fixes, roadmap, CLAUDE.md |
 | earlier | `07af512`…`79aaa17` | Terminal prototype: weather, jokes, Calendar, Notion and Gmail MCP tools |
+
+### Messaging channels (`docs/Donna_Multi_Channel_Implementation_Plan.md`, phases 0–9)
+| Feature | Status | Notes |
+|---|---|---|
+| Shared agent runtime (`runtime.run_agent_turn`), used by web chat, channels, scheduled AI tasks | ✅ | Web chat streams `run_chat` directly; existing tests unchanged |
+| Channel contract (`BaseChannel`, typed messages), registry, ChannelManager | ✅ | Unit tests with a fake channel |
+| WhatsApp via OpenWA: one-click Connect (installs + starts OpenWA, shows QR), signed webhook, send, delivery acks | 🟡 | Connect verified live on this laptop on 2026-11-20 up to a real QR code (install without Visual Studio, loopback-only); scanning and real messages not yet tried |
+| Telegram bot (long polling) | 🟡 | Tested against a mock Bot API; needs a live bot token |
+| Contacts: default-deny, modes (disabled/suggest/auto/human first), pause, working hours, language/tone | ✅ | |
+| Per-contact, per-channel capabilities enforced in code; confirm tools always need approval | ✅ | Security scenarios of plan §27 have tests |
+| Persisted approvals: payload-bound, single use, expiring, revocation re-check, approve from dashboard or own chat | ✅ | |
+| Conversation history per channel chat, summaries, contact memory isolation, global memory | ✅ | |
+| Calendar: free/busy availability, Google Meet links | 🟡 | Code paths untested against live Google |
+| Automations to WhatsApp/Telegram (owner chat, contact delivery), automations switch, briefing presets | 🟡 | Needs a live scheduler run |
+| Dashboard: Inbox (conversations, approvals, audit log), Contacts, channel cards, messaging settings | ✅ | tsc + build pass; not yet clicked through by the user |
+| Donna's identity with contacts (AI assistant, never the owner), communication profiles, requests (callback/meeting/enquiry…) with owner notifications | 🟡 | 14 tests; replayed with the real Groq model on 2026-11-21 (see test report); grammar for the contact's gender is still not always right |
+| Task Manager / Expense Tracker integrations | ⬜ | Not in this repo; will connect later as MCP servers with `external:<id>` capabilities |
+| Slack / Discord adapters | ⬜ | Extension points documented in ARCHITECTURE §12.8 |

@@ -103,3 +103,87 @@ dialog.task-dlg{width:min(600px,calc(100vw - 32px))}
 .mode-hint.m-auto{color:var(--amber)}
 .mode-hint.m-plan{color:var(--cyan)}
 .kbdish{font-family:var(--font-mono);font-size:10px;padding:1px 4px;border:1px solid var(--border-subtle);border-radius:4px}
+
+/* ------------------------------------------------------------------ messaging: nav badge */
+.tab{position:relative}
+.nav-badge{min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--amber);color:#1b1b39;font:600 10px/16px var(--font-mono);text-align:center}
+
+/* ------------------------------------------------------------------ Inbox */
+.inbox-tabs{max-width:480px}
+.inbox{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:12px;min-height:520px}
+.inbox-list{padding:10px;border-radius:14px;display:flex;flex-direction:column;gap:4px;overflow:auto;max-height:72vh}
+.inbox-filters{display:flex;flex-direction:column;gap:6px;padding-bottom:8px;border-bottom:1px solid var(--border-subtle);margin-bottom:4px}
+.inbox-filters .select{flex:1}
+.inbox-empty{padding:10px}
+.inbox-item{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border:1px solid transparent;border-radius:10px;background:none;color:inherit;text-align:left;cursor:pointer}
+.inbox-item:hover{background:rgba(255,255,255,.03)}
+.inbox-item.on{border-color:var(--border-active);background:rgba(139,92,246,.08)}
+.inbox-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.inbox-top b{font-weight:600;font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.inbox-prev{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.inbox-tags{display:flex;flex-wrap:wrap;gap:4px}
+.inbox-thread{border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0;max-height:72vh}
+.inbox-none{align-items:center;justify-content:center;color:var(--muted)}
+.inbox-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid var(--border-subtle)}
+.inbox-head .grow{display:flex;flex-direction:column;gap:2px;min-width:180px}
+.inbox-head b{font-weight:600;font-size:14px}
+.inbox-summary pre{white-space:pre-wrap}
+.inbox-msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
+.bubble{max-width:78%;padding:8px 11px;border-radius:12px;border:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:4px}
+.bubble.b-in{align-self:flex-start;background:var(--surface-soft)}
+.bubble.b-out{align-self:flex-end;background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3)}
+.bubble.b-owner{align-self:flex-end;background:rgba(103,232,249,.08);border-color:rgba(103,232,249,.28)}
+.b-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.b-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+.b-err{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+.inbox-compose{display:flex;gap:8px;align-items:flex-end}
+.inbox-compose .textarea{flex:1;min-height:54px}
+.approval-args{margin:0;max-height:180px;overflow:auto;white-space:pre-wrap;font:11.5px/1.5 var(--font-mono);color:var(--foreground-secondary);background:var(--input);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 10px}
+@media (max-width:900px){
+  .inbox{grid-template-columns:1fr}
+  .inbox-list,.inbox-thread{max-height:none}
+}
+
+/* ------------------------------------------------------------------ Contacts */
+dialog.contact-dlg{width:min(720px,calc(100vw - 32px))}
+.contact-dlg .dlg-body{max-height:70vh;overflow:auto}
+.capgrid{display:flex;flex-direction:column;gap:2px;border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:4px 10px}
+.caprow{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-subtle)}
+.caprow:last-child{border-bottom:0}
+.caprow .grow{display:flex;flex-direction:column;gap:1px;min-width:0}
+.caprow b{font-weight:500;font-size:13px}
+.capseg{display:inline-flex;padding:2px;border-radius:999px;border:1px solid var(--border-subtle);background:var(--surface-soft);flex:none}
+.capseg button{height:24px;padding:0 10px;border:0;border-radius:999px;background:none;color:var(--muted);font:500 11px/1 var(--font-sans,inherit);cursor:pointer}
+.capseg button:disabled{opacity:.35;cursor:not-allowed}
+.capseg button[aria-checked="true"]{color:var(--foreground);background:rgba(139,92,246,.22)}
+.capseg button[aria-checked="true"]:first-child{background:rgba(255,255,255,.06)}
+.capseg button[aria-checked="true"]:last-child{background:rgba(251,191,36,.16);color:var(--amber)}
+.input.hours{width:110px}
+.seg[role="radiogroup"][aria-label="Contact mode"] button{font-size:12px}
+
+/* ------------------------------------------------------------------ Channels (Connections) */
+.qr-body{align-items:center}
+img.qr{width:264px;height:264px;image-rendering:pixelated;background:#fff;padding:8px;border-radius:12px}
+@media (max-width:760px){
+  .caprow{flex-wrap:wrap}
+}
+.setup-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;width:100%}
+.setup-steps li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.setup-steps .step-dot{width:22px;height:22px;flex:none;border-radius:999px;display:grid;place-items:center;font:600 11px var(--font-mono);border:1px solid var(--border-subtle)}
+.setup-steps .step-done{color:var(--foreground-secondary)}
+.setup-steps .step-done .step-dot{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.4);color:#34d399}
+.setup-steps .step-now{color:var(--foreground)}
+.setup-steps .step-now .step-dot{border-color:var(--border-active);color:var(--violet-bright)}
+.setup-steps .step-err .step-dot{background:rgba(248,113,113,.15);border-color:rgba(248,113,113,.4);color:#f87171}
+.setup-log{width:100%}
+.setup-log pre{white-space:pre-wrap}
+
+/* ------------------------------------------------------------------ Requests (Inbox) */
+.inbox-tabs{max-width:640px}
+.req-filters .select{min-width:140px;flex:1}
+.req-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 16px;font-size:12.5px}
+.req-details > div{display:flex;flex-direction:column;gap:1px}
+.req-row.u-urgent{border-color:rgba(248,113,113,.45)}
+.req-row.u-high{border-color:rgba(251,191,36,.4)}
+.book-box{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:var(--radius-md)}
+.book-box .input{width:auto;flex:1;min-width:160px}

@@ -4,6 +4,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -19,10 +20,12 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import DATA_DIR, ROOT, llm, pg, tasks, vault
+from . import DATA_DIR, ROOT, approvals, audit, contact_requests, contacts, identity, inbox, llm, memory, permissions, pg, runtime_tools, tasks, vault
 from .agent import MODES, RUNS, Run, run_chat
-from .hub import BUILTIN, MCPHub, env_key, split_args
-from .notify import Notifier
+from .channels.base import ChannelError, WebhookRejected
+from .channels.manager import ChannelManager
+from .hub import BUILTIN, CONFIRM, MCPHub, env_key, split_args
+from .notify import Notifier, OwnerChat
 from .scheduler_client import SchedulerClient, ScheduleInvalid, SchedulerUnavailable
 from .store import Store
 
@@ -68,8 +71,18 @@ async def lifespan(app: FastAPI):
     app.state.tasks = tasks.TaskService(app.state.pg, getattr(app.state, "scheduler_override", None) or SchedulerClient(),
                                         app.state.notifier, app.state.store, app.state.hub)
     tasks.service = app.state.tasks
+
+    # Messaging channels (WhatsApp, Telegram) share the same store, hub and agent runtime.
+    app.state.channels = ChannelManager(app.state.store, app.state.hub, app.state.notifier,
+                                        getattr(app.state, "channel_adapter_kwargs", None))
+    app.state.notifier.channels["owner_chat"] = OwnerChat(app.state.channels)
+    app.state.tasks.channels = app.state.channels
+    runtime_tools.services.store, runtime_tools.services.channels = app.state.store, app.state.channels
+    await app.state.channels.start()
     log.info("Donna started with %d tools", len(app.state.hub.all_tools()))
     yield
+    await app.state.channels.stop()
+    runtime_tools.services.store = runtime_tools.services.channels = None
     tasks.service = None
     await app.state.hub.stop()
     await app.state.pg.close()
@@ -103,6 +116,13 @@ async def health(request: Request):
     if time.time() - _health_cache["t"] < 20 and _health_cache["value"]:
         return _health_cache["value"]
     key = vault.get(vault.GROQ_KEY)
+    provider = llm.provider(S(request).settings())
+    if provider == "claude_code" and not llm.FAKE:
+        # The CLI signs itself in; whether that works shows on the first message ("isn't signed in").
+        state = "ok" if llm.claude_cli() else "no_key"
+        value = {"groq": state, "provider": provider, "online": True, "usage": S(request).usage()}
+        _health_cache.update(t=time.time(), value=value)
+        return value
     if llm.FAKE:
         groq_state = "ok" if key or os.getenv("DONNA_FAKE_ONLINE", "1") == "1" else "no_key"
     elif not key:
@@ -114,7 +134,7 @@ async def health(request: Request):
             groq_state = "ok" if r.status_code == 200 else "invalid_key" if r.status_code in (401, 403) else "error"
         except httpx.HTTPError:
             groq_state = "unreachable"
-    value = {"groq": groq_state, "online": groq_state != "unreachable", "usage": S(request).usage()}
+    value = {"groq": groq_state, "provider": provider, "online": groq_state != "unreachable", "usage": S(request).usage()}
     _health_cache.update(t=time.time(), value=value)
     return value
 
@@ -508,6 +528,7 @@ class TaskIn(BaseModel):
     recurrence_rule: str | None = None
     notification_channels: list[str] | None = None
     permission_mode: str | None = None
+    deliver_contact_id: str | None = None
 
 
 class TaskPatch(BaseModel):
@@ -521,6 +542,7 @@ class TaskPatch(BaseModel):
     recurrence_rule: str | None = None
     notification_channels: list[str] | None = None
     permission_mode: str | None = None
+    deliver_contact_id: str | None = None
 
 
 class PreviewIn(BaseModel):
@@ -644,15 +666,545 @@ async def execute_task(tid: str, body: ExecuteIn, request: Request):
     return await _tasks_call(T(request).execute(tid, body.execution_id, body.scheduled_for, body.mode))
 
 
+# =============================================================================== messaging channels
+def CH(request: Request) -> ChannelManager:
+    return request.app.state.channels
+
+
+async def _call(fn, *args):
+    """Run fn(*args) (sync or async), mapping channel/contact/approval errors to HTTP."""
+    try:
+        result = fn(*args)
+        return (await result) if asyncio.iscoroutine(result) else result
+    except ChannelError as e:
+        raise HTTPException(e.status if 400 <= e.status < 600 else 400, str(e)) from e
+    except approvals.ApprovalError as e:
+        raise HTTPException(409, str(e)) from e
+    except (contacts.ContactError, ValueError) as e:
+        raise HTTPException(400, str(e)) from e
+    except LookupError as e:
+        raise HTTPException(404, str(e) or "Not found.") from e
+
+
+@app.get("/api/v1/channels")
+def list_channels(request: Request):
+    return CH(request).list()
+
+
+@app.get("/api/v1/channels/{cid}/status")
+async def channel_status(cid: str, request: Request):
+    if not CH(request).row(cid):
+        return next((c for c in CH(request).list() if c["id"] == cid), None) or {}
+    return await CH(request).refresh(cid)
+
+
+@app.post("/api/v1/channels/whatsapp/setup")
+async def whatsapp_setup(request: Request):  # async: the job is a task on the server's event loop
+    """The WhatsApp Connect button: install OpenWA if needed, start it, open the session (→ QR). Poll the GET."""
+    audit.record(S(request), "owner", "channel.setup", "whatsapp")
+    return CH(request).whatsapp_setup.begin()
+
+
+@app.get("/api/v1/channels/whatsapp/setup")
+def whatsapp_setup_state(request: Request):
+    return CH(request).whatsapp_setup.snapshot()
+
+
+@app.post("/api/v1/channels/{ctype}/connect")
+async def channel_connect(ctype: str, request: Request):
+    return await _call(CH(request).connect, ctype)
+
+
+@app.post("/api/v1/channels/{cid}/disconnect")
+async def channel_disconnect(cid: str, request: Request):
+    return await _call(CH(request).disconnect, cid)
+
+
+@app.post("/api/v1/channels/{cid}/pause")
+def channel_pause(cid: str, request: Request):
+    try:
+        return CH(request).pause(cid, True)
+    except ChannelError as e:
+        raise HTTPException(e.status, str(e)) from e
+
+
+@app.post("/api/v1/channels/{cid}/resume")
+def channel_resume(cid: str, request: Request):
+    try:
+        return CH(request).pause(cid, False)
+    except ChannelError as e:
+        raise HTTPException(e.status, str(e)) from e
+
+
+@app.get("/api/v1/channels/{cid}/qr")
+async def channel_qr(cid: str, request: Request):
+    return await _call(CH(request).login_code, cid)
+
+
+class TokenIn(BaseModel):
+    token: str
+
+
+@app.put("/api/v1/channels/telegram/token")
+async def telegram_token(body: TokenIn, request: Request):
+    import re
+    token = body.token.strip()
+    if not re.fullmatch(r"\d{5,}:[A-Za-z0-9_-]{30,}", token):
+        raise HTTPException(400, "That doesn't look like a bot token. Copy it from @BotFather, e.g. 123456789:AAH…")
+    previous = vault.get(vault.TELEGRAM_TOKEN)
+    vault.set(vault.TELEGRAM_TOKEN, token)
+    try:
+        return await _call(CH(request).connect, "telegram")
+    except HTTPException:
+        if previous:
+            vault.set(vault.TELEGRAM_TOKEN, previous)
+        else:
+            vault.delete(vault.TELEGRAM_TOKEN)
+        raise
+
+
+@app.delete("/api/v1/channels/{cid}")
+async def channel_forget(cid: str, request: Request):
+    """Disconnect and forget the channel's credentials (Telegram token, webhook secret)."""
+    out = await _call(CH(request).disconnect, cid)
+    if cid == "telegram":
+        vault.delete(vault.TELEGRAM_TOKEN)
+    elif cid == "whatsapp":
+        vault.delete(vault.OPENWA_SECRET)
+    audit.record(S(request), "owner", "channel.forget", cid)
+    return out
+
+
+# ----------------------------------------------------------------------------- webhooks
+WEBHOOK_MAX_BYTES = 2 * 1024 * 1024
+
+
+@app.post("/api/v1/webhooks/whatsapp", include_in_schema=False)
+async def whatsapp_webhook(request: Request):
+    """OpenWA → Donna. Authenticated by HMAC signature, not by the Origin check (it has no Origin)."""
+    if int(request.headers.get("content-length") or 0) > WEBHOOK_MAX_BYTES:
+        raise HTTPException(413, "Webhook body too large.")
+    raw = await request.body()
+    headers = {k.lower(): v for k, v in request.headers.items()}
+    try:
+        return await CH(request).handle_webhook("whatsapp", raw, headers)
+    except WebhookRejected as e:
+        audit.record(S(request), "channel:whatsapp", "webhook.rejected", outcome="denied", reason=str(e))
+        raise HTTPException(e.status, str(e)) from e
+
+
+# ----------------------------------------------------------------------------- contacts
+class ContactIn(BaseModel):
+    display_name: str
+    mode: str = "disabled"
+    channel_id: str | None = None  # with address: the first identity
+    address: str | None = None     # phone number / chat ID on that channel
+    language: str | None = None
+    tone: str | None = None
+    timezone: str | None = None
+    working_hours: dict | None = None
+    notes: str | None = None
+    share_memory: bool | None = None
+    is_owner: bool = False
+    relationship: str | None = None
+    relationship_label: str | None = None
+    address_as: str | None = None
+    script: str | None = None
+    formality: str | None = None
+    greeting: str | None = None
+    intro_message: str | None = None
+    background: str | None = None
+    special_instructions: str | None = None
+    allowed_requests: list[str] | None = None
+
+
+class ContactPatch(BaseModel):
+    display_name: str | None = None
+    mode: str | None = None
+    paused: bool | None = None
+    language: str | None = None
+    tone: str | None = None
+    timezone: str | None = None
+    working_hours: dict | None = None
+    notes: str | None = None
+    share_memory: bool | None = None
+    relationship: str | None = None
+    relationship_label: str | None = None
+    address_as: str | None = None
+    script: str | None = None
+    formality: str | None = None
+    greeting: str | None = None
+    intro_message: str | None = None
+    background: str | None = None
+    special_instructions: str | None = None
+    allowed_requests: list[str] | None = None
+
+
+class IdentityIn(BaseModel):
+    channel_id: str
+    address: str
+
+
+class PolicyIn(BaseModel):
+    channel_id: str = ""
+    capabilities: dict[str, str]
+
+
+class MemoryIn(BaseModel):
+    content: str
+
+
+def _add_identity(request: Request, contact_id: str, channel_id: str, address: str) -> dict:
+    from .channels.registry import REGISTRY
+    if channel_id not in REGISTRY:
+        raise HTTPException(400, f"Unknown channel: {channel_id}")
+    try:
+        external_id, phone = CH(request).adapter(channel_id).identity_for(address)
+        return contacts.add_identity(S(request), contact_id, channel_id, external_id, phone, verified=True)
+    except (ChannelError, contacts.ContactError) as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.get("/api/v1/capabilities")
+def capabilities(request: Request):
+    """The permission catalogue the Contacts page shows."""
+    out = [{"id": cap, "label": spec["label"], "help": spec["help"],
+            "forced_approval": permissions.forced_approval(cap, CONFIRM)} for cap, spec in permissions.CAPABILITIES.items()]
+    for sid, ext in H(request).external.items():
+        out.append({"id": f"{permissions.EXTERNAL_PREFIX}{sid}", "label": ext.config["name"],
+                    "help": "Every tool of this MCP server. Tools that change something always need your approval.",
+                    "forced_approval": False})
+    return out
+
+
+@app.get("/api/v1/contacts")
+def list_contacts(request: Request, q: str = "", discovered: bool | None = None):
+    return contacts.list_all(S(request), q, discovered)
+
+
+@app.post("/api/v1/contacts")
+def create_contact(body: ContactIn, request: Request):
+    store = S(request)
+    fields = body.model_dump(exclude_none=True, exclude={"display_name", "mode", "channel_id", "address", "is_owner"})
+    try:
+        c = contacts.create(store, body.display_name, mode=body.mode, **fields)
+    except contacts.ContactError as e:
+        raise HTTPException(400, str(e)) from e
+    if body.channel_id and body.address:
+        try:
+            _add_identity(request, c["id"], body.channel_id, body.address)
+        except HTTPException:
+            contacts.delete(store, c["id"])
+            raise
+    if body.is_owner:
+        contacts.set_owner(store, c["id"])
+    audit.record(store, "owner", "contact.create", c["id"], mode=body.mode)
+    return contacts.get(store, c["id"])
+
+
+@app.get("/api/v1/contacts/{contact_id}")
+def get_contact(contact_id: str, request: Request):
+    c = contacts.get(S(request), contact_id)
+    if not c:
+        raise HTTPException(404, "Contact not found.")
+    c["policies"] = contacts.policies(S(request), contact_id)
+    # What Donna says first when intro_message is empty (shown as the field's placeholder).
+    c["default_intro"] = identity.introduction({**c, "intro_message": ""}, S(request).settings(), S(request))
+    return c
+
+
+@app.patch("/api/v1/contacts/{contact_id}")
+async def patch_contact(contact_id: str, body: ContactPatch, request: Request):
+    return await _call(contacts.update, S(request), contact_id, body.model_dump(exclude_none=True))
+
+
+@app.delete("/api/v1/contacts/{contact_id}")
+def delete_contact(contact_id: str, request: Request):
+    if not contacts.get(S(request), contact_id):
+        raise HTTPException(404, "Contact not found.")
+    contacts.delete(S(request), contact_id)
+    return {"ok": True}
+
+
+@app.post("/api/v1/contacts/{contact_id}/owner")
+async def make_owner(contact_id: str, request: Request):
+    return await _call(contacts.set_owner, S(request), contact_id)
+
+
+@app.get("/api/v1/contacts/{contact_id}/policies")
+def get_policies(contact_id: str, request: Request):
+    if not contacts.get(S(request), contact_id):
+        raise HTTPException(404, "Contact not found.")
+    return contacts.policies(S(request), contact_id)
+
+
+@app.put("/api/v1/contacts/{contact_id}/policies")
+async def put_policies(contact_id: str, body: PolicyIn, request: Request):
+    return await _call(contacts.set_policy, S(request), contact_id, body.channel_id, body.capabilities)
+
+
+@app.delete("/api/v1/contacts/{contact_id}/policies/{channel_id}")
+def delete_policy(contact_id: str, channel_id: str, request: Request):
+    contacts.clear_policy(S(request), contact_id, channel_id)
+    return contacts.policies(S(request), contact_id)
+
+
+@app.post("/api/v1/contacts/{contact_id}/identities")
+def add_identity(contact_id: str, body: IdentityIn, request: Request):
+    if not contacts.get(S(request), contact_id):
+        raise HTTPException(404, "Contact not found.")
+    _add_identity(request, contact_id, body.channel_id, body.address)
+    return contacts.get(S(request), contact_id)
+
+
+@app.delete("/api/v1/contacts/{contact_id}/identities/{identity_id}")
+def remove_identity(contact_id: str, identity_id: str, request: Request):
+    contacts.remove_identity(S(request), contact_id, identity_id)
+    return contacts.get(S(request), contact_id)
+
+
+@app.get("/api/v1/contacts/{contact_id}/memories")
+def contact_memories(contact_id: str, request: Request):
+    return memory.list_contact(S(request), contact_id)
+
+
+@app.post("/api/v1/contacts/{contact_id}/memories")
+async def add_contact_memory(contact_id: str, body: MemoryIn, request: Request):
+    if not contacts.get(S(request), contact_id):
+        raise HTTPException(404, "Contact not found.")
+    return await _call(memory.add, S(request), body.content, "contact", contact_id)
+
+
+@app.delete("/api/v1/contacts/{contact_id}/memories/{memory_id}")
+def delete_contact_memory(contact_id: str, memory_id: str, request: Request):
+    if not memory.delete(S(request), memory_id, contact_id):
+        raise HTTPException(404, "Memory not found.")
+    return {"ok": True}
+
+
+# ----------------------------------------------------------------------------- inbox
+class SendIn(BaseModel):
+    text: str
+
+
+class ArchiveIn(BaseModel):
+    archived: bool = True
+
+
+@app.get("/api/v1/inbox")
+def list_inbox(request: Request, channel_id: str = "", contact_id: str = "", status: str = "active", q: str = ""):
+    return inbox.conversations(S(request), channel_id, contact_id, status, q)
+
+
+@app.get("/api/v1/inbox/counts")
+def inbox_counts(request: Request):
+    return {**inbox.counts(S(request)), "approvals": approvals.pending_count(S(request)),
+            "requests": contact_requests.counts(S(request))}
+
+
+def _inbox_conv(request: Request, ccid: str) -> dict:
+    conv = inbox.conversation(S(request), ccid)
+    if not conv:
+        raise HTTPException(404, "Conversation not found.")
+    return conv
+
+
+@app.get("/api/v1/inbox/{ccid}")
+def get_inbox_conversation(ccid: str, request: Request):
+    return _inbox_conv(request, ccid)
+
+
+@app.get("/api/v1/inbox/{ccid}/messages")
+def inbox_messages(ccid: str, request: Request):
+    _inbox_conv(request, ccid)
+    inbox.mark_read(S(request), ccid)
+    return inbox.messages(S(request), ccid)
+
+
+@app.post("/api/v1/inbox/{ccid}/send")
+async def inbox_send(ccid: str, body: SendIn, request: Request):
+    """The owner replying by hand from the dashboard."""
+    _inbox_conv(request, ccid)
+    text = body.text.strip()[:4000]
+    if not text:
+        raise HTTPException(400, "Message is empty.")
+    conv = CH(request).conversation(ccid)
+    S(request).add_message(conv["conversation_id"], "assistant", text)
+    sent = await CH(request).send_text(conv, text, author="owner")
+    audit.record(S(request), "owner", "message.manual", ccid, outcome="ok" if sent.ok else "failed")
+    if not sent.ok and not sent.uncertain:
+        raise HTTPException(502, f"Not sent: {sent.error}")
+    return {"ok": True, "unconfirmed": sent.uncertain}
+
+
+@app.post("/api/v1/inbox/{ccid}/archive")
+def inbox_archive(ccid: str, body: ArchiveIn, request: Request):
+    _inbox_conv(request, ccid)
+    inbox.set_status(S(request), ccid, "archived" if body.archived else "active")
+    return _inbox_conv(request, ccid)
+
+
+@app.post("/api/v1/inbox/{ccid}/summarize")
+async def inbox_summarize(ccid: str, request: Request):
+    _inbox_conv(request, ccid)
+    try:
+        summary = await CH(request)._summarize(ccid, force=True)
+    except llm.LLMError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"summary": summary or _inbox_conv(request, ccid)["summary"]}
+
+
+@app.delete("/api/v1/inbox/{ccid}")
+def inbox_delete(ccid: str, request: Request):
+    _inbox_conv(request, ccid)
+    inbox.delete(S(request), ccid)
+    audit.record(S(request), "owner", "conversation.delete", ccid)
+    return {"ok": True}
+
+
+@app.post("/api/v1/inbox/events/{event_id}/retry")
+async def inbox_retry(event_id: str, request: Request):
+    await _call(CH(request).retry, event_id)
+    return {"ok": True}
+
+
+# ----------------------------------------------------------------------------- approvals
+class ApproveIn(BaseModel):
+    text: str | None = None  # an edited reply draft
+
+
+@app.get("/api/v1/approvals")
+def list_approvals(request: Request, status: str | None = None):
+    return approvals.list_all(S(request), status)
+
+
+@app.get("/api/v1/approvals/{code}")
+def get_approval(code: str, request: Request):
+    a = approvals.get(S(request), code)
+    if not a:
+        raise HTTPException(404, "Approval not found.")
+    return a
+
+
+@app.post("/api/v1/approvals/{code}/approve")
+async def approve(code: str, body: ApproveIn, request: Request):
+    return await _call(CH(request).approve, code, "owner:dashboard", body.text)
+
+
+@app.post("/api/v1/approvals/{code}/reject")
+async def reject(code: str, request: Request):
+    return await _call(CH(request).reject, code, "owner:dashboard")
+
+
+# ----------------------------------------------------------------------------- requests
+class BookIn(BaseModel):
+    start: str               # local time without offset, e.g. 2026-11-21T10:00 (calendar's timezone)
+    end: str
+    title: str = ""
+    add_meet: bool = True
+
+
+class RequestPatch(BaseModel):
+    status: str | None = None
+    outcome: str | None = None
+    notify_contact: bool = False  # Donna tells them the outcome (using only the outcome note)
+    book: BookIn | None = None    # approve a meeting request by booking it on the calendar
+
+
+@app.get("/api/v1/requests/types")
+def request_types():
+    return {"types": contact_requests.TYPES, "statuses": contact_requests.STATUSES}
+
+
+@app.get("/api/v1/requests")
+def list_requests(request: Request, contact_id: str = "", channel_id: str = "", type: str = "", status: str = ""):  # noqa: A002
+    return contact_requests.list_all(S(request), contact_id, channel_id, type, status)
+
+
+@app.get("/api/v1/requests/{rid}")
+def get_request(rid: str, request: Request):
+    try:
+        r = contact_requests.get(S(request), rid)
+    except contact_requests.RequestError:
+        r = None
+    if not r:
+        raise HTTPException(404, "Request not found.")
+    return r
+
+
+@app.patch("/api/v1/requests/{rid}")
+async def patch_request(rid: str, body: RequestPatch, request: Request):
+    current = get_request(rid, request)  # 404 when unknown
+    status, outcome, link = body.status or current["status"], body.outcome, ""
+    confirmation = ""
+    if body.book:
+        booked = await CH(request).book_for_request(current, body.book.start, body.book.end, body.book.title, body.book.add_meet)
+        if not booked["ok"]:  # nothing changes and nobody is told when the calendar refused
+            raise HTTPException(400, f"Couldn't {'move' if current['event_id'] else 'create'} the event: {booked['result'][:300]}")
+        link = booked["meet"]
+        when = f"{contact_requests.fmt_local(booked['start'])} to {contact_requests.fmt_local(booked['end']).split(', ')[-1]}"
+        # What the contact must see exactly as the calendar saved it, never paraphrased by the model.
+        confirmation = f"📅 {when}" + (f"\nGoogle Meet: {link}" if link else "")
+        status = "completed"
+        outcome = (f"{outcome.strip()} " if outcome and outcome.strip() else "") \
+            + f"{'Moved to' if booked['moved'] else 'Booked for'} {when}." + (f" Google Meet link: {link}" if link else "")
+    r = await _call(contact_requests.set_status, S(request), rid, status, outcome, "owner")
+    if body.book:
+        r["booked"] = {"meet": link, "start": booked["start"], "end": booked["end"], "moved": booked["moved"]}
+    if body.notify_contact:
+        r["contact_informed"] = await CH(request).inform_about_request(r, must_include=confirmation)
+    return r
+
+
+# ----------------------------------------------------------------------------- memory, audit
+@app.get("/api/v1/memories")
+def list_memories(request: Request):
+    return memory.list_global(S(request))
+
+
+@app.post("/api/v1/memories")
+async def add_memory(body: MemoryIn, request: Request):
+    return await _call(memory.add, S(request), body.content, "global")
+
+
+@app.delete("/api/v1/memories/{memory_id}")
+def delete_memory(memory_id: str, request: Request):
+    if not memory.delete(S(request), memory_id):
+        raise HTTPException(404, "Memory not found.")
+    return {"ok": True}
+
+
+@app.get("/api/v1/audit")
+def audit_log(request: Request, outcome: str | None = None, limit: int = 200):
+    return audit.recent(S(request), max(1, min(limit, 1000)), outcome)
+
+
 # =============================================================================== settings
 class SettingsIn(BaseModel):
     model: str | None = None
+    llm_provider: str | None = None
+    claude_model: str | None = None
     timezone: str | None = None
     reasoning_effort: str | None = None
     pixel_grid: bool | None = None
     reduce_motion: bool | None = None
     onboarded: bool | None = None
     permission_mode: str | None = None
+    messaging_enabled: bool | None = None
+    require_trigger: bool | None = None
+    trigger_word: str | None = None
+    automations_enabled: bool | None = None
+    owner_name: str | None = None
+    owner_pronouns: str | None = None
+    assistant_profile: str | None = None
+    default_language: str | None = None
+    default_tone: str | None = None
+    contact_rate_per_hour: int | None = None
+    global_rate_per_hour: int | None = None
+    approval_ttl_hours: float | None = None
+    unknown_contact_action: str | None = None
+    openwa_url: str | None = None
+    owner_channel: str | None = None
 
 
 def _public_settings(store: Store) -> dict:
@@ -673,6 +1225,29 @@ def put_settings(body: SettingsIn, request: Request):
     values = {k: v for k, v in body.model_dump().items() if v is not None}
     if values.get("permission_mode", "manual") not in MODES:
         raise HTTPException(400, "permission_mode must be plan, manual or auto")
+    if values.get("llm_provider", "groq") not in llm.PROVIDERS:
+        raise HTTPException(400, "llm_provider must be groq or claude_code")
+    if "claude_model" in values and not re.fullmatch(r"[a-z0-9.\-]{2,60}", values["claude_model"]):
+        raise HTTPException(400, "Claude model must be an alias like opus or sonnet, or a model ID like claude-opus-5-5")
+    if "trigger_word" in values:
+        values["trigger_word"] = values["trigger_word"].strip()
+        if not re.fullmatch(r"@?\w{2,30}", values["trigger_word"]):
+            raise HTTPException(400, "The trigger must be one word, like @donna.")
+    if values.get("owner_pronouns", "") not in ("", "he", "she", "they"):
+        raise HTTPException(400, "owner_pronouns must be he, she or they")
+    if values.get("unknown_contact_action", "ignore") not in ("ignore", "notify"):
+        raise HTTPException(400, "unknown_contact_action must be ignore or notify")
+    for k, lo, hi in (("contact_rate_per_hour", 1, 500), ("global_rate_per_hour", 1, 2000), ("approval_ttl_hours", 0.1, 168)):
+        if k in values and not lo <= values[k] <= hi:
+            raise HTTPException(400, f"{k} must be between {lo} and {hi}")
+    if "openwa_url" in values and urlsplit(values["openwa_url"]).hostname not in ALLOWED_HOSTS:
+        raise HTTPException(400, "OpenWA must run on this computer (http://127.0.0.1:…).")
+    for k in ("owner_name", "assistant_profile", "default_language", "default_tone"):
+        if k in values:
+            values[k] = values[k].strip()[:1000]
+    if "messaging_enabled" in values or "automations_enabled" in values:
+        audit.record(S(request), "owner", "settings.switches", "",
+                     **{k: values[k] for k in ("messaging_enabled", "automations_enabled") if k in values})
     if "timezone" in values:
         from zoneinfo import ZoneInfo
         try:
@@ -680,6 +1255,8 @@ def put_settings(body: SettingsIn, request: Request):
         except Exception as e:  # noqa: BLE001
             raise HTTPException(400, f"Unknown timezone: {values['timezone']}") from e
     S(request).set_settings(**values)
+    if "llm_provider" in values:
+        _health_cache.update(t=0.0)  # the status pill follows the provider at once
     return _public_settings(S(request))
 
 

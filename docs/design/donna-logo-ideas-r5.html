@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · AI assistant logo, round 5</title>
+<style>
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Nunito";src:url("https://cdn.jsdelivr.net/fontsource/fonts/nunito@latest/latin-800-normal.woff2") format("woff2");font-weight:800;font-display:swap}
+@font-face{font-family:"Geist";src:url("https://cdn.jsdelivr.net/fontsource/fonts/geist-sans@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Space Grotesk";src:url("https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+:root{
+  --bg:#0E0E20;--fg:#F6F3FF;--fg-2:#D8D5E8;--muted:#AAA8C9;--subtle:#74718E;
+  --violet-b:#A78BFA;--cyan:#67E8F9;--amber:#FBBF24;
+  --border:rgba(167,139,250,.2);--border-h:rgba(167,139,250,.45);--border-s:rgba(255,255,255,.06);
+  --ui:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;--mono:"Geist Mono",ui-monospace,Consolas,monospace;
+  --word:Nunito;--word-w:800;--word-ls:-.02em;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--fg);font:14px/1.55 var(--ui);-webkit-font-smoothing:antialiased;padding-bottom:110px;background:radial-gradient(50% 40% at 10% 0%,rgba(139,92,246,.12),transparent 60%),var(--bg);background-attachment:fixed}
+a{color:var(--violet-b)}
+.wrap{max-width:1340px;margin:0 auto;padding:56px 28px 0}
+.eyebrow{font:500 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font:800 54px/1.02 Nunito,var(--ui);letter-spacing:-.03em;margin:14px 0 14px}
+h1 em{font-style:normal;background:linear-gradient(90deg,#C4B5FD,#67E8F9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:820px;color:var(--fg-2);font-size:15.5px;margin:0}
+h2{font:600 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:30px 0 12px}
+.refs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.ref{border:1px solid var(--border-s);border-radius:14px;padding:12px 14px;background:rgba(27,27,57,.45);font-size:12.5px;color:var(--muted)}
+.ref b{color:var(--fg-2)}
+.ref .to{display:block;margin-top:5px;font:500 10.5px/1.35 var(--mono);color:var(--cyan)}
+.toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:28px -28px 18px;padding:12px 28px;background:rgba(14,14,32,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-s)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--muted);font:500 12px/1 var(--ui);padding:9px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button[aria-pressed=true]{background:rgba(139,92,246,.22);color:var(--fg)}
+.sw{width:12px;height:12px;border-radius:4px;display:inline-block}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:18px}
+.card{border:1px solid var(--border);border-radius:24px;background:linear-gradient(180deg,rgba(34,34,71,.7),rgba(24,24,52,.7));overflow:hidden;transition:border-color .2s,box-shadow .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+.card:hover{border-color:var(--border-h);transform:translateY(-3px)}
+.card.picked{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 46px rgba(103,232,249,.18)}
+.card.short:not(.picked){border-color:var(--amber)}
+.stage{height:300px;display:grid;place-items:center;position:relative;overflow:hidden;border-bottom:1px solid var(--border-s)}
+.stage .wall{position:absolute;inset:-20px;filter:blur(26px) saturate(1.2);opacity:.9}
+.stage .mk{position:relative;width:176px;height:176px;filter:drop-shadow(0 18px 30px rgba(0,0,0,.45));transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.card:hover .stage .mk{transform:translateY(-4px) scale(1.03)}
+.stage .num{position:absolute;left:18px;top:16px;font:600 12px/1 var(--mono);color:rgba(255,255,255,.7);letter-spacing:.08em;z-index:1}
+.stage .tag{position:absolute;right:14px;top:13px;font:600 10px/1 var(--mono);padding:5px 9px;border-radius:99px;background:rgba(0,0,0,.35);color:#fff;z-index:1}
+.body{padding:16px 20px 20px}
+.title{display:flex;align-items:baseline;gap:10px}
+.title h3{margin:0;font:800 22px/1.1 Nunito,var(--ui);letter-spacing:-.01em}
+.title .kind{font:500 10.5px/1 var(--mono);color:var(--subtle);text-transform:uppercase;letter-spacing:.1em}
+.idea{margin:7px 0 4px;color:var(--fg-2);font-size:13.5px}
+.why{margin:0;color:var(--muted);font-size:12.8px}
+.why b{color:var(--fg-2);font-weight:600}
+.dock{display:flex;gap:10px;justify-content:space-between;margin:16px 0 8px;padding:10px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--border-s)}
+.dock .m{width:56px;height:56px;display:block;filter:drop-shadow(0 4px 8px rgba(0,0,0,.35))}
+.row{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:8px;margin:0 0 14px}
+.pv{border:1px solid var(--border-s);border-radius:12px;background:rgba(7,7,15,.65);height:70px;display:grid;place-items:center;position:relative;overflow:hidden}
+.pv.w{background:#fff;border-color:#E6E2F5}
+.pv small{position:absolute;bottom:4px;left:0;right:0;text-align:center;font:500 8.5px/1 var(--mono);color:var(--subtle);letter-spacing:.06em;text-transform:uppercase}
+.pv .in{margin-top:-10px;display:flex;align-items:center;gap:9px}
+.lock .m{width:34px;height:34px;display:block}
+.lock .t{font-family:var(--word);font-weight:var(--word-w);font-size:26px;line-height:1;letter-spacing:var(--word-ls)}
+.pv.w .lock .t{color:#14112B}
+.fav{display:flex;align-items:center;gap:6px;background:#2A2A52;border-radius:7px 7px 0 0;padding:5px 9px;font:500 10px/1 var(--ui);color:var(--fg-2)}
+.fav .m{width:16px;height:16px;display:block}
+.pv.tab{place-items:end start;padding:0 0 0 10px}
+.ava .m{width:28px;height:28px;display:block}
+.bubble{font:400 11px/1.3 var(--ui);color:var(--fg-2);background:rgba(255,255,255,.05);border:1px solid var(--border-s);border-radius:10px 10px 10px 3px;padding:6px 9px}
+.actions{display:flex;gap:8px}
+.btn{flex:1;height:38px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:600 12.5px/1 var(--ui);cursor:pointer}
+.btn:hover{border-color:var(--border-h)}
+.btn.star[aria-pressed=true]{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,.08)}
+.btn.pick{background:linear-gradient(135deg,#7A4BEB,#5F52F0);border-color:transparent}
+.btn.pick[aria-pressed=true]{background:linear-gradient(135deg,#0891B2,#22D3EE);color:#04121A}
+.bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(980px,calc(100% - 32px));border:1px solid var(--border-h);border-radius:16px;background:rgba(14,14,32,.94);backdrop-filter:blur(14px);padding:12px 14px 12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);z-index:10}
+.bar .m{width:38px;height:38px;flex:none}
+.bar .txt{flex:1;font-size:13px;color:var(--fg-2)}
+.bar .txt b{font-size:15px;color:var(--fg)}
+.bar .txt .s{font:500 11px/1.4 var(--mono);color:var(--amber)}
+.bar .btn{flex:none;padding:0 18px}
+.blink{animation:blink 4s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+.twinkle{animation:tw 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes tw{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(.72) rotate(45deg)}}
+@media (prefers-reduced-motion:reduce){.blink,.twinkle{animation:none}}
+footer{margin:40px 0 0;color:var(--subtle);font:500 11px/1.6 var(--mono)}
+@media (max-width:520px){h1{font-size:36px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Donna · AI assistant logo · round 5</div>
+  <h1>An app icon you'd <em>want to tap</em>.</h1>
+  <p class="lede">These are built from your Dribbble references. Each logo is a bold app icon: a mark on a coloured tile, softly shaded, friendly, with the AI sparkle and speech-bubble language people already understand. Half are mascots in the spirit of the Silverslab character. Every card shows the icon in five tile colours, the way your reference shows it in a dock. Use <b>Tile</b> to change the main colour.</p>
+
+  <h2>Your references and what I took from them</h2>
+  <div class="refs">
+    <div class="ref"><b>Silverslab mascot (Ahmad Ghani)</b><br>A soft white character with big eyes, one signature accessory (a green band) and a sparkle, shown in four tile colours. <span class="to">→ 01 Donna · 08 Headset · 11 Ghost · the dock row on every card</span></div>
+    <div class="ref"><b>Logoarter</b><br>A bold blue circle holding a rounded white star with a sparkle cut out of it. <span class="to">→ 12 Star Seal · 03 Spark Face</span></div>
+    <div class="ref"><b>Orvo (Jannatun Nessa)</b><br>A circle with a bite taken out and a sparkle in the gap: "think in orbit". <span class="to">→ 04 Orbit Bite</span></div>
+    <div class="ref"><b>Oriol (Jannatun Nessa)</b><br>A white circle cut by a flowing S-wave. <span class="to">→ 06 Flow</span></div>
+    <div class="ref"><b>Convia (Ashik)</b><br>A robot head inside a speech bubble, for conversational AI. <span class="to">→ 05 Bot Bubble · 02 Bubble Buddy</span></div>
+    <div class="ref"><b>anexa.ai (Nethux) · Lingrow</b><br>White marks on vivid mesh gradients and saturated tiles. <span class="to">→ tile gradients, 09 Glass Orb</span></div>
+    <div class="ref"><b>Dribbble search: "ai assistant logo"</b><br><a href="https://dribbble.com/search/ai-assistant-logo" target="_blank" rel="noopener">dribbble.com/search/ai-assistant-logo</a><span class="to">→ overall direction: friendly, bold, app-icon-first</span></div>
+  </div>
+
+  <div class="toolbar">
+    <span class="eyebrow">Tile</span>
+    <div class="seg" id="segTheme"></div>
+    <span class="eyebrow" style="margin-left:6px">Wordmark</span>
+    <div class="seg" id="segFont"><button data-v="nunito">Nunito</button><button data-v="inter">Inter</button><button data-v="geist">Geist</button><button data-v="grotesk">Grotesk</button></div>
+    <div class="seg" id="segF"><button data-v="all">All</button><button data-v="star">★ Starred</button></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <footer>docs/design/donna-logo-ideas-r5.html · round 5 · original vector icons, 100×100 grid, drawn in this file</footer>
+</div>
+<div class="bar"><div class="m" id="barMark"></div><div class="txt" id="barTxt"></div><button class="btn" id="copy">Copy choice</button></div>
+
+<script>
+const THEMES={
+ violet:{name:'Violet',tile:['#9B6BFF','#5B3FE0'],acc:'#2A1D6E',spark:'#67E8F9',orb:['#C9F7FF','#8B5CF6','#3B2A9E']},
+ midnight:{name:'Midnight',tile:['#25204A','#0B0A18'],acc:'#8B5CF6',spark:'#67E8F9',orb:['#B9F2FF','#7C5CFF','#24186A']},
+ green:{name:'Green',tile:['#2BD46A','#13853E'],acc:'#0B3D1E',spark:'#E2FF9E',orb:['#F0FFD0','#2BD46A','#0B5A2A']},
+ blue:{name:'Blue',tile:['#4D8DFF','#1E47D8'],acc:'#0B1F5C',spark:'#FFE27A',orb:['#E6F3FF','#4D8DFF','#152F8F']},
+ coral:{name:'Coral',tile:['#FF8A65','#E2453C'],acc:'#5A1410',spark:'#FFF1C2',orb:['#FFF0E6','#FF8A65','#8F1F1A']},
+ light:{name:'Light',tile:['#FBFAFF','#E6E0FA'],acc:'#7C5CFF',spark:'#7C5CFF',orb:['#E0FBFF','#A78BFA','#5B3FE0']},
+};
+const sp=(cx,cy,R,k=R*.15)=>`M${cx} ${cy-R}Q${cx+k} ${cy-k} ${cx+R} ${cy}Q${cx+k} ${cy+k} ${cx} ${cy+R}Q${cx-k} ${cy+k} ${cx-R} ${cy}Q${cx-k} ${cy-k} ${cx} ${cy-R}Z`;
+const eye=(x,y,rx=3.8,ry=5.8,D)=>`<g class="blink"><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${D}"/><circle cx="${x+1.1}" cy="${y-2}" r="${f(rx*.34)}" fill="#fff"/></g>`;
+const f=n=>+n.toFixed(2);
+const MK=(id,body)=>`<mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><rect width="100" height="100" fill="#000"/>${body}</mask>`;
+
+const MARKS=[
+ {name:'Donna',kind:'mascot',tag:'mascot',
+  idea:'A soft, rounded character with big glancing eyes, a side-swept fringe in the accent colour and a sparkle.',
+  why:'<b>Donna as a character, in the spirit of your Silverslab reference.</b> The side-swept hair is her one signature accessory, a quiet nod to Donna Paulsen. A mascot gives the app a personality and reads as "assistant" rather than "tool". It can blink, glance and react in the UI.',
+  draw:c=>`<g ${c.F}><ellipse cx="48" cy="58" rx="30" ry="27" fill="${c.W}"/></g>
+   <path d="M17 60C14 36 32 25 52 26C68 27 80 36 80 49C68 39 51 39 39 47C30 53 23 58 17 60Z" fill="${c.A}"/>
+   <path d="M24 46C30 36 42 31 54 31" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2.5" stroke-linecap="round"/>
+   ${eye(58,61,3.9,6,c.D)}${eye(70,60,3.9,6,c.D)}<ellipse cx="76" cy="70" rx="3.6" ry="2" fill="#FF8FB1" opacity=".45"/>
+   <path class="twinkle" d="${sp(82,20,8.5)}" fill="${c.S}"/>`},
+ {name:'Bubble Buddy',kind:'mascot · chat',
+  idea:'A speech bubble that is also a face: two eyes, a small smile and a sparkle on its shoulder.',
+  why:'<b>"Chat with me", said by the icon itself.</b> It turns the universal chat symbol into a character, which is friendly, obvious and works at every size. It suits WhatsApp and Telegram, where Donna lives in a chat.',
+  draw:c=>`<g ${c.F}><rect x="16" y="20" width="66" height="52" rx="24" fill="${c.W}"/><path d="M28 62L21 84L48 69Z" fill="${c.W}" stroke="${c.W}" stroke-width="3" stroke-linejoin="round"/></g>
+   ${eye(41,43,3.8,5.8,c.D)}${eye(57,43,3.8,5.8,c.D)}<path d="M44 55Q49 60.5 54 55" fill="none" stroke="${c.D}" stroke-width="3" stroke-linecap="round"/>
+   <path class="twinkle" d="${sp(81,20,8.5)}" fill="${c.S}"/>`},
+ {name:'Spark Face',kind:'mascot · sparkle',
+  idea:'The AI sparkle, made soft and plump, with a face in its centre.',
+  why:'<b>The AI symbol, given a personality.</b> Everyone reads the sparkle as "AI"; the eyes make it <i>your</i> assistant. It is instantly understood, playful and clearly different from the flat Gemini-style stars.',
+  draw:c=>`<g ${c.F}><path d="${sp(48,52,33,8.5)}" fill="${c.W}" stroke="${c.W}" stroke-width="9" stroke-linejoin="round"/></g>
+   ${eye(43,52,3.3,5.2,c.D)}${eye(55,52,3.3,5.2,c.D)}<path class="twinkle" d="${sp(82,18,8)}" fill="${c.S}"/>`},
+ {name:'Orbit Bite',kind:'symbol',
+  idea:'A white circle with a round bite taken out, and a sparkle sitting in the gap.',
+  why:'<b>Inspired by Orvo.</b> The bite is the task Donna takes off your plate, and the sparkle is her doing it. It is a confident, minimal startup mark that is perfect as a favicon.',
+  draw:c=>`${MK('b'+c.id,`<circle cx="53" cy="55" r="31" fill="#fff"/><circle cx="29" cy="31" r="19" fill="#000"/>`)}<g ${c.F}><rect width="100" height="100" fill="${c.W}" mask="url(#b${c.id})"/></g><path class="twinkle" d="${sp(29,31,10.5)}" fill="${c.S}"/>`},
+ {name:'Bot Bubble',kind:'mascot · bot',
+  idea:'A speech bubble with an antenna, a dark screen-face and two glowing eyes.',
+  why:'<b>Inspired by Convia: the clearest "AI assistant" icon possible.</b> It is a robot you talk to, and the antenna\'s sparkle-ball pulses while Donna thinks. It is literal on purpose: nobody will wonder what the app does.',
+  draw:c=>`<g ${c.F}><rect x="14" y="27" width="72" height="54" rx="20" fill="${c.W}"/><path d="M28 74L24 91L47 79Z" fill="${c.W}" stroke="${c.W}" stroke-width="3" stroke-linejoin="round"/><rect x="47.5" y="14" width="5" height="15" rx="2.5" fill="${c.W}"/></g>
+   <circle class="twinkle" cx="50" cy="12" r="6" fill="${c.S}"/><rect x="25" y="38" width="50" height="31" rx="15.5" fill="${c.D}"/>
+   <g class="blink"><rect x="36" y="46" width="7" height="14" rx="3.5" fill="${c.S}"/><rect x="57" y="46" width="7" height="14" rx="3.5" fill="${c.S}"/></g>`},
+ {name:'Flow',kind:'symbol',
+  idea:'A white disc cut by a flowing S-wave, with the top half lifting like a speech line.',
+  why:'<b>Inspired by Oriol.</b> The wave is a conversation in flow: you say something and she carries it on. It is clean and premium, closer to a fintech-grade brand mark, and as a favicon it is very crisp.',
+  draw:c=>`${MK('w'+c.id,`<circle cx="50" cy="50" r="33" fill="#fff"/><path d="M8 60C28 60 34 44 50 44C66 44 72 28 92 28" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round"/>`)}<g ${c.F}><rect width="100" height="100" fill="${c.W}" mask="url(#w${c.id})"/></g><circle cx="73" cy="66" r="5" fill="${c.S}"/>`},
+ {name:'Owl',kind:'mascot · animal',
+  idea:'A round owl with ear tufts, huge glowing eyes and a small beak.',
+  why:'<b>Wise, watchful and works the night shift.</b> The owl is the classic "smart helper" animal, like the fox in your FoxChat reference. It notices everything in your inbox and runs your scheduled jobs while you sleep. It is cute, memorable and ownable.',
+  draw:c=>`<g ${c.F}><path d="M23 42L20 17L37 30C45 27 55 27 63 30L80 17L77 42C82 54 81 71 70 80C60 88 40 88 30 80C19 71 18 54 23 42Z" fill="${c.W}" stroke="${c.W}" stroke-width="3" stroke-linejoin="round"/></g>
+   <circle cx="38" cy="52" r="12.5" fill="${c.D}"/><circle cx="62" cy="52" r="12.5" fill="${c.D}"/>
+   <g class="blink"><circle cx="39" cy="53" r="5.5" fill="${c.S}"/><circle cx="61" cy="53" r="5.5" fill="${c.S}"/></g><circle cx="41" cy="50" r="1.8" fill="#fff"/><circle cx="63" cy="50" r="1.8" fill="#fff"/>
+   <path d="M46 64H54L50 71Z" fill="${c.A}" stroke="${c.A}" stroke-width="2" stroke-linejoin="round"/>`},
+ {name:'Headset',kind:'mascot · assistant',
+  idea:'A round, friendly face wearing an assistant\'s headset with a mic, plus a sparkle.',
+  why:'<b>"Donna speaking, how can I help?"</b> The headset is the universal sign of a receptionist or personal assistant. It is the most "this is an <i>assistant</i>" mascot here, and it carries the Silverslab-style accessory idea.',
+  draw:c=>`<g ${c.F}><circle cx="50" cy="55" r="27" fill="${c.W}"/></g>
+   <path d="M21 54A29 29 0 0 1 79 54" fill="none" stroke="${c.A}" stroke-width="6" stroke-linecap="round"/>
+   <rect x="15" y="45" width="11" height="20" rx="5.5" fill="${c.A}"/><rect x="74" y="45" width="11" height="20" rx="5.5" fill="${c.A}"/>
+   <path d="M21 63Q22 78 38 78" fill="none" stroke="${c.A}" stroke-width="3.5" stroke-linecap="round"/><circle cx="40.5" cy="78" r="4.2" fill="${c.A}"/>
+   ${eye(44,55,3.6,5.6,c.D)}${eye(57,55,3.6,5.6,c.D)}<path d="M46 66Q50.5 70 55 66" fill="none" stroke="${c.D}" stroke-width="2.6" stroke-linecap="round"/>
+   <path class="twinkle" d="${sp(82,19,8)}" fill="${c.S}"/>`},
+ {name:'Glass Orb',kind:'3D · companion',
+  idea:'A glossy glass sphere with two pill-shaped eyes and a specular highlight.',
+  why:'<b>The "AI companion" look.</b> A living orb with eyes is the most current way to show an assistant with presence. It is also an animation system: the eyes blink, squint while thinking and smile when done.',
+  draw:c=>`<g ${c.F}><circle cx="50" cy="52" r="33" fill="${c.O}"/></g><ellipse cx="38" cy="33" rx="12" ry="6" fill="#fff" opacity=".85" transform="rotate(-24 38 33)"/>
+   <g class="blink"><rect x="38.5" y="45" width="8" height="16" rx="4" fill="${c.D}"/><rect x="53.5" y="45" width="8" height="16" rx="4" fill="${c.D}"/></g><path class="twinkle" d="${sp(80,22,7.5)}" fill="${c.S}"/>`},
+ {name:'Spark Bubble',kind:'symbol',
+  idea:'A round speech bubble with a sparkle cut straight through it.',
+  why:'<b>Chat plus AI in one glyph</b>, the most direct symbol of an AI assistant. It is simple, bold and immediately understood, and the cut-out lets the tile colour shine through.',
+  draw:c=>`${MK('s'+c.id,`<circle cx="50" cy="47" r="32" fill="#fff"/><path d="M29 70L21 88L48 77Z" fill="#fff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="${sp(50,47,16,3)}" fill="#000"/><path d="${sp(67,30,5.5)}" fill="#000"/>`)}<g ${c.F}><rect width="100" height="100" fill="${c.W}" mask="url(#s${c.id})"/></g>`},
+ {name:'Ghost',kind:'mascot',
+  idea:'A friendly little ghost with blushing cheeks, floating beside a sparkle.',
+  why:'<b>The invisible helper.</b> Donna works quietly in the background: replies drafted, reminders sent, things handled before you notice. A ghost is cute, has a lot of personality and is very on-trend for tech mascots.',
+  draw:c=>`<g ${c.F}><path d="M25 84V47A25 25 0 0 1 75 47V84L66.5 77L58 84L50 77L42 84L33.5 77Z" fill="${c.W}" stroke="${c.W}" stroke-width="4" stroke-linejoin="round"/></g>
+   ${eye(43,50,3.8,5.8,c.D)}${eye(58,50,3.8,5.8,c.D)}<ellipse cx="37" cy="61" rx="3.6" ry="2" fill="#FF8FB1" opacity=".5"/><ellipse cx="64" cy="61" rx="3.6" ry="2" fill="#FF8FB1" opacity=".5"/>
+   <path class="twinkle" d="${sp(81,20,8.5)}" fill="${c.S}"/>`},
+ {name:'Star Seal',kind:'symbol',
+  idea:'A plump, rounded four-point star with a crisp sparkle cut from its centre.',
+  why:'<b>Inspired by Logoarter.</b> It is a bold geometric badge with a sparkle-within-a-sparkle: AI at its core. Very strong as an app icon and as a favicon.',
+  draw:c=>`${MK('t'+c.id,`<path d="${sp(50,50,30,9)}" fill="#fff" stroke="#fff" stroke-width="12" stroke-linejoin="round"/><path d="${sp(50,50,12,2.2)}" fill="#000"/>`)}<g ${c.F}><rect width="100" height="100" fill="${c.W}" mask="url(#t${c.id})"/></g>`},
+];
+
+let uid=0;
+function icon(Mk,theme,{tile=true}={}){
+  const T=THEMES[theme],id=++uid,light=theme==='light';
+  const defs=`<defs>
+   <linearGradient id="tg${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${T.tile[0]}"/><stop offset="1" stop-color="${T.tile[1]}"/></linearGradient>
+   <linearGradient id="gl${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${light?.6:.2}"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+   <radialGradient id="w${id}" cx=".35" cy=".28" r=".85"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#F1EEFA"/><stop offset="1" stop-color="#CFCBE3"/></radialGradient>
+   <radialGradient id="o${id}" cx=".38" cy=".32" r=".78"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="${T.orb[0]}"/><stop offset="1" stop-color="${T.orb[1]}"/></radialGradient>
+   <filter id="fs${id}" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="2.6" stdDeviation="2.4" flood-color="${light?'#5B3FE0':'#000'}" flood-opacity="${light?.22:.3}"/></filter></defs>`;
+  const c={O:`url(#o${id})`,W:`url(#w${id})`,A:T.acc,S:T.spark,D:'#16132B',F:`filter="url(#fs${id})"`,id:'i'+id};
+  const t=tile?`<rect width="100" height="100" rx="23" fill="url(#tg${id})"/><rect width="100" height="100" rx="23" fill="url(#gl${id})"/>${light?'<rect x=".5" y=".5" width="99" height="99" rx="22.5" fill="none" stroke="#DCD4F7"/>':''}`:'';
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${defs}${t}<g transform="translate(50 50) scale(.86) translate(-50 -50)">${Mk.draw(c)}</g></svg>`;
+}
+
+const st=Object.assign({star:[],pick:null,theme:'violet',font:'nunito',f:'all'},JSON.parse(localStorage.getItem('donna-logo-r5')||'{}'));
+const FONTS={nunito:['Nunito',800,'-.02em'],inter:['Inter',600,'-.035em'],geist:['Geist',600,'-.03em'],grotesk:['"Space Grotesk"',600,'-.03em']};
+const num=i=>String(i+1).padStart(2,'0');
+document.getElementById('segTheme').innerHTML=Object.entries(THEMES).map(([k,T])=>`<button data-v="${k}"><span class="sw" style="background:linear-gradient(135deg,${T.tile[0]},${T.tile[1]})"></span>${T.name}</button>`).join('');
+const grid=document.getElementById('grid');
+grid.innerHTML=MARKS.map((M,i)=>`<article class="card" data-i="${i}">
+ <div class="stage"><div class="wall"></div><span class="num">${num(i)}</span>${M.tag?`<span class="tag">${M.tag}</span>`:''}<div class="mk" data-hero></div></div>
+ <div class="body"><div class="title"><h3>${M.name}</h3><span class="kind">${M.kind}</span></div>
+  <p class="idea">${M.idea}</p><p class="why">${M.why}</p>
+  <div class="dock">${['violet','midnight','green','blue','coral'].map(t=>`<span class="m">${icon(M,t)}</span>`).join('')}</div>
+  <div class="row">
+   <div class="pv"><div class="in lock"><span class="m" data-s></span><span class="t">Donna</span></div><small>lockup</small></div>
+   <div class="pv tab"><div class="fav"><span class="m" data-s></span>Donna</div></div>
+   <div class="pv"><div class="in ava"><span class="m" data-s></span><span class="bubble">On it.</span></div><small>chat avatar</small></div></div>
+  <div class="actions"><button class="btn star" data-star></button><button class="btn pick" data-pick></button></div>
+ </div></article>`).join('');
+
+let lastTheme='';
+function sync(){
+  const [fam,w,ls]=FONTS[st.font];const rs=document.documentElement.style;rs.setProperty('--word',fam);rs.setProperty('--word-w',w);rs.setProperty('--word-ls',ls);
+  const T=THEMES[st.theme];
+  document.querySelectorAll('.card').forEach(c=>{const i=+c.dataset.i,s=st.star.includes(i),p=st.pick===i;
+    c.classList.toggle('short',s);c.classList.toggle('picked',p);
+    if(lastTheme!==st.theme){c.querySelector('[data-hero]').innerHTML=icon(MARKS[i],st.theme);
+      c.querySelector('.wall').style.background=`radial-gradient(40% 50% at 50% 55%,${T.tile[0]}66,transparent 70%),linear-gradient(160deg,#1a1633,#07070f)`;
+      c.querySelectorAll('[data-s]').forEach(el=>el.innerHTML=icon(MARKS[i],st.theme))}
+    const sb=c.querySelector('[data-star]');sb.setAttribute('aria-pressed',s);sb.textContent=s?'★ Starred':'☆ Star';
+    const pb=c.querySelector('[data-pick]');pb.setAttribute('aria-pressed',p);pb.textContent=p?'✓ Picked':`Pick #${num(i)}`;
+    c.style.display=st.f==='star'&&!s&&!p?'none':''});
+  lastTheme=st.theme;
+  [['segTheme','theme'],['segFont','font'],['segF','f']].forEach(([id,k])=>document.querySelectorAll(`#${id} button`).forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===st[k])));
+  const stars=st.star.slice().sort((a,b)=>a-b).map(i=>`#${num(i)} ${MARKS[i].name}`);
+  document.getElementById('barMark').innerHTML=st.pick!=null?icon(MARKS[st.pick],st.theme):'';
+  document.getElementById('barTxt').innerHTML=(st.pick!=null?`Picked <b>#${num(st.pick)} ${MARKS[st.pick].name}</b> · ${T.name} tile · ${fam.replace(/"/g,'')} wordmark`:'Nothing picked yet. Star a few, then press <b>Pick</b>.')+(stars.length?`<br><span class="s">★ ${stars.join(' · ')}</span>`:'');
+  localStorage.setItem('donna-logo-r5',JSON.stringify(st));
+}
+grid.addEventListener('click',e=>{const c=e.target.closest('.card');if(!c)return;const i=+c.dataset.i;
+  if(e.target.closest('[data-star]')){st.star=st.star.includes(i)?st.star.filter(x=>x!==i):[...st.star,i];sync()}
+  if(e.target.closest('[data-pick]')){st.pick=st.pick===i?null:i;sync()}});
+[['segTheme','theme'],['segFont','font'],['segF','f']].forEach(([id,k])=>document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>{st[k]=b.dataset.v;sync()}));
+document.getElementById('copy').onclick=async()=>{
+  const p=st.pick!=null?`#${num(st.pick)} ${MARKS[st.pick].name}`:'none yet';
+  const s=st.star.slice().sort((a,b)=>a-b).map(i=>`#${num(i)} ${MARKS[i].name}`).join(', ')||'none';
+  const t=`Donna logo (round 5) pick: ${p}. Tile: ${THEMES[st.theme].name}. Wordmark: ${FONTS[st.font][0].replace(/"/g,'')}. Shortlist: ${s}.`;
+  const b=document.getElementById('copy');
+  try{await navigator.clipboard.writeText(t);b.textContent='Copied ✓';setTimeout(()=>b.textContent='Copy choice',1400)}catch{prompt('Copy this:',t)}};
+sync();
+</script>
+</body>
+</html>

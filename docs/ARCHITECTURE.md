@@ -605,3 +605,129 @@ UI                     app.py                 agent.run_chat          llm / hub
 - scheduler follow-ups: conditional tasks, event triggers, multi-step automations, queue-level Groq throttling, Windows autostart.
 
 The roadmap also sketches a WebSocket transport and a `contracts.py` module split. The shipped app uses SSE and the flat `donna/` modules described above.
+
+## 12. Messaging channels (WhatsApp, Telegram)
+
+Plan: `docs/Donna_Multi_Channel_Implementation_Plan.md`. One agent runtime, many channels: a channel only
+translates platform events; who may talk to Donna, what she may do and how she answers are decided once,
+in Donna, for every channel.
+
+```
+WhatsApp ─ OpenWA (Node, :2785) ─signed webhook─▶ POST /api/v1/webhooks/whatsapp ─┐
+Telegram ─ Bot API ◀─ long polling (getUpdates) ─ TelegramChannel ────────────────┤
+                                                                                   ▼
+                     ChannelManager (donna/channels/manager.py)
+   dedupe → contact + policy checks (no model call for anyone not allowed) → run_agent_turn
+                                                                                   │
+       agent.run_chat (same as web chat) ── TurnContext: audience, capabilities ───┤
+                                                                                   ▼
+             reply ─▶ adapter.send ─▶ platform        gated action ─▶ approvals (owner decides)
+```
+
+### 12.1 Modules
+| Module | Role |
+|---|---|
+| `donna/channels/base.py` | `BaseChannel` contract and typed models: `IncomingMessage`, `OutgoingMessage`, `SendResult`, `StatusUpdate`, `DeliveryUpdate`, `ChannelError`, `WebhookRejected` |
+| `donna/channels/registry.py` | channel type → adapter class (`whatsapp`, `telegram`) |
+| `donna/channels/whatsapp.py` | OpenWA REST client: session "donna", QR, webhook registration (HMAC secret from the vault), send-text with `Idempotency-Key`; webhook verification (signature, 10-minute replay window, 2 MB cap) and normalisation (private chats only) |
+| `donna/channels/telegram.py` | Bot API: `getMe`, `deleteWebhook`, `getUpdates` loop (offset in the channel config), `sendMessage` |
+| `donna/channels/manager.py` | lifecycle and health (60 s), the inbound pipeline, `send_text`, owner alerts, approval execution and follow-ups |
+| `donna/runtime.py` | `run_agent_turn()` → `AgentResult`: the headless entry point (channels, scheduled tasks, follow-ups) |
+| `donna/permissions.py` | `TurnContext`, the capability catalogue and `decide(ctx, tool, args)` → allow / approve / deny |
+| `donna/contacts.py` | contacts, identities, per-channel policies, working hours, `resolve()` (unknown sender → disabled, discovered contact; @lid matched by phone) |
+| `donna/approvals.py` | persisted approvals: payload hash, expiry, atomic claim, revocation check |
+| `donna/memory.py` | global and per-contact memories, conversation summaries |
+| `donna/runtime_tools.py` | in-process tools that need the turn: `remember`, `list_memories`, `forget_memory`, `list_contacts`, `read_chat`, `send_message` |
+| `donna/inbox.py`, `donna/audit.py` | Inbox queries; the audit log |
+
+### 12.2 Data (SQLite, `migrations/sqlite/001_multichannel.sql`)
+SQLite migrations are numbered files applied by `Store._migrate` and tracked in `PRAGMA user_version`.
+`conversations.source` (`web` / `whatsapp` / `telegram`) keeps channel chats out of the web sidebar while
+reusing `messages`, history and FTS. New tables: `channels`, `contacts`, `contact_identities`
+(`UNIQUE(channel_id, external_id)`), `contact_policies` (`''` = all channels, a channel row overrides it),
+`channel_conversations` (`UNIQUE(channel_id, external_chat_id)`), `channel_messages` (inbox record with
+delivery status), `channel_events` (`UNIQUE(channel_id, external_event_id)`: deduplication),
+`memories`, `approvals`, `audit_log`. Secrets (OpenWA API key, webhook secret, Telegram token) stay in the vault.
+
+### 12.3 Inbound pipeline
+1. The adapter verifies and normalises (WhatsApp: HMAC over the raw body; groups, status, own messages dropped).
+2. `INSERT OR IGNORE` into `channel_events`; a duplicate stops here. The platform gets 200 at once.
+3. Background processing, one turn at a time per chat and one model turn at a time overall (Groq free tier).
+4. Before any model call: kill switch (`messaging_enabled`), channel pause, sender → contact, contact mode/pause.
+   - `disabled` / paused: stored only. `human_first`: owner alerted, no model call.
+   - `auto` outside working hours or over `contact_rate_per_hour` / `global_rate_per_hour` → `suggest`.
+   - `suggest`: the agent runs with write tools denied; the reply becomes a `reply` approval.
+   - `auto`: the agent runs; the reply is sent.
+   - The owner (`is_owner`) gets an owner turn in their `permission_mode`; `approve CODE` / `reject CODE` are parsed in code.
+5. A model failure is never sent to the contact: the event fails, the owner is alerted, the Inbox can retry.
+   Events interrupted by a restart are marked failed, never replayed automatically.
+
+### 12.4 Permissions
+A contact turn only sees tools whose capability is `on` or `approval` for that contact (per channel).
+`decide()` runs when the tool list is built and again on every call. Tools in `hub.CONFIRM` are clamped to
+approval for contacts; `schedule_task` is limited to reminders in manual mode (a contact can't create an AI
+task that would later run with the owner's permissions); owner-only runtime tools are never offered;
+external MCP servers need an explicit `external:<server_id>` capability (how a future expense tracker or
+task manager is gated). `calendar.availability` uses `check_availability` (free/busy only), never event details.
+
+### 12.5 Approvals
+A gated call in a channel turn creates an `approvals` row (4-character code, `payload_hash`, `expires_at`
+from `approval_ttl_hours`) and tells the model the action is not done. Approving (dashboard or chat) runs
+`UPDATE … SET status='executing' WHERE status='pending' AND expires_at>now` (single use), checks the hash,
+re-checks the contact's current permissions, runs the tool, records the result and the audit entry, then a
+tool-less follow-up turn tells the contact the outcome. The web chat keeps its live in-run approval.
+
+### 12.6 Automations
+The existing scheduler (§4) is reused, not duplicated: the `owner_chat` notification channel sends results to the
+owner's WhatsApp/Telegram (full AI reply), and `payload.deliver_contact_id` sends a reminder or result to a
+contact who allows `initiate`. `automations_enabled` makes every execution `skipped`.
+
+### 12.7 Running it
+`donna/openwa.py` manages the gateway, driven by the WhatsApp **Connect** button
+(`POST /api/v1/channels/whatsapp/setup`, progress via the GET; phases checking → installing → starting →
+connecting → qr | connected | error):
+1. check Node.js ≥ 22.19 and git;
+2. first time: clone the pinned tag into `external\openwa`, `npm ci`, `npm run build`, write its non-secret
+   `.env` (port 2785, SQLite, whatsapp-web.js, no Redis, `SSRF_ALLOWED_HOSTS=127.0.0.1,localhost`,
+   `RESOLVE_LID_TO_PHONE=true`) and generate the API key into the vault;
+3. start `node dist/main.js` detached (it outlives Donna), with the key as process env and
+   `scripts\openwa-localhost.cjs` preloaded to bind it to 127.0.0.1 (OpenWA itself listens on all interfaces);
+   output to `data\openwa.log`; wait for an authenticated API answer;
+4. `ChannelManager.connect("whatsapp")`: session, webhook, QR.
+
+Donna is the only thing that starts OpenWA: on Connect, and at startup when WhatsApp is connected, so two
+copies never race for the port or the session. `python -m donna openwa-setup` / `openwa-start` (and the
+`setup-whatsapp.ps1` / `openwa.ps1` wrappers) run the same code from a terminal. OpenWA with Chromium is the
+heaviest process (~300–500 MB).
+
+### 12.8 Adding a channel
+Subclass `BaseChannel` (connect, disconnect, health_check, send, and either `parse_webhook` or a `start()`
+loop that calls `on_events`), register it in `registry.py`, add its secret to the vault and a card in
+`Channels.tsx`. Nothing else changes. Planned: Slack via Socket Mode (app-level token, no public URL,
+`message.im` events → `IncomingMessage`, `chat.postMessage`); Discord via a Gateway bot (DMs, `MESSAGE_CREATE`).
+
+### 12.9 Identity and requests
+Donna talks to contacts as the owner's **personal AI assistant**, never as the owner (`donna/identity.py`):
+- Each contact has a communication profile (migration `002_identity_requests.sql`): relationship, label, how to
+  address them, language, script, tone, formality, greeting, introduction, background and special instructions.
+  Empty fields fall back to the relationship's defaults.
+- The contact prompt starts with the workflow (record the request first, then reply), then identity rules:
+  "I" means Donna, she uses female forms for herself, and she never invents the owner's words, availability or
+  commitments. Background and contact notes are labelled "for understanding only, never bring these up".
+- Enforced in code: the first reply in a chat (or after 3 quiet days) always carries the introduction;
+  `clean()` removes "(User)" and "raha/rahi"-style placeholders, using the owner pronouns setting; the owner's
+  name comes from Settings or the owner contact. Messages the owner asks Donna to pass on are attributed
+  ("Yashraj cha message: …"). Only the owner's own replies from the Inbox are sent as the owner.
+
+Requests (`donna/contact_requests.py`, table `requests`) hold why someone is contacting the owner:
+- Types: callback, meeting, business enquiry, general enquiry, information request, personal message,
+  product enquiry, document request, urgent, task, other.
+- Statuses: new, information_required, waiting_for_owner, approved, in_progress, completed, rejected,
+  cancelled.
+- A contact turn's `record_request` (or the open request of the same type, which it updates) is scoped to
+  that contact and conversation, and limited to the types the owner allows for them. Open requests are shown in
+  the prompt, so Donna continues them instead of asking again.
+- Callbacks, personal messages and urgent requests notify the owner immediately; other types notify once their
+  details are complete.
+- The owner manages requests in Inbox → Requests and can have Donna tell the contact the outcome, using only the
+  owner's own note. Every create and status change is audited.

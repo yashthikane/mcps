@@ -17,6 +17,9 @@ GOOGLE_CLIENT = "google_client"   # {"client_id", "client_secret", ...} from cre
 GOOGLE_TOKEN = "google_token"     # {"refresh_token", "scopes", "email"}
 POSTGRES_URL = "postgres_url"     # scheduling database, written by scripts/setup-scheduler.ps1
 INTERNAL_TOKEN = "internal_api_token"  # shared by FastAPI and the scheduler service
+OPENWA_KEY = "openwa_api_key"          # OpenWA's API_MASTER_KEY, written by scripts/setup-whatsapp.ps1
+OPENWA_SECRET = "openwa_webhook_secret"  # HMAC secret OpenWA signs webhooks with (generated on connect)
+TELEGRAM_TOKEN = "telegram_bot_token"   # from @BotFather
 
 
 def _del(name: str) -> None:
@@ -68,6 +71,16 @@ def internal_token() -> str:
         token = secrets.token_urlsafe(32)
         set(INTERNAL_TOKEN, token)
     return token
+
+
+def secret(name: str, length: int = 32) -> str:
+    """A random secret stored under `name`, generated the first time it's asked for."""
+    value = get(name)
+    if not value:
+        import secrets
+        value = secrets.token_urlsafe(length)
+        set(name, value)
+    return value
 
 
 def postgres_url() -> str | None:

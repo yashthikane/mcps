@@ -1,5 +1,10 @@
 """The chat loop: stream a model turn, run the tools it asks for (pausing for approval on
-anything that sends, changes or deletes), feed results back, repeat, then save the reply."""
+anything that sends, changes or deletes), feed results back, repeat, then save the reply.
+
+This is Donna's one agent runtime. The web chat streams it over SSE; channels (WhatsApp,
+Telegram), scheduled tasks and approval follow-ups run it headless through runtime.run_agent_turn.
+A turn's TurnContext (permissions.py) says who it's for: the owner, or a contact whose tools,
+prompt and memories are restricted in code."""
 import asyncio
 import json
 import re
@@ -8,8 +13,9 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from . import llm, vault
+from . import approvals, audit, contact_requests, identity, llm, memory, permissions, runtime_tools, vault
 from .hub import BUILTIN, MCPHub, Tool
+from .permissions import TurnContext
 
 MAX_STEPS = 8
 APPROVAL_TIMEOUT = 600
@@ -20,11 +26,17 @@ TOOL_RESULT_CHARS = 4000
 # and sending all ~30 tool schemas costs ~3K tokens per call.
 KEYWORDS = {
     "gmail": r"e-?mails?|inbox|\bmail|gmail|unread|repl(y|ies)|draft|forward|sender|subject|message from",
-    "calendar": r"calendar|meeting|event|schedul|appointment|agenda|\bbusy\b|\bfree\b|remind|invite",
+    # English plus common Hindi/Marathi/Hinglish words for availability and meetings.
+    "calendar": r"calendar|meeting|\bmeet\b|event|schedul|appointment|agenda|\bbusy\b|\bfree\b|availab|remind|invite|"
+                r"\bkal\b|\bparso\b|milt[ea]|milna|bhet|khali|\bslots?\b",
     "notion": r"notion|\bpages?\b|\bnotes?\b|database|\bdocs?\b|wiki|workspace",
     "weather": r"weather|temperature|\brain|forecast|sunny|humid",
     "utils": r"square|joke|funny",
     "schedule": r"remind|schedul|snooze|recurring|\btasks?\b|every (day|morning|evening|night|week|hour|\d+ ?(min|hour))|every (mon|tue|wed|thu|fri|sat|sun)",
+    "memory": r"remember|forget|memor|\byaad\b|note (that|this)",
+    "requests": r"callback|call (me|back)|phone|request|enquir|inquir|meeting|message for|tell \w+|urgent",
+    "messaging": r"whatsapp|telegram|\bcontacts?\b|\btext (him|her|them)\b|message (him|her|them|to)|send (a |an )?message|"
+                 r"chat with|what did \w+ (say|ask|send|write)|tell \w+ (that|to)",
 }
 STOP_WORDS = {"get", "list", "read", "create", "update", "delete", "set", "the", "a", "of", "to", "info", "multiple", "allowed"}
 
@@ -45,7 +57,8 @@ def needs_approval(tool: Tool, args: dict) -> bool:
 
 
 class Run:
-    def __init__(self, conversation_id: str, unattended: bool = False, mode: str = "manual"):
+    def __init__(self, conversation_id: str, unattended: bool = False, mode: str = "manual",
+                 ctx: TurnContext | None = None):
         self.id = "r_" + uuid.uuid4().hex[:8]
         self.conversation_id = conversation_id
         self.cancelled = False
@@ -54,6 +67,7 @@ class Run:
         self.unattended = unattended
         self.mode = mode if mode in MODES else "manual"
         self.approval_needed = False
+        self.ctx = ctx  # None: the owner in the web chat
 
     def decide(self, call_id: str, approved: bool) -> bool:
         fut = self.pending.get(call_id)
@@ -127,11 +141,28 @@ def system_prompt(settings: dict, mode: str = "manual") -> str:
     )
 
 
-def history(store, conversation_id: str) -> list[dict]:
+def channel_prompt(settings: dict, ctx: TurnContext, store) -> str:
+    """The system prompt for a turn on a messaging channel: the owner's own chat, or a contact (identity.py)."""
+    if ctx.audience != "owner":
+        return identity.contact_prompt(settings, ctx, store, contact_requests.prompt_block(store, ctx.channel_conversation_id),
+                                       ctx.intro_needed)
+    owner = identity.owner_name(settings, store)
+    channel = ctx.channel_label or ctx.channel_id or "chat"
+    return (system_prompt(settings, "manual") + f"\nYou are chatting with {owner}, the user, on {channel}. This is a chat app: "
+            "reply in short plain text (no Markdown tables or headings), in the language they write in.\n"
+            "Actions that need approval become a request with a code; the user approves by replying "
+            "\"approve CODE\" or rejects with \"reject CODE\". Never say such an action is done before it is."
+            + memory.prompt_block(memory.for_turn(store, ctx), "What you remember about the user:") + ctx.extra_prompt)
+
+
+def history(store, conversation_id: str, since: float = 0) -> list[dict]:
     """Recent turns as plain messages. Tool results from earlier turns are summarised into the
-    assistant text so follow-ups ("delete that page") can use the IDs."""
+    assistant text so follow-ups ("delete that page") can use the IDs. Messages up to `since`
+    are already folded into a channel conversation's summary."""
     out, total = [], 0
     for m in reversed(store.messages(conversation_id)):
+        if m["created_at"] <= since:
+            break
         content = m["content"] or ""
         if m["role"] == "assistant" and m["tool_events"]:
             notes = "; ".join(f"{e['name']} → {(e.get('preview') or '')[:300]}" for e in m["tool_events"])
@@ -163,30 +194,38 @@ async def run_chat(store, hub: MCPHub, run: Run, text: str, forced_groups: set[s
     """Async generator of UI events: run.start, delta, status, tool.start, confirm.request,
     tool.end, done, error."""
     cid = run.conversation_id
+    ctx = run.ctx
     settings = store.settings()
     conv = store.get_conversation(cid)
-    prior = history(store, cid)
+    prior = history(store, cid, ctx.history_since if ctx else 0)
     groups = recent_groups(store, cid, hub)
-    store.add_message(cid, "user", text)
+    if not ctx or ctx.persist_user:
+        store.add_message(cid, "user", text)
     if conv and conv["title"] == "New chat":
         store.update_conversation(cid, title=title_from(text))
     yield {"type": "run.start", "run_id": run.id, "conversation": store.get_conversation(cid)}
 
-    api_key = vault.get(vault.GROQ_KEY) or ""
-    if not api_key and not llm.FAKE:
-        msg = "Add your Groq API key in Settings to start chatting."
+    if msg := llm.problem(settings):  # no Groq key, or Claude Code not installed
         store.add_message(cid, "assistant", f"⚠ {msg}")
         yield {"type": "error", "message": msg}
         return
 
-    available = hub.enabled_tools(settings)
+    available = hub.enabled_tools(settings) + runtime_tools.available()
     if run.unattended:  # a scheduled task must not schedule more tasks
         available = [t for t in available if t.group != "schedule"]
     if run.mode == "plan":  # plan mode may only read
         available = [t for t in available if not t.writes]
-    tools = select_tools(available, text, groups, forced_groups)
+    if ctx:  # a contact only ever sees the tools their capabilities allow
+        available = [] if ctx.no_tools else [t for t in available if permissions.decide(ctx, t) != "deny"]
+    if ctx and ctx.is_contact:  # recording why they're writing is always part of a contact's turn
+        forced_groups = set(forced_groups) | {"requests"}
+    tools = select_tools(available, text, groups, forced_groups) if available else []
     specs = [t.spec() for t in tools]
-    messages = [{"role": "system", "content": system_prompt(settings, run.mode)}, *prior, {"role": "user", "content": text}]
+    if ctx and ctx.channel_id:
+        prompt = channel_prompt(settings, ctx, store)
+    else:
+        prompt = system_prompt(settings, run.mode) + memory.prompt_block(memory.for_turn(store, ctx), "What you remember about the user:")
+    messages = [{"role": "system", "content": prompt}, *prior, {"role": "user", "content": text}]
     answer: list[str] = []
     events: list[dict] = []
     error = None
@@ -194,7 +233,7 @@ async def run_chat(store, hub: MCPHub, run: Run, text: str, forced_groups: set[s
     try:
         for _ in range(MAX_STEPS):
             turn_text, calls = [], []
-            async for kind, value in llm.stream_turn(api_key, settings["model"], messages, specs, settings.get("reasoning_effort", "medium")):
+            async for kind, value in llm.turn(settings, messages, specs):
                 if run.cancelled:
                     break
                 if kind == "delta":
@@ -219,7 +258,7 @@ async def run_chat(store, hub: MCPHub, run: Run, text: str, forced_groups: set[s
             for i, c in enumerate(calls):
                 call_id = c["id"] or f"call_{i}"
                 result = ""
-                async for ev in _run_tool(hub, run, settings, call_id, c, events):
+                async for ev in _run_tool(store, hub, run, settings, call_id, c, events):
                     if ev["type"] == "_result":
                         result = ev["text"]
                     else:
@@ -241,16 +280,32 @@ async def run_chat(store, hub: MCPHub, run: Run, text: str, forced_groups: set[s
         content = (content + "\n\n_[stopped]_").strip()
     if error:
         content = (content + f"\n\n⚠ {error}").strip()
-    msg = store.add_message(cid, "assistant", content, events)
+    if not ctx or ctx.persist_reply:
+        msg = store.add_message(cid, "assistant", content, events)
+    else:  # a drafted reply is saved to the conversation when it's actually sent
+        msg = {"id": None, "conversation_id": cid, "role": "assistant", "content": content, "tool_events": events,
+               "created_at": time.time()}
     if error:
         yield {"type": "error", "message": error}
     yield {"type": "done", "message": msg, "stopped": run.cancelled, "conversation": store.get_conversation(cid)}
 
 
-async def _run_tool(hub: MCPHub, run: Run, settings: dict, call_id: str, call: dict, events: list):
+async def call_tool(hub: MCPHub, tool: Tool, args: dict, ctx: TurnContext | None, store=None) -> tuple[bool, str]:
+    """Run a tool: MCP tools through the hub, runtime tools (memory, messaging) in-process."""
+    if tool.server == "runtime":
+        return await runtime_tools.call(tool, args, ctx, store)
+    return await hub.call(tool, args)
+
+
+def find_tool(hub: MCPHub, name: str, settings: dict) -> Tool | None:
+    return hub.find(name, settings) or runtime_tools.find(name)
+
+
+async def _run_tool(store, hub: MCPHub, run: Run, settings: dict, call_id: str, call: dict, events: list):
     """Execute one tool call, yielding UI events. The last item is {"type": "_result", "text": ...}
     carrying the text that goes back to the model."""
-    tool = hub.find(call["name"], settings)
+    ctx = run.ctx
+    tool = find_tool(hub, call["name"], settings)
     try:
         args = json.loads(call["arguments"] or "{}")
         if not isinstance(args, dict):
@@ -274,15 +329,32 @@ async def _run_tool(hub: MCPHub, run: Run, settings: dict, call_id: str, call: d
         for ev in finish("error", f"Error: invalid JSON arguments ({bad_args}). Call the tool again with valid arguments."):
             yield ev
         return
-    gated = needs_approval(tool, args)
+    decision = permissions.decide(ctx, tool, args)
+    if decision == "deny":  # re-checked here: the model may name a tool it was never offered
+        actor = f"contact:{ctx.contact['id']}" if ctx and ctx.contact else "donna"
+        audit.record(store, actor, "tool.denied", tool.name, outcome="denied", args=args)
+        for ev in finish("rejected", "Not permitted: you aren't allowed to do this for this person. Don't retry; tell them "
+                         "you can't help with that and that you'll pass it on.", "Not permitted"):
+            yield ev
+        return
+    gated = needs_approval(tool, args) or decision == "approve"
     if run.mode == "plan" and (tool.writes or gated):
         for ev in finish("rejected", "Plan mode: this action was not executed. Describe it in the plan instead.",
                          "Not run (plan mode)"):
             yield ev
         return
-    if gated and run.mode == "auto":
+    if gated and run.mode == "auto" and decision != "approve":  # auto never covers a contact's request
         record["approved"] = "auto"
         gated = False
+    if gated and ctx and ctx.on_gated == "approval":
+        owner = settings.get("owner_name") or "the user"
+        req = approvals.create(store, ctx, "tool", tool.name, args)
+        ctx.approvals.append(req["id"])
+        record["approval_id"] = req["id"]
+        for ev in finish("pending", f"Not done yet: this needs {owner}'s approval (request {req['id']}). Don't say it's done "
+                         f"or retry it; say {owner} will confirm it soon.", f"Waiting for approval · {req['id']}"):
+            yield ev
+        return
     if gated and run.unattended:
         run.approval_needed = True
         for ev in finish("rejected", "This action needs the user's approval, which isn't available in a scheduled run "
@@ -307,7 +379,7 @@ async def _run_tool(hub: MCPHub, run: Run, settings: dict, call_id: str, call: d
         record["approved"] = True
     yield {"type": "tool.start", **record}
     t0 = time.perf_counter()
-    ok, out = await hub.call(tool, args)
+    ok, out = await call_tool(hub, tool, args, ctx, store)
     record.update(ok=ok, ms=round((time.perf_counter() - t0) * 1000))
     for ev in finish("done" if ok else "error", out):
         yield ev

@@ -22,4 +22,5 @@ if (Test-Path "scheduler\dist\server.js") {
 } else {
     Write-Host "Scheduled tasks are off. Run scripts\setup-scheduler.ps1 once to enable them."
 }
+# Donna starts OpenWA (the WhatsApp gateway) itself once WhatsApp is connected.
 & venv\Scripts\python.exe -m donna @args

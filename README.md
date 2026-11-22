@@ -54,16 +54,43 @@ scripts\setup-scheduler.ps1   # installs Redis in WSL, creates the 'donna' datab
 
 After that, `scripts\start.ps1` starts Redis and the scheduler automatically. Its log is `data\scheduler.log`. Without this setup, everything else in Donna works as before.
 
+### WhatsApp and Telegram (optional)
+
+Donna can answer on WhatsApp and Telegram with the same tools, Google sign-in and memory as the web chat.
+Nobody gets an answer until you enable them in **Contacts**, and what Donna may do for each person
+(check your availability, book meetings, draft emails…) is set per contact and enforced in code.
+
+**WhatsApp** runs through [OpenWA](https://github.com/rmyndharis/OpenWA), a local WhatsApp Web gateway
+(needs Node.js 22.19+ and git). Click **Connections → WhatsApp → Connect**: the first time, Donna installs
+OpenWA into `external\openwa` (a few minutes, it downloads Chromium), starts it on 127.0.0.1, and shows a
+QR code. Scan it from the phone with Donna's number (WhatsApp → Linked devices). After that Donna starts
+OpenWA by itself whenever it starts (log: `data\openwa.log`). Use a **dedicated number**: OpenWA isn't the
+official WhatsApp Business API, and WhatsApp may restrict accounts it thinks are automated.
+(`scripts\setup-whatsapp.ps1` installs it ahead of time from a terminal, if you prefer.)
+
+**Telegram**: create a bot with @BotFather, paste its token under **Connections → Telegram**. No public URL is needed.
+
+Then in **Contacts**:
+1. Add yourself with **This is me**: your own chat gets full access, alerts, briefings, and approval requests
+   you answer with `approve A7K2` / `reject A7K2`.
+2. Add the people Donna may talk to and pick a mode: *Disabled* (default for strangers), *Suggest* (Donna
+   drafts, you approve), *Auto reply* or *Human first* (you're alerted, Donna stays silent).
+3. Choose what Donna may do for them. Anything that sends, books or deletes always waits for your approval
+   in **Inbox → Approvals** or in your own chat.
+
+**Settings → Messaging** has the kill switch, rate limits, approval expiry and what Donna may say about you.
+
 ## Tools
 
 | Connection | Tools (✋ = asks for approval) |
 |---|---|
 | Gmail (12) | `list_emails`, `read_email`, `search_emails`, `get_unread_emails`, `send_email` ✋, `reply_email` ✋, `forward_email` ✋, `mark_email`, `delete_email` ✋, `create_draft`, `list_drafts`, `send_draft` ✋ |
-| Calendar (5) | `get_events`, `list_events` (date range), `create_event` ✋, `update_event` ✋, `delete_event` ✋ |
+| Calendar (6) | `get_events`, `list_events` (date range), `check_availability` (free/busy only), `create_event` ✋ (optional Google Meet link), `update_event` ✋, `delete_event` ✋ |
 | Notion (8) | `search_notion`, `list_pages`, `read_page_content`, `create_page` (with content), `update_page_title`, `append_text_to_page`, `delete_page` ✋, `query_database` |
 | Weather (1) | `get_weather` |
 | Utilities (2) | `square`, `get_jokes` |
 | Scheduled tasks (4) | `schedule_task`, `list_scheduled_tasks`, `cancel_scheduled_task` ✋, `snooze_scheduled_task` |
+| Memory and messaging (6) | `remember`, `list_memories`, `forget_memory`, `list_contacts`, `read_chat`, `send_message` ✋ (WhatsApp/Telegram) |
 | Your MCP servers | Every tool the server exposes. Tools whose names look like writes (write, delete, move, commit, …) ask first. |
 
 ## How it works
@@ -78,11 +105,14 @@ Browser (React + Vite) ──REST + Server-Sent Events──► FastAPI on 127.0
                                                                      ▲ "run task X"      │ "sync task X"
                                                                      │                   ▼
                                      Scheduler (Node, 127.0.0.1:8766) ── BullMQ ── Redis (WSL Ubuntu)
+
+WhatsApp ── OpenWA (Node, 127.0.0.1:2785) ──signed webhook──► channels (same agent, contacts + permissions + approvals)
+Telegram ◄── long polling ───────────────────────────────────┘
 ```
 
 The scheduler decides **when** a task runs; Donna decides **how**. Reminders are sent without the AI. AI tasks run Donna
 unattended: they can read and summarize, and anything that needs your approval is flagged instead of done.
-Details: `docs/ARCHITECTURE.md` §4.
+Details: `docs/ARCHITECTURE.md` §4. Messaging channels: §12.
 
 - `donna/`: the backend (`app.py` API, `agent.py` chat loop, `hub.py` MCP connections, `llm.py` Groq, `store.py`, `vault.py`).
 - `tools/`: the built-in MCP tools, served by `server.py` / `mcp_instance.py` (also usable from the terminal with `python client.py`).

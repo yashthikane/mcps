@@ -15,7 +15,7 @@ export interface ToolEvent {
   name: string;
   server: string;
   args: Record<string, unknown>;
-  status: "running" | "done" | "error" | "rejected" | "waiting";
+  status: "running" | "done" | "error" | "rejected" | "waiting" | "pending";
   ok: boolean;
   preview: string;
   ms: number;
@@ -66,6 +66,8 @@ export type PermissionMode = "plan" | "manual" | "auto";
 
 export interface Settings {
   model: string;
+  llm_provider: "groq" | "claude_code";
+  claude_model: string;
   timezone: string;
   reasoning_effort: string;
   pixel_grid: boolean;
@@ -77,10 +79,190 @@ export interface Settings {
   usage: Usage;
   data_dir: string;
   home: string;
+  // messaging channels
+  messaging_enabled: boolean;
+  require_trigger: boolean;
+  trigger_word: string;
+  automations_enabled: boolean;
+  owner_name: string;
+  owner_pronouns: "" | "he" | "she" | "they";
+  assistant_profile: string;
+  default_language: string;
+  default_tone: string;
+  contact_rate_per_hour: number;
+  global_rate_per_hour: number;
+  approval_ttl_hours: number;
+  unknown_contact_action: "ignore" | "notify";
+  openwa_url: string;
+  owner_channel: string;
 }
+
+/* ------------------------------------------------------------------ messaging channels */
+export type ChannelStatus = "not_set_up" | "connected" | "qr" | "connecting" | "disconnected" | "error";
+
+export interface Channel {
+  id: string;
+  type: string;
+  label: string;
+  display_name: string;
+  enabled: boolean;
+  paused: boolean;
+  status: ChannelStatus;
+  account: string;
+  credentials: boolean;
+  last_error: string;
+  last_activity_at: number | null;
+  setup?: GatewaySetup;  // WhatsApp only
+}
+
+/** The WhatsApp Connect job: install OpenWA (first time) → start it → open the session → QR. */
+export interface GatewaySetup {
+  phase: "idle" | "checking" | "installing" | "starting" | "connecting" | "qr" | "connected" | "error";
+  detail: string;
+  error: string;
+  busy: boolean;
+  log: string[];
+  installed: boolean;
+  running: boolean;
+}
+
+export type ContactMode = "disabled" | "suggest" | "auto" | "human_first";
+export type CapLevel = "off" | "on" | "approval";
+
+export interface Identity {
+  id: string;
+  channel_id: string;
+  external_id: string;
+  phone: string;
+  display_name: string;
+}
+
+export interface WorkingHours { days?: number[]; start?: string; end?: string }
+
+export interface Contact {
+  id: string;
+  display_name: string;
+  mode: ContactMode;
+  is_owner: boolean;
+  paused: boolean;
+  discovered: boolean;
+  language: string;
+  tone: string;
+  timezone: string;
+  working_hours: WorkingHours;
+  share_memory: boolean;
+  notes: string;
+  last_interaction_at: number | null;
+  created_at: number;
+  identities: Identity[];
+  conversations?: number;
+  policies?: Record<string, Record<string, CapLevel>>;
+  // communication profile
+  relationship: "" | "family" | "friend" | "client" | "colleague" | "vendor" | "other";
+  relationship_label: string;
+  address_as: string;
+  script: "" | "latin" | "devanagari";
+  formality: "" | "casual" | "neutral" | "formal";
+  greeting: string;
+  intro_message: string;
+  background: string;
+  special_instructions: string;
+  allowed_requests: string[];
+  default_intro?: string;
+}
+
+export type RequestStatus = "new" | "information_required" | "waiting_for_owner" | "approved" | "in_progress" | "completed" | "rejected" | "cancelled";
+
+export interface ContactRequest {
+  id: number;
+  code: string;
+  contact_id: string | null;
+  contact_name: string | null;
+  channel_id: string;
+  channel_conversation_id: string | null;
+  type: string;
+  type_label: string;
+  summary: string;
+  details: Record<string, string>;
+  urgency: "low" | "normal" | "high" | "urgent";
+  status: RequestStatus;
+  required_action: string;
+  missing: string;
+  outcome: string;
+  owner_notified: boolean;
+  created_at: number;
+  updated_at: number;
+  event_id: string;
+  event_start: string;
+  event_end: string;
+  meet_link: string;
+  contact_informed?: boolean;
+  booked?: { meet: string; start: string; end: string; moved: boolean };
+}
+
+export interface Capability { id: string; label: string; help: string; forced_approval: boolean }
+
+export interface Memory { id: string; scope: "global" | "contact"; contact_id: string | null; content: string; source: string; created_at: number }
+
+export interface InboxConversation {
+  id: string;
+  channel_id: string;
+  contact_id: string;
+  contact_name: string;
+  contact_mode: ContactMode;
+  contact_is_owner: boolean;
+  external_chat_id: string;
+  conversation_id: string;
+  status: "active" | "archived";
+  escalated: boolean;
+  unread: number;
+  summary: string;
+  preview: string | null;
+  failed: number;
+  pending_approvals: number;
+  last_message_at: number | null;
+}
+
+export interface ChannelMessage {
+  id: string;
+  event_id: string | null;
+  direction: "in" | "out";
+  author: "contact" | "donna" | "owner";
+  message_type: string;
+  content: string;
+  status: string;
+  error: string;
+  created_at: number;
+  event_status: string | null;
+  event_result: string | null;
+}
+
+export interface Approval {
+  id: string;
+  kind: "tool" | "reply";
+  audience: "owner" | "contact";
+  channel_id: string;
+  contact_id: string | null;
+  contact_name?: string | null;
+  channel_conversation_id: string | null;
+  tool: string;
+  args: Record<string, unknown>;
+  description: string;
+  status: "pending" | "executing" | "executed" | "failed" | "rejected" | "expired";
+  result: string;
+  expires_at: number;
+  created_at: number;
+  decided_at: number | null;
+  decided_by: string;
+}
+
+export interface InboxCounts { unread: number; escalated: number; failed: number; approvals: number; requests: number }
+
+export interface AuditRecord { id: number; at: number; actor: string; action: string; target: string; outcome: string; detail: Record<string, unknown> }
 
 export interface Health {
   groq: "ok" | "no_key" | "invalid_key" | "unreachable" | "error";
+  provider?: "groq" | "claude_code";
   online: boolean;
   usage: Usage;
 }
@@ -118,6 +300,7 @@ export interface ScheduledTask {
   conversation_id: string | null;
   notification_channels: string[];
   permission_mode: PermissionMode;
+  deliver_contact_id: string | null;
   last_run_at: string | null;
   next_run_at: string | null;
   last_status?: ExecutionStatus | null;
@@ -139,6 +322,7 @@ export interface TaskInput {
   recurrence_rule?: string | null;
   notification_channels?: string[];
   permission_mode?: PermissionMode;
+  deliver_contact_id?: string | null;
 }
 
 export interface SchedulerHealth {
@@ -253,6 +437,60 @@ export const api = {
   snoozeTask: (id: string, minutes: number) => request<ScheduledTask>("POST", `/scheduled-tasks/${id}/snooze`, { minutes }),
   notifications: () => request<Notice[]>("GET", "/notifications"),
   markNotificationsRead: (ids: string[]) => request("POST", "/notifications/read", { ids }),
+
+  channels: () => request<Channel[]>("GET", "/channels"),
+  channelStatus: (id: string) => request<Channel>("GET", `/channels/${id}/status`),
+  connectChannel: (type: string) => request<Channel>("POST", `/channels/${type}/connect`),
+  disconnectChannel: (id: string) => request<Channel>("POST", `/channels/${id}/disconnect`),
+  forgetChannel: (id: string) => request<Channel>("DELETE", `/channels/${id}`),
+  pauseChannel: (id: string, paused: boolean) => request<Channel>("POST", `/channels/${id}/${paused ? "pause" : "resume"}`),
+  channelQr: (id: string) => request<{ status: string; qr?: string }>("GET", `/channels/${id}/qr`),
+  whatsappSetup: () => request<GatewaySetup>("POST", "/channels/whatsapp/setup"),
+  whatsappSetupState: () => request<GatewaySetup>("GET", "/channels/whatsapp/setup"),
+  telegramToken: (token: string) => request<Channel>("PUT", "/channels/telegram/token", { token }),
+
+  capabilities: () => request<Capability[]>("GET", "/capabilities"),
+  contacts: (q = "", discovered?: boolean) => request<Contact[]>("GET", `/contacts?q=${encodeURIComponent(q)}${discovered === undefined ? "" : `&discovered=${discovered}`}`),
+  contact: (id: string) => request<Contact>("GET", `/contacts/${id}`),
+  createContact: (c: Partial<Contact> & { display_name: string; channel_id?: string; address?: string; is_owner?: boolean }) =>
+    request<Contact>("POST", "/contacts", c),
+  updateContact: (id: string, patch: Partial<Contact>) => request<Contact>("PATCH", `/contacts/${id}`, patch),
+  deleteContact: (id: string) => request("DELETE", `/contacts/${id}`),
+  makeOwner: (id: string) => request<Contact>("POST", `/contacts/${id}/owner`),
+  setPolicy: (id: string, channel_id: string, capabilities: Record<string, CapLevel>) =>
+    request<Record<string, Record<string, CapLevel>>>("PUT", `/contacts/${id}/policies`, { channel_id, capabilities }),
+  clearPolicy: (id: string, channel_id: string) => request("DELETE", `/contacts/${id}/policies/${channel_id}`),
+  addIdentity: (id: string, channel_id: string, address: string) => request<Contact>("POST", `/contacts/${id}/identities`, { channel_id, address }),
+  removeIdentity: (id: string, identityId: string) => request<Contact>("DELETE", `/contacts/${id}/identities/${identityId}`),
+  contactMemories: (id: string) => request<Memory[]>("GET", `/contacts/${id}/memories`),
+  addContactMemory: (id: string, content: string) => request<Memory>("POST", `/contacts/${id}/memories`, { content }),
+  deleteContactMemory: (id: string, mid: string) => request("DELETE", `/contacts/${id}/memories/${mid}`),
+
+  inbox: (f: { channel_id?: string; contact_id?: string; status?: string; q?: string } = {}) =>
+    request<InboxConversation[]>("GET", `/inbox?${new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][])}`),
+  inboxCounts: () => request<InboxCounts>("GET", "/inbox/counts"),
+  inboxMessages: (id: string) => request<ChannelMessage[]>("GET", `/inbox/${id}/messages`),
+  inboxSend: (id: string, text: string) => request("POST", `/inbox/${id}/send`, { text }),
+  inboxArchive: (id: string, archived: boolean) => request<InboxConversation>("POST", `/inbox/${id}/archive`, { archived }),
+  inboxSummarize: (id: string) => request<{ summary: string }>("POST", `/inbox/${id}/summarize`),
+  inboxDelete: (id: string) => request("DELETE", `/inbox/${id}`),
+  retryEvent: (eventId: string) => request("POST", `/inbox/events/${eventId}/retry`),
+
+  requestTypes: () => request<{ types: Record<string, string>; statuses: RequestStatus[] }>("GET", "/requests/types"),
+  requests: (f: { contact_id?: string; channel_id?: string; type?: string; status?: string } = {}) =>
+    request<ContactRequest[]>("GET", `/requests?${new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][])}`),
+  updateRequest: (id: number, patch: { status?: RequestStatus; outcome?: string; notify_contact?: boolean;
+    book?: { start: string; end: string; title?: string; add_meet?: boolean } }) =>
+    request<ContactRequest>("PATCH", `/requests/${id}`, patch),
+
+  approvals: (status?: string) => request<Approval[]>("GET", `/approvals${status ? `?status=${status}` : ""}`),
+  approve: (id: string, text?: string) => request<Approval>("POST", `/approvals/${id}/approve`, { text }),
+  reject: (id: string) => request<Approval>("POST", `/approvals/${id}/reject`),
+
+  memories: () => request<Memory[]>("GET", "/memories"),
+  addMemory: (content: string) => request<Memory>("POST", "/memories", { content }),
+  deleteMemory: (id: string) => request("DELETE", `/memories/${id}`),
+  audit: (outcome?: string) => request<AuditRecord[]>("GET", `/audit${outcome ? `?outcome=${outcome}` : ""}`),
 };
 
 export interface ServerConfig {

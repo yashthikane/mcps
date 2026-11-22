@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · Logo exploration, round 3</title>
+<style>
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Geist";src:url("https://cdn.jsdelivr.net/fontsource/fonts/geist-sans@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Space Grotesk";src:url("https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+:root{
+  --bg:#0E0E20;--bg-deep:#07070F;--surface:#1B1B39;
+  --fg:#F6F3FF;--fg-2:#D8D5E8;--muted:#AAA8C9;--subtle:#74718E;
+  --violet-b:#A78BFA;--cyan:#67E8F9;--amber:#FBBF24;
+  --border:rgba(167,139,250,.2);--border-h:rgba(167,139,250,.45);--border-s:rgba(255,255,255,.06);
+  --ui:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --word:Inter;--word-w:600;--word-ls:-.03em;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--fg);font:14px/1.55 var(--ui);-webkit-font-smoothing:antialiased;padding-bottom:110px;
+  background:radial-gradient(50% 40% at 10% 0%,rgba(139,92,246,.12),transparent 60%),var(--bg);background-attachment:fixed}
+.wrap{max-width:1340px;margin:0 auto;padding:56px 28px 0}
+.eyebrow{font:500 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 52px/1.02 var(--ui);letter-spacing:-.035em;margin:14px 0 16px}
+h1 em{font-style:normal;background:linear-gradient(90deg,#fff,#A78BFA 60%,#67E8F9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:800px;color:var(--fg-2);font-size:15.5px;margin:0}
+.refs{display:flex;gap:12px;margin:22px 0 0;flex-wrap:wrap}
+.refs div{border:1px solid var(--border-s);border-radius:14px;padding:12px 16px;background:rgba(27,27,57,.45);max-width:420px;font-size:12.5px;color:var(--muted)}
+.refs b{color:var(--fg-2);display:block;font-size:12.5px;margin-bottom:2px}
+h2{font:600 13px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:34px 0 14px}
+h2 span{color:var(--cyan)}
+
+.toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:30px -28px 0;padding:12px 28px;background:rgba(14,14,32,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-s)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--muted);font:500 12px/1 var(--ui);padding:9px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:rgba(139,92,246,.22);color:var(--fg)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:18px}
+.card{border:1px solid var(--border);border-radius:22px;background:linear-gradient(180deg,rgba(34,34,71,.7),rgba(24,24,52,.7));overflow:hidden;transition:border-color .2s,box-shadow .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+.card:hover{border-color:var(--border-h);transform:translateY(-3px)}
+.card.picked{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 46px rgba(103,232,249,.18)}
+.card.short:not(.picked){border-color:var(--amber)}
+.stage{height:300px;display:grid;place-items:center;position:relative;border-bottom:1px solid var(--border-s);
+  background:radial-gradient(55% 55% at 50% 50%,rgba(139,92,246,.14),transparent 70%),var(--bg-deep)}
+.stage.white{background:#fff}
+.stage .mk{width:220px;height:220px}
+.stage .num{position:absolute;left:18px;top:16px;font:500 12px/1 var(--mono);color:var(--subtle);letter-spacing:.08em}
+.stage .tag{position:absolute;right:14px;top:13px;font:500 10px/1 var(--mono);padding:5px 9px;border-radius:99px;border:1px solid rgba(103,232,249,.35);color:var(--cyan);background:rgba(7,7,15,.6)}
+.stage.white .num{color:#A09CB8}
+.body{padding:18px 20px 20px}
+.title{display:flex;align-items:baseline;gap:10px}
+.title h3{margin:0;font:600 21px/1.1 var(--ui);letter-spacing:-.02em}
+.title .kind{font:500 10.5px/1 var(--mono);color:var(--subtle);text-transform:uppercase;letter-spacing:.1em}
+.idea{margin:8px 0 4px;color:var(--fg-2);font-size:13.5px}
+.why{margin:0;color:var(--muted);font-size:12.8px}
+.why b{color:var(--fg-2);font-weight:600}
+
+.row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin:16px 0 8px}
+.row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 14px}
+.pv{border:1px solid var(--border-s);border-radius:12px;background:rgba(7,7,15,.65);height:76px;display:grid;place-items:center;position:relative;overflow:hidden}
+.pv small{position:absolute;bottom:4px;left:0;right:0;text-align:center;font:500 8.5px/1 var(--mono);color:var(--subtle);letter-spacing:.06em;text-transform:uppercase}
+.pv .in{margin-top:-10px;display:flex;align-items:center;gap:10px}
+.pv.w{background:#fff;border-color:#E6E2F5}.pv.w small{color:#9B97B5}
+.lock .m{width:38px;height:38px;display:block}
+.lock .t{font-family:var(--word);font-weight:var(--word-w);font-size:27px;line-height:1;letter-spacing:var(--word-ls)}
+.pv.w .lock .t{color:#14112B}
+.app{width:46px;height:46px;border-radius:12px;background:#0B0B18;border:1px solid rgba(167,139,250,.35);display:grid;place-items:center;box-shadow:0 6px 16px rgba(0,0,0,.45);overflow:hidden}
+.app .m{width:40px;height:40px;display:block}
+.solo .m{width:44px;height:44px;display:block}
+.fav{display:flex;align-items:center;gap:6px;background:#2A2A52;border-radius:7px 7px 0 0;padding:5px 9px;font:500 10px/1 var(--ui);color:var(--fg-2)}
+.fav .m{width:16px;height:16px;display:block}
+.pv.tab{place-items:end start;padding:0 0 0 10px}
+.ava{width:28px;height:28px;border-radius:50%;background:#0B0B18;border:1px solid var(--border);display:grid;place-items:center;overflow:hidden}
+.ava .m{width:22px;height:22px;display:block}
+.bubble{font:400 11px/1.3 var(--ui);color:var(--fg-2);background:rgba(255,255,255,.04);border:1px solid var(--border-s);border-radius:10px 10px 10px 3px;padding:6px 9px}
+
+.actions{display:flex;gap:8px}
+.btn{flex:1;height:38px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:600 12.5px/1 var(--ui);cursor:pointer}
+.btn:hover{border-color:var(--border-h)}
+.btn.star[aria-pressed=true]{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,.08)}
+.btn.pick{background:linear-gradient(135deg,#7A4BEB,#5F52F0);border-color:transparent}
+.btn.pick[aria-pressed=true]{background:linear-gradient(135deg,#0891B2,#22D3EE);color:#04121A}
+.bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(980px,calc(100% - 32px));border:1px solid var(--border-h);border-radius:16px;background:rgba(14,14,32,.94);backdrop-filter:blur(14px);padding:12px 14px 12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);z-index:10}
+.bar .m{width:36px;height:36px;flex:none}
+.bar .txt{flex:1;font-size:13px;color:var(--fg-2)}
+.bar .txt b{font-size:15px;color:var(--fg)}
+.bar .txt .s{font:500 11px/1.4 var(--mono);color:var(--amber)}
+.bar .btn{flex:none;padding:0 18px}
+footer{margin:40px 0 0;color:var(--subtle);font:500 11px/1.6 var(--mono)}
+@media (max-width:520px){h1{font-size:36px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Donna · brand · round 3</div>
+  <h1>Her <em>silhouette</em>, and the signal.</h1>
+  <p class="lede">Built from your two references. The first group is an original, stylised silhouette in Donna's stance: voluminous waves framing the face, a V-neck and crossed arms. It is rendered several ways, including in your reference's scanline and dot texture. The second group comes only from the mountain reference, with terrain drawn out of lines and points.</p>
+  <div class="refs">
+    <div><b>Reference 1: scanline terrain</b>A mountain resolved from vertical lines and falling dots, monochrome and data-like. It feeds #05, #06, #07 and #09–#12.</div>
+    <div><b>Reference 2: Donna's stance</b>Arms crossed, chin level, hair framing the face. It feeds #01–#08. The silhouette is an original drawing of the pose, not a trace of the photo.</div>
+  </div>
+
+  <div class="toolbar">
+    <span class="eyebrow">Stage</span>
+    <div class="seg" id="segBg"><button data-v="dark">Dark</button><button data-v="white">White</button></div>
+    <span class="eyebrow" style="margin-left:8px">Palette</span>
+    <div class="seg" id="segPal"><button data-v="mono">Mono (like ref)</button><button data-v="neon">Neon Dusk</button></div>
+    <span class="eyebrow" style="margin-left:8px">Wordmark</span>
+    <div class="seg" id="segFont"><button data-v="inter">Inter</button><button data-v="geist">Geist</button><button data-v="grotesk">Space Grotesk</button><button data-v="serif">Instrument Serif</button></div>
+    <span class="eyebrow" style="margin-left:8px">Show</span>
+    <div class="seg" id="segF"><button data-v="all">All</button><button data-v="star">Starred</button></div>
+  </div>
+
+  <h2><span>A</span> · The silhouette</h2>
+  <div class="grid" id="gridA"></div>
+  <h2><span>B</span> · The signal (terrain from reference 1)</h2>
+  <div class="grid" id="gridB"></div>
+  <footer>docs/design/donna-logo-ideas-r3.html · round 3 · all marks are original vector drawings generated in this file</footer>
+</div>
+
+<div class="bar">
+  <div class="m" id="barMark"></div>
+  <div class="txt" id="barTxt"></div>
+  <button class="btn" id="copy">Copy choice</button>
+</div>
+
+<script>
+/* ---------- helpers ---------- */
+let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646};
+const reseed=s=>{seed=s};
+const f=n=>+n.toFixed(2);
+
+/* ---------- the silhouette (viewBox 0 0 200 220) ---------- */
+const HAIR="M100 20C120 18 135 30 137 48C138 58 132 68 136 80C140 92 150 98 149 112C148 124 156 130 152 140C149 148 140 150 134 145C130 141 132 136 128 132Q118 125 108 124L92 124Q82 125 72 132C68 136 70 141 66 145C60 150 51 148 48 140C44 130 52 124 51 112C50 98 60 92 64 80C68 68 62 58 63 48C65 30 80 20 100 20Z";
+const FACE="M101 40C116 40 124 54 123 72C122 90 113 103 101 106C89 103 80 90 79 72C78 54 86 40 101 40Z";
+const BANGS="M79 76C78 54 90 40 106 40C118 40 125 48 124 60C117 53 106 54 97 60C89 65 83 70 79 76Z";
+const SKIN="M94 100L108 100L109 122L118 125L101 160L84 125L93 122Z";
+const BODY="M90 121C74 126 54 129 43 139C33 149 30 172 30 220L172 220C172 172 169 149 159 139C148 129 128 126 112 121Z";
+const ARMS="M47 148C49 158 49 166 47 172M153 148C151 158 151 166 153 172";
+const FORE=(fg,bg,w=3.6)=>`<rect x="42" y="190" width="122" height="17" rx="8.5" transform="rotate(4 103 198)" fill="${fg}" stroke="${bg}" stroke-width="${w}"/><rect x="34" y="171" width="130" height="20" rx="10" transform="rotate(-3 99 181)" fill="${fg}" stroke="${bg}" stroke-width="${w}"/>`;
+/* full silhouette drawn as fg on bg (skin, gaps and fold lines in bg) */
+const sil=(fg,bg)=>`<path d="${BODY}" fill="${fg}"/><path d="${ARMS}" fill="none" stroke="${bg}" stroke-width="3.6" stroke-linecap="round"/>${FORE(fg,bg)}
+ <path d="${HAIR}" fill="none" stroke="${bg}" stroke-width="6"/><path d="${HAIR}" fill="${fg}"/><path d="${FACE}" fill="${bg}"/><path d="${BANGS}" fill="${fg}"/><path d="${SKIN}" fill="${bg}"/>`;
+const hairOnly=(fg,bg)=>`<path d="${HAIR}" fill="${fg}"/><path d="${FACE}" fill="${bg}"/><path d="${BANGS}" fill="${fg}"/><path d="${SKIN}" fill="${bg}"/>`;
+const bodyOnly=(fg,bg)=>`<path d="${BODY}" fill="${fg}"/><path d="${ARMS}" fill="none" stroke="${bg}" stroke-width="3.6" stroke-linecap="round"/>${FORE(fg,bg)}<path d="${HAIR}" fill="${bg}" stroke="${bg}" stroke-width="6"/><path d="${SKIN}" fill="${bg}"/>`;
+const M=(id,body,vb=[0,0,200,220])=>`<mask id="${id}" maskUnits="userSpaceOnUse" x="${vb[0]}" y="${vb[1]}" width="${vb[2]}" height="${vb[3]}"><rect x="${vb[0]}" y="${vb[1]}" width="${vb[2]}" height="${vb[3]}" fill="#000"/>${body}</mask>`;
+const fill=(id,P)=>`<rect width="200" height="220" fill="${P}" mask="url(#${id})"/>`;
+
+/* ---------- terrain helpers (viewBox 0 0 100 100) ---------- */
+const peak=x=>52*Math.exp(-(((x-53)/15)**2))+24*Math.exp(-(((x-31)/11)**2))+18*Math.exp(-(((x-76)/9)**2));
+
+const MARKS=[
+ /* ===== A · silhouette ===== */
+ {g:'A',name:'Portrait',kind:'silhouette · solid',vb:'0 0 200 220',tag:'the stance',
+  idea:'Donna\'s stance as a single solid shape: waves framing the face, a V-neck and crossed arms. The face, neck and hand are negative space.',
+  why:'<b>The most direct version of your idea.</b> It reads instantly as a confident woman who has it handled, and the crossed arms do the talking. It is classic, like a fashion-house silhouette, and works well in one colour.',
+  draw:(P,A,id)=>`<defs>${M('s'+id,sil('#fff','#000'))}</defs>${fill('s'+id,P)}`},
+ {g:'A',name:'Two-Tone',kind:'silhouette · duotone',vb:'0 0 200 220',
+  idea:'The same silhouette, with the hair picked out in the accent colour and the outfit in the main tone.',
+  why:'<b>The hair is the signature.</b> Donna\'s waves are her most recognisable trait, so the accent goes there. In the Neon palette the hair glows cyan against violet; in Mono it is white on grey.',
+  draw:(P,A,id)=>`<defs>${M('b'+id,bodyOnly('#fff','#000'))}${M('h'+id,hairOnly('#fff','#000'))}</defs>${fill('b'+id,P)}${fill('h'+id,A)}`},
+ {g:'A',name:'Medallion',kind:'silhouette · badge',vb:'0 0 200 220',
+  idea:'The silhouette carved out of a disc, like a cameo or a coin. The face and neck take the disc\'s colour.',
+  why:'<b>Timeless and premium</b>, like a portrait on a seal. The circle gives a neat container for the app icon and avatar, and it fills a round frame perfectly.',
+  draw:(P,A,id)=>`<defs><clipPath id="c${id}"><circle cx="100" cy="118" r="98"/></clipPath>${M('d'+id,`<circle cx="100" cy="118" r="98" fill="#fff"/>`+sil('#000','#fff'))}</defs><g clip-path="url(#c${id})">${fill('d'+id,P)}</g>`},
+ {g:'A',name:'Line Portrait',kind:'silhouette · monoline',vb:'0 0 200 220',
+  idea:'The silhouette as a single-weight outline, with nothing filled in, like a fashion sketch.',
+  why:'<b>Editorial and light.</b> It is the most refined option, like a boutique hotel or fashion label. It sits elegantly beside a serif wordmark (try Instrument Serif), but thin lines get weak below 24px.',
+  draw:(P,A,id)=>{const st=w=>`stroke="#fff" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+   const b=`<path d="${BODY}" fill="#000" ${st(5)}/><path d="${ARMS}" fill="none" ${st(5)}/>${FORE("#000","#fff",5)}<path d="${HAIR}" fill="#000" ${st(5)}/><path d="${SKIN}" fill="#000" ${st(5)}/><path d="${FACE}" fill="#000" ${st(5)}/><path d="${BANGS}" fill="#000" ${st(5)}/><rect x="0" y="216" width="200" height="6" fill="#000"/>`;
+   return `<defs>${M('l'+id,b)}</defs>${fill('l'+id,P)}`}},
+ {g:'A',name:'Scan',kind:'silhouette × reference 1',vb:'0 0 200 220',tag:'both refs',
+  idea:'The silhouette resolved out of vertical scanlines, with faint dotted lines falling around her like your mountain reference.',
+  why:'<b>Both references in one mark.</b> She emerges from the data the way the mountain emerges from the lines. It says "AI" without a single sparkle and is very distinctive. Best large (splash, onboarding, app icon), with the solid Portrait as the small-size version.',
+  draw:(P,A,id)=>{let bright='',dim='';reseed(11);for(let x=3;x<200;x+=5){bright+=`<rect x="${x}" y="0" width="2.6" height="220"/>`;
+    const top=rnd()*120;dim+=`<line x1="${x+1.3}" y1="${f(top)}" x2="${x+1.3}" y2="220" stroke-dasharray="1.4 ${f(3+rnd()*6)}" />`}
+   return `<defs>${M('s'+id,sil('#fff','#000'))}<linearGradient id="fd${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".9"/></linearGradient>${M('fm'+id,`<rect width="200" height="220" fill="url(#fd${id})"/>`)}</defs>
+   <g mask="url(#fm${id})" stroke="${A}" stroke-width="1.6" opacity=".35">${dim}</g><g fill="${P}" mask="url(#s${id})">${bright}</g>`}},
+ {g:'A',name:'Halftone',kind:'silhouette · dots',vb:'0 0 200 220',
+  idea:'The silhouette printed as a field of dots that grow heavier towards the base, like a newspaper halftone.',
+  why:'<b>Warm and print-like</b>, echoing the falling dots in your reference. It has texture without noise, and from a distance it resolves into the solid figure.',
+  draw:(P,A,id)=>{let s='';let row=0;for(let y=3;y<220;y+=5.6,row++){for(let x=(row%2?5.8:3);x<200;x+=5.6){s+=`<circle cx="${f(x)}" cy="${f(y)}" r="${f(1.3+1.45*(y/220))}"/>`}}
+   return `<defs>${M('s'+id,sil('#fff','#000'))}</defs><g fill="${P}" mask="url(#s${id})">${s}</g>`}},
+ {g:'A',name:'Waves',kind:'silhouette · contour lines',vb:'0 0 200 220',
+  idea:'The silhouette filled with gently undulating horizontal lines, like a signal or ridgelines seen from the side.',
+  why:'<b>She is the signal.</b> This is reference 1 turned on its side: the ridgeline language from the mountain, contained in her outline. It is calmer than Scan and still clearly "a person made of data".',
+  draw:(P,A,id)=>{reseed(5);let s='';for(let y=4;y<224;y+=5.2){let d=`M-4 ${f(y)}`;const ph=rnd()*6;for(let x=0;x<=204;x+=6){d+=`L${x} ${f(y+1.4*Math.sin(x/11+ph)+0.6*(rnd()-.5))}`}s+=`<path d="${d}"/>`}
+   return `<defs>${M('s'+id,sil('#fff','#000'))}</defs><g fill="none" stroke="${P}" stroke-width="2.3" stroke-linecap="round" mask="url(#s${id})">${s}</g>`}},
+ {g:'A',name:'Head & Waves',kind:'silhouette · small mark',vb:'40 12 124 140',tag:'favicon',
+  idea:'A close crop to the head: the waves, the face and a hint of shoulders.',
+  why:'<b>The small-size companion</b> to any of the silhouettes above. At 16px a full figure turns to mush, but the hair frame and face stay readable. You could use the Portrait or Scan for the lockup and this for favicons and avatars.',
+  draw:(P,A,id)=>`<defs>${M('s'+id,sil('#fff','#000'),[40,12,124,140])}</defs><rect x="40" y="12" width="124" height="140" fill="${P}" mask="url(#s${id})"/>`},
+
+ /* ===== B · signal / terrain ===== */
+ {g:'B',name:'Summit',kind:'terrain · scanlines',vb:'0 0 100 100',
+  idea:'A mountain range made only of vertical lines of different heights, with dots falling above the peaks.',
+  why:'<b>Your reference, distilled into a mark.</b> The peak is the high point of your day that Donna gets you to. It reads as data, ambition and calm all at once.',
+  draw:(P,A,id)=>{reseed(3);let s='',d='';for(let x=4;x<=96;x+=3){const h=peak(x)+rnd()*4;s+=`<rect x="${x-.8}" y="${f(88-h)}" width="1.6" height="${f(h)}" rx=".8"/>`;
+    for(let k=0;k<3;k++){const y=rnd()*(80-h);if(y>4)d+=`<circle cx="${x}" cy="${f(y)}" r=".75"/>`}}
+   return `<g fill="${P}">${s}</g><g fill="${A}" opacity=".55">${d}</g><rect x="4" y="90" width="92" height="1.6" rx=".8" fill="${P}" opacity=".5"/>`}},
+ {g:'B',name:'Ridgeline',kind:'terrain · stacked lines',vb:'0 0 100 100',
+  idea:'Stacked horizontal lines, each rising into a peak and hiding the lines behind it, like a pulse plot.',
+  why:'<b>A heartbeat for your operations.</b> It reads as "always on, always monitoring", which suits an assistant that watches your inbox and calendar. It is iconic as a texture and works as a hero graphic too.',
+  draw:(P,A,id)=>{reseed(9);let m='';const N=10;for(let i=0;i<N;i++){const yb=24+i*6.4,amp=Math.sin(Math.PI*(i+1)/(N+1))*22;let d=`M8 ${f(yb)}`;const pts=[];
+    for(let x=8;x<=92;x+=2){const g=Math.exp(-(((x-50+(i%3-1)*4)/11)**2))+.45*Math.exp(-(((x-33)/7)**2))*rnd()+.35*Math.exp(-(((x-68)/6)**2))*rnd();pts.push([x,f(yb-amp*g-(rnd()-.5)*1.2)])}
+    d=`M${pts.map(p=>p.join(' ')).join('L')}`;m+=`<path d="${d}L92 100L8 100Z" fill="#000"/><path d="${d}" fill="none" stroke="#fff" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>`}
+   return `<defs>${M('r'+id,m,[0,0,100,100])}</defs><rect width="100" height="100" fill="${P}" mask="url(#r${id})"/>`}},
+ {g:'B',name:'Point Field',kind:'terrain · dots',vb:'0 0 100 100',
+  idea:'A grid of points that swells upwards into a peak, as if a calm surface were lifted from below.',
+  why:'<b>Something rising out of the noise</b>, which is what an assistant does with your day. Rows nearer the viewer have bigger dots, so it has real depth, and the accent marks the summit point.',
+  draw:(P,A,id)=>{let s='';for(let row=0;row<12;row++)for(let col=0;col<=20;col++){const x=8+col*4.2,yb=34+row*4.8,h=34*Math.exp(-(((col-10)/3.6)**2+((row-4)/2.8)**2))+8*Math.exp(-(((col-5)/2.2)**2+((row-6)/2)**2));
+    const top=col===10&&row===4;s+=`<circle cx="${f(x)}" cy="${f(yb-h)}" r="${f(top?1.9:.65+row*.075)}" fill="${top?A:P}" ${top?'':`opacity="${f(.45+row*.05)}"`}/>`}return s}},
+ {g:'B',name:'Summit Seal',kind:'terrain · badge',vb:'0 0 100 100',
+  idea:'The Summit scanlines contained in a circle, with a fine ring, like a lens looking at the peak.',
+  why:'<b>The app-icon version of Summit.</b> It is contained and balanced, works at every size and sits well as a round avatar in WhatsApp and Telegram.',
+  draw:(P,A,id)=>{reseed(3);let s='',d='';for(let x=8;x<=92;x+=3.2){const h=peak(x)*.9+rnd()*3;s+=`<rect x="${f(x-.9)}" y="${f(84-h)}" width="1.8" height="${f(h+16)}"/>`;
+    const y=12+rnd()*(60-h);if(y<80-h)d+=`<circle cx="${f(x)}" cy="${f(y)}" r=".8"/>`}
+   return `<defs><clipPath id="c${id}"><circle cx="50" cy="50" r="40"/></clipPath></defs><circle cx="50" cy="50" r="46" fill="none" stroke="${P}" stroke-width="2.2"/><g clip-path="url(#c${id})"><g fill="${P}">${s}</g><g fill="${A}" opacity=".6">${d}</g></g>`}},
+];
+
+/* ---------- render ---------- */
+let uid=0;
+function svg(Mk,mode,pal){
+  const id=++uid,[vx,vy,vw,vh]=Mk.vb.split(' ').map(Number);let P,A,defs='';
+  if(mode==='color'){
+    const [p0,p1,p2,a0,a1]=pal==='neon'?['#D9CCFF','#8B5CF6','#5B4BEA','#A5F3FC','#22D3EE']:['#FFFFFF','#D4D2E4','#8E8BA8','#FFFFFF','#C9C6DC'];
+    defs=`<defs><linearGradient id="gp${id}" gradientUnits="userSpaceOnUse" x1="${vx}" y1="${vy}" x2="${vx+vw*.6}" y2="${vy+vh}"><stop offset="0" stop-color="${p0}"/><stop offset=".55" stop-color="${p1}"/><stop offset="1" stop-color="${p2}"/></linearGradient><linearGradient id="ga${id}" gradientUnits="userSpaceOnUse" x1="${vx}" y1="${vy}" x2="${vx+vw}" y2="${vy+vh}"><stop offset="0" stop-color="${a0}"/><stop offset="1" stop-color="${a1}"/></linearGradient></defs>`;
+    P=`url(#gp${id})`;A=`url(#ga${id})`}
+  else if(mode==='black'){P='#14112B';A='#4B4670'}
+  return `<svg viewBox="${Mk.vb}" width="100%" height="100%" aria-hidden="true">${defs}${Mk.draw(P,A,'k'+id)}</svg>`;
+}
+const st=Object.assign({star:[],pick:null,bg:'dark',pal:'mono',font:'inter',f:'all'},JSON.parse(localStorage.getItem('donna-logo-r3')||'{}'));
+const FONTS={inter:['Inter',600,'-.035em'],geist:['Geist',600,'-.03em'],grotesk:['"Space Grotesk"',600,'-.03em'],serif:['"Instrument Serif"',400,'-.01em']};
+const num=i=>String(i+1).padStart(2,'0');
+/* small-size marks use the head crop for silhouettes */
+const small=i=>MARKS[i].g==='A'?MARKS[7]:MARKS[i];
+
+function card(Mk,i){
+  return `<article class="card" data-i="${i}">
+   <div class="stage"><span class="num">${num(i)}</span>${Mk.tag?`<span class="tag">${Mk.tag}</span>`:''}<div class="mk" data-hero></div></div>
+   <div class="body">
+    <div class="title"><h3>${Mk.name}</h3><span class="kind">${Mk.kind}</span></div>
+    <p class="idea">${Mk.idea}</p><p class="why">${Mk.why}</p>
+    <div class="row">
+      <div class="pv"><div class="in lock"><span class="m" data-s="color"></span><span class="t">Donna</span></div><small>lockup · dark</small></div>
+      <div class="pv"><div class="in"><span class="app"><span class="m" data-s="color"></span></span></div><small>app icon</small></div>
+      <div class="pv w"><div class="in solo"><span class="m" data-s="black"></span></div><small>one colour</small></div>
+    </div>
+    <div class="row2">
+      <div class="pv w"><div class="in lock"><span class="m" data-s="black" style="width:32px;height:32px"></span><span class="t" style="font-size:22px">Donna</span></div><small>lockup · light</small></div>
+      <div class="pv tab"><div class="fav"><span class="m" data-s="color" data-small></span>Donna · Inbox</div><small style="text-align:right;padding-right:8px">favicon</small></div>
+      <div class="pv"><div class="in"><span class="ava"><span class="m" data-s="color" data-small></span></span><span class="bubble">On it.</span></div><small>chat avatar</small></div>
+    </div>
+    <div class="actions"><button class="btn star" data-star></button><button class="btn pick" data-pick></button></div>
+   </div></article>`;
+}
+document.getElementById('gridA').innerHTML=MARKS.map((m,i)=>m.g==='A'?card(m,i):'').join('');
+document.getElementById('gridB').innerHTML=MARKS.map((m,i)=>m.g==='B'?card(m,i):'').join('');
+
+let lastKey='';
+function sync(){
+  const [fam,w,ls]=FONTS[st.font];const rs=document.documentElement.style;rs.setProperty('--word',fam);rs.setProperty('--word-w',w);rs.setProperty('--word-ls',ls);
+  const key=st.bg+st.pal;
+  document.querySelectorAll('.card').forEach(c=>{const i=+c.dataset.i,s=st.star.includes(i),p=st.pick===i;
+    c.classList.toggle('short',s);c.classList.toggle('picked',p);
+    c.querySelector('.stage').className='stage'+(st.bg==='white'?' white':'');
+    if(key!==lastKey){c.querySelector('[data-hero]').innerHTML=svg(MARKS[i],st.bg==='white'?'black':'color',st.pal);
+      c.querySelectorAll('[data-s]').forEach(el=>el.innerHTML=svg(el.hasAttribute('data-small')?small(i):MARKS[i],el.dataset.s,st.pal))}
+    const sb=c.querySelector('[data-star]');sb.setAttribute('aria-pressed',s);sb.textContent=s?'★ Starred':'☆ Star';
+    const pb=c.querySelector('[data-pick]');pb.setAttribute('aria-pressed',p);pb.textContent=p?'✓ Picked':`Pick #${num(i)}`;
+    c.style.display=st.f==='star'&&!s&&!p?'none':''});
+  lastKey=key;
+  [['segBg','bg'],['segPal','pal'],['segFont','font'],['segF','f']].forEach(([id,k])=>document.querySelectorAll(`#${id} button`).forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===st[k])));
+  const stars=st.star.slice().sort((a,b)=>a-b).map(i=>`#${num(i)} ${MARKS[i].name}`);
+  document.getElementById('barMark').innerHTML=st.pick!=null?svg(MARKS[st.pick],'color',st.pal):'';
+  document.getElementById('barTxt').innerHTML=(st.pick!=null?`Picked <b>#${num(st.pick)} ${MARKS[st.pick].name}</b> · ${st.pal==='mono'?'Mono':'Neon Dusk'} · wordmark in ${fam.replace(/"/g,'')}`:'Nothing picked yet. Star a few, then press <b>Pick</b>.')+(stars.length?`<br><span class="s">★ ${stars.join(' · ')}</span>`:'');
+  localStorage.setItem('donna-logo-r3',JSON.stringify(st));
+}
+document.querySelector('.wrap').addEventListener('click',e=>{const c=e.target.closest('.card');if(!c)return;const i=+c.dataset.i;
+  if(e.target.closest('[data-star]')){st.star=st.star.includes(i)?st.star.filter(x=>x!==i):[...st.star,i];sync()}
+  if(e.target.closest('[data-pick]')){st.pick=st.pick===i?null:i;sync()}});
+[['segBg','bg'],['segPal','pal'],['segFont','font'],['segF','f']].forEach(([id,k])=>document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>{st[k]=b.dataset.v;if(k==='pal'||k==='bg')lastKey='';sync()}));
+document.getElementById('copy').onclick=async()=>{
+  const p=st.pick!=null?`#${num(st.pick)} ${MARKS[st.pick].name}`:'none yet';
+  const s=st.star.slice().sort((a,b)=>a-b).map(i=>`#${num(i)} ${MARKS[i].name}`).join(', ')||'none';
+  const t=`Donna logo (round 3) pick: ${p}. Palette: ${st.pal}. Wordmark: ${FONTS[st.font][0].replace(/"/g,'')}. Shortlist: ${s}.`;
+  const b=document.getElementById('copy');
+  try{await navigator.clipboard.writeText(t);b.textContent='Copied ✓';setTimeout(()=>b.textContent='Copy choice',1400)}catch{prompt('Copy this:',t)}};
+sync();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ import { fmtMs } from "./ui";
 
 const STATE: Record<string, [string, string]> = {
   running: ["st-proc", "Running"], done: ["st-ok", "Done"], error: ["st-err", "Failed"],
-  rejected: ["st-off", "Rejected"], waiting: ["st-warn", "Needs approval"],
+  rejected: ["st-off", "Rejected"], waiting: ["st-warn", "Needs approval"], pending: ["st-warn", "Waiting for approval"],
 };
 
 export default function RunPanel({ live, messages, usage, model, onClose }: {

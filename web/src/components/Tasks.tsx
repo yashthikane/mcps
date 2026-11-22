@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, type PermissionMode, type ExecutionStatus, type RecurrenceType, type ScheduledTask, type SchedulerHealth, type TaskInput, type TaskStatus, type TaskType } from "../api";
+import { api, type Contact, type PermissionMode, type ExecutionStatus, type RecurrenceType, type ScheduledTask, type SchedulerHealth, type TaskInput, type TaskStatus, type TaskType } from "../api";
 import { Icon } from "../icons";
 import { MODES } from "./Chat";
 import { timezones } from "./Settings";
@@ -59,8 +59,8 @@ function localInput(date: Date, tz: string): string {
 }
 
 /* ------------------------------------------------------------------ page */
-export default function TasksPage({ defaultTimezone, newSignal, onOpenConversation }: {
-  defaultTimezone: string; newSignal: number; onOpenConversation: (id: string) => void;
+export default function TasksPage({ defaultTimezone, newSignal, onOpenConversation, automationsOff }: {
+  defaultTimezone: string; newSignal: number; onOpenConversation: (id: string) => void; automationsOff?: boolean;
 }) {
   const toast = useToast();
   const [tasks, setTasks] = useState<ScheduledTask[] | null>(null);
@@ -117,6 +117,13 @@ export default function TasksPage({ defaultTimezone, newSignal, onOpenConversati
           <Icon name="plus" />New task</button>
       </div>
 
+      {automationsOff && (
+        <div className="card sched-health" role="status">
+          <Icon name="alert" />
+          <div className="grow"><b>Automations are switched off.</b>
+            <span className="help">Tasks stay scheduled but every run is skipped. Turn them back on in Settings → Messaging and automations.</span></div>
+        </div>
+      )}
       {health && !health.ok && (
         <div className="card sched-health" role="status">
           <Icon name="alert" />
@@ -261,6 +268,7 @@ function TaskEditor({ task, defaultTimezone, onClose, onSaved }: {
       timezone: tz, run_at: localInput(start, tz), recurrence_type: task?.recurrence_type ?? ("once" as RecurrenceType),
       recurrence_rule: task?.recurrence_rule ?? "", channels: task?.notification_channels ?? ["windows", "in_app"],
       permission_mode: task?.permission_mode ?? ("manual" as PermissionMode),
+      deliver_contact_id: task?.deliver_contact_id ?? "",
     };
   }, [task, defaultTimezone]);
   const [f, setF] = useState(initial);
@@ -268,6 +276,8 @@ function TaskEditor({ task, defaultTimezone, onClose, onSaved }: {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const zones = useMemo(() => timezones(f.timezone), [f.timezone]);
+  const [people, setPeople] = useState<Contact[]>([]);
+  useEffect(() => { api.contacts().then((cs) => setPeople(cs.filter((c) => !c.discovered && !c.is_owner))).catch(() => {}); }, []);
   const set = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch }));
 
   const schedule = { run_at: f.run_at || null, timezone: f.timezone, recurrence_type: f.recurrence_type,
@@ -283,7 +293,7 @@ function TaskEditor({ task, defaultTimezone, onClose, onSaved }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const valid = f.title.trim() && (f.type === "reminder" || f.prompt.trim()) && f.channels.length > 0
+  const valid = f.title.trim() && (f.type === "reminder" || f.prompt.trim()) && (f.channels.length > 0 || f.deliver_contact_id)
     && (f.recurrence_type === "once" ? f.run_at : f.recurrence_rule.trim()) && runs?.ok !== false;
 
   const save = async () => {
@@ -292,13 +302,13 @@ function TaskEditor({ task, defaultTimezone, onClose, onSaved }: {
     const body: TaskInput = {
       title: f.title.trim(), type: f.type, message: f.message.trim(), prompt: f.prompt.trim(), timezone: f.timezone,
       run_at: f.run_at || null, recurrence_type: f.recurrence_type, recurrence_rule: schedule.recurrence_rule, notification_channels: f.channels,
-      permission_mode: f.permission_mode,
+      permission_mode: f.permission_mode, deliver_contact_id: f.deliver_contact_id || null,
     };
     try {
       if (task) {
         // Only send what changed: a new time or rule reschedules; a new title doesn't.
         const patch: Partial<TaskInput> = {};
-        const was: Record<string, unknown> = { ...initial, notification_channels: initial.channels,
+        const was: Record<string, unknown> = { ...initial, notification_channels: initial.channels, deliver_contact_id: initial.deliver_contact_id || null,
           recurrence_rule: initial.recurrence_type === "once" ? null : initial.recurrence_rule || null, run_at: initial.run_at || null };
         for (const [k, v] of Object.entries(body) as [keyof TaskInput, unknown][]) {
           if (JSON.stringify(v) !== JSON.stringify(was[k])) (patch as Record<string, unknown>)[k] = v;
@@ -321,6 +331,17 @@ function TaskEditor({ task, defaultTimezone, onClose, onSaved }: {
       <div className="dlg">
         <DialogHead id="task-title" eyebrow="■ Scheduler // task" title={task ? "Edit task" : "New task"} onClose={onClose} />
         <div className="dlg-body">
+          {!task && (
+            <div className="srow wrap">
+              <span className="meta">Presets:</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => set({ type: "ai_task", title: "Morning briefing", recurrence_type: "cron", recurrence_rule: "0 8 * * *",
+                prompt: "Give me a short morning briefing: today's calendar, important unread emails, my reminders for today, and anything waiting for my approval. Keep it brief for a phone screen.",
+                channels: ["owner_chat", "in_app"], permission_mode: "manual" })}><Icon name="sun" />Morning briefing</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => set({ type: "ai_task", title: "End-of-day summary", recurrence_type: "cron", recurrence_rule: "0 19 * * 1-5",
+                prompt: "Summarize my day: meetings that happened, emails that still need a reply, and tomorrow's first events.",
+                channels: ["owner_chat", "in_app"], permission_mode: "manual" })}><Icon name="clock" />End-of-day summary</button>
+            </div>
+          )}
           <div className="seg" role="radiogroup" aria-label="Task type">
             <span className="ind" aria-hidden="true" style={{ width: "calc(50% - 3px)", transform: `translateX(${f.type === "ai_task" ? "100%" : 0})` }} />
             <button role="radio" aria-checked={f.type === "reminder"} onClick={() => set({ type: "reminder" })}>Reminder · no AI</button>
@@ -384,11 +405,19 @@ function TaskEditor({ task, defaultTimezone, onClose, onSaved }: {
           </div>
           <div className="field"><span className="label">Notify me with</span>
             <div className="srow">
-              {([["windows", "Windows notification"], ["in_app", "In Donna"]] as [string, string][]).map(([c, label]) => (
+              {([["windows", "Windows notification"], ["in_app", "In Donna"], ["owner_chat", "My WhatsApp / Telegram"]] as [string, string][]).map(([c, label]) => (
                 <label key={c} className="chk"><input type="checkbox" checked={f.channels.includes(c)}
                   onChange={(e) => set({ channels: e.target.checked ? [...f.channels, c] : f.channels.filter((x) => x !== c) })} />{label}</label>
               ))}
             </div>
+          </div>
+          <div className="field"><label htmlFor="t-contact">Also send the {f.type === "ai_task" ? "result" : "message"} to a contact <span className="meta">(optional)</span></label>
+            <select className="select" id="t-contact" value={f.deliver_contact_id} onChange={(e) => set({ deliver_contact_id: e.target.value })}>
+              <option value="">Nobody else</option>
+              {people.map((c) => <option key={c.id} value={c.id}>{c.display_name}</option>)}
+            </select>
+            {f.deliver_contact_id && <span className="help st-warn">Donna messages them first, so they need “Message them first” allowed in Contacts.
+              The text is sent exactly as {f.type === "ai_task" ? "Donna writes it" : "written"}.</span>}
           </div>
           {runs && (runs.ok ? (
             <div className="runs"><span className="eyebrow">Next runs</span>

@@ -85,12 +85,11 @@ with sync_playwright() as p:
         idle(page)
         has_text(page, ".msg-bot .bot-text", "81")
         assert page.locator(".toolcall.s-done .tc-name:text('square')").count() == 1
-        page.click('[role="tab"]:text("Tool calls")')
-        has_text(page, "#runpanel .tree", "square")
-        page.click('[role="tab"]:text("Usage")')
-        page.wait_for_selector("#runpanel .stat .num")
-        page.click('[role="tab"]:text("Tool calls")')
-    check("02 chat: streamed reply, tool card, activity panel", streaming, page)
+        page.locator(".toolcall.s-done .tc-row").last.click()  # the card expands to the real result and arguments
+        has_text(page, ".tc-body pre", "81")
+        has_text(page, ".tc-body pre.args", "9")
+        has_text(page, ".s-status", "req")  # today's usage now lives in the sidebar status card
+    check("02 chat: streamed reply, expandable tool card, usage in the sidebar", streaming, page)
 
     def approval():
         send(page, "create event for prep")
@@ -247,7 +246,7 @@ with sync_playwright() as p:
     def offline():
         ctx.set_offline(True)
         page.evaluate("window.dispatchEvent(new Event('offline'))")
-        has_text(page, ".banner", "OFFLINE", 5000)
+        has_text(page, ".banner", "can't reach", 5000)
         assert page.is_disabled("#prompt")
         ctx.set_offline(False)
         page.evaluate("window.dispatchEvent(new Event('online'))")
@@ -272,17 +271,16 @@ with sync_playwright() as p:
         m.wait_for_selector(".composer")
         m.wait_for_timeout(800)
         assert m.evaluate("document.documentElement.scrollWidth") <= 390
-        m.click('button[aria-label="Show conversations"]')
+        m.click('button[aria-label="Show navigation"]')
         m.wait_for_timeout(350)
         assert m.evaluate("document.querySelector('.side').getBoundingClientRect().left") >= -1
         m.keyboard.press("Escape")
         m.wait_for_timeout(350)
-        m.click('button[aria-label="Toggle activity panel"]')
-        m.wait_for_timeout(350)
-        r = m.evaluate("(() => { const b = document.querySelector('#runpanel').getBoundingClientRect(); return [b.left, b.right] })()")
+        assert m.evaluate("document.querySelector('.side').getBoundingClientRect().right") <= 1
+        r = m.evaluate("(() => { const b = document.querySelector('.composer').getBoundingClientRect(); return [b.left, b.right] })()")
         assert r[0] >= 0 and r[1] <= 391, r
         m.screenshot(path=str(SHOTS / "app_mobile.png"))
-    check("13 mobile 390px: drawers, no horizontal scroll", mobile, m)
+    check("13 mobile 390px: navigation drawer, composer fits, no horizontal scroll", mobile, m)
     browser.close()
 
 w = max(len(r[0]) for r in results)

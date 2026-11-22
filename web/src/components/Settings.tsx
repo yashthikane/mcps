@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { api, type Settings } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import { api, type Memory, type Settings } from "../api";
 import { Icon } from "../icons";
 import { Switch, useToast } from "./ui";
 
@@ -13,6 +13,39 @@ export function timezones(current: string): string[] {
     list = ["Asia/Kolkata", "Europe/London", "America/New_York", "America/Los_Angeles", "Asia/Tokyo", "UTC"];
   }
   return current && !list.includes(current) ? [current, ...list] : list;
+}
+
+function MemoryCard() {
+  const toast = useToast();
+  const [items, setItems] = useState<Memory[] | null>(null);
+  const [text, setText] = useState("");
+  const load = () => api.memories().then(setItems).catch((e) => toast((e as Error).message, "err"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
+  const run = async (fn: () => Promise<unknown>, msg: string) => {
+    try { await fn(); toast(msg); load(); } catch (e) { toast((e as Error).message, "err"); }
+  };
+  return (
+    <article className="card scard">
+      <span className="eyebrow">08 // Memory</span>
+      <h2>What Donna remembers about you</h2>
+      <p>Used in your own chats only (web and your own WhatsApp/Telegram), never shown to contacts. Donna adds to it when you say “remember…”.</p>
+      {items === null ? <span className="meta">Loading…</span> : items.length === 0 ? <span className="meta">Nothing yet.</span> : (
+        <div className="toolrows">
+          {items.map((m) => (
+            <div key={m.id} className="toolrow">
+              <span className="d grow">{m.content}</span>
+              <button className="btn btn-ghost btn-icon btn-sm" aria-label="Forget" onClick={() => run(() => api.deleteMemory(m.id), "Forgotten.")}><Icon name="trash" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="srow">
+        <input className="input grow" placeholder="e.g. I'm vegetarian; my office is in Pune" value={text} onChange={(e) => setText(e.target.value)} aria-label="New memory" />
+        <button className="btn btn-secondary btn-sm" disabled={!text.trim()} onClick={() => run(async () => { await api.addMemory(text); setText(""); }, "Saved.")}>Add</button>
+      </div>
+    </article>
+  );
 }
 
 export default function SettingsPage({ settings, onChange, onWiped, onRunSetup }: {
@@ -78,7 +111,29 @@ export default function SettingsPage({ settings, onChange, onWiped, onRunSetup }
           <span className="eyebrow">02 // Model</span>
           <h2>Model and reasoning</h2>
           <div className="field">
-            <label htmlFor="m-model">Chat model</label>
+            <label htmlFor="m-provider">Donna thinks with</label>
+            <select className="select" id="m-provider" value={settings.llm_provider}
+              onChange={(e) => save({ llm_provider: e.target.value as Settings["llm_provider"] }, e.target.value === "claude_code"
+                ? "Donna now uses Claude through Claude Code on this computer." : "Donna now uses Groq.")}>
+              <option value="groq">Groq (free tier, fastest)</option>
+              <option value="claude_code">Claude, through Claude Code (your Claude subscription)</option>
+            </select>
+            {settings.llm_provider === "claude_code" && (
+              <span className="help">Uses the <span className="mono">claude</span> program on this computer, signed in with your own
+                Claude account (run <span className="mono">claude</span> once in a terminal to sign in). Donna never sees that sign-in.
+                Each step takes a few seconds longer than Groq and counts toward your Claude plan's usage.</span>
+            )}
+          </div>
+          {settings.llm_provider === "claude_code" && (
+            <div className="field">
+              <label htmlFor="m-claude">Claude model</label>
+              <select className="select" id="m-claude" value={settings.claude_model} onChange={(e) => save({ claude_model: e.target.value }, "Claude model updated.")}>
+                {[...new Set([settings.claude_model, "opus", "sonnet", "fable", "haiku"])].map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="field">
+            <label htmlFor="m-model">Groq model</label>
             <select className="select" id="m-model" value={settings.model} onChange={(e) => save({ model: e.target.value }, "Model updated.")}>
               {[...new Set([settings.model, ...MODELS])].map((m) => <option key={m}>{m}</option>)}
             </select>
@@ -145,6 +200,72 @@ export default function SettingsPage({ settings, onChange, onWiped, onRunSetup }
           <div className="srow"><div className="grow"><b>Data and logs folder</b><span className="mono">{settings.data_dir}</span></div>
             <button className="btn btn-secondary btn-sm" onClick={() => api.openDataFolder().then(() => toast("Opened in File Explorer."))}>Open folder</button></div>
         </article>
+
+        <article className="card scard">
+          <span className="eyebrow">07 // Messaging</span>
+          <h2>WhatsApp and Telegram</h2>
+          <div className="srow"><div className="grow"><b>Messaging on</b><span>Kill switch: off stops every reply and message on every channel at once.</span></div>
+            <Switch checked={settings.messaging_enabled} label="Messaging on" onChange={(v) => save({ messaging_enabled: v }, v ? "Messaging is on." : "Messaging is off. Nothing is answered or sent.")} /></div>
+          <div className="srow"><div className="grow"><b>Only answer when someone writes {settings.trigger_word || "@donna"}</b>
+            <span>On your own WhatsApp, people keep chatting with you as usual; Donna replies only to messages with the trigger.
+              Each enabled contact is told this once.</span></div>
+            <Switch checked={settings.require_trigger} label="Require trigger word" onChange={(v) => save({ require_trigger: v },
+              v ? `Donna now answers only to ${settings.trigger_word || "@donna"}.` : "Donna answers every message from enabled contacts.")} /></div>
+          {settings.require_trigger && (
+            <div className="field"><label htmlFor="ms-trigger">Trigger word</label>
+              <input className="input mono" id="ms-trigger" defaultValue={settings.trigger_word}
+                onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== settings.trigger_word && save({ trigger_word: e.target.value.trim() }, "Trigger saved.")} /></div>
+          )}
+          <div className="srow"><div className="grow"><b>Automations on</b><span>Off: scheduled tasks are skipped until you turn this back on.</span></div>
+            <Switch checked={settings.automations_enabled} label="Automations on" onChange={(v) => save({ automations_enabled: v }, v ? "Automations are on." : "Automations are paused.")} /></div>
+          <div className="field"><label htmlFor="ms-owner">Your name</label>
+            <input className="input" id="ms-owner" defaultValue={settings.owner_name} placeholder="How Donna refers to you, e.g. Yashraj"
+              onBlur={(e) => e.target.value !== settings.owner_name && save({ owner_name: e.target.value }, "Saved.")} /></div>
+          <div className="field"><label htmlFor="ms-pron">Donna refers to you as</label>
+            <select className="select" id="ms-pron" value={settings.owner_pronouns} onChange={(e) => save({ owner_pronouns: e.target.value as Settings["owner_pronouns"] }, "Saved.")}>
+              <option value="">Your name only (no gendered words)</option><option value="he">He / him</option>
+              <option value="she">She / her</option><option value="they">They / them</option></select>
+            <span className="help">Used for Hindi and Marathi grammar too (e.g. "karto" vs "karte"). Donna is always "she".</span></div>
+          <div className="field"><label htmlFor="ms-profile">What Donna may tell contacts about you</label>
+            <textarea className="input textarea" id="ms-profile" rows={2} defaultValue={settings.assistant_profile}
+              placeholder="e.g. Founder at Curlscape. Prefers meetings in the afternoon. For urgent things, call the office."
+              onBlur={(e) => e.target.value !== settings.assistant_profile && save({ assistant_profile: e.target.value }, "Saved.")} /></div>
+          <div className="two">
+            <div className="field"><label htmlFor="ms-lang">Default language</label>
+              <input className="input" id="ms-lang" defaultValue={settings.default_language} placeholder="auto"
+                onBlur={(e) => e.target.value !== settings.default_language && save({ default_language: e.target.value || "auto" }, "Saved.")} /></div>
+            <div className="field"><label htmlFor="ms-tone">Default tone</label>
+              <input className="input" id="ms-tone" defaultValue={settings.default_tone}
+                onBlur={(e) => e.target.value !== settings.default_tone && save({ default_tone: e.target.value }, "Saved.")} /></div>
+          </div>
+          <div className="two">
+            <div className="field"><label htmlFor="ms-rate">Auto replies per contact / hour</label>
+              <input className="input mono" id="ms-rate" type="number" min={1} max={500} defaultValue={settings.contact_rate_per_hour}
+                onBlur={(e) => Number(e.target.value) !== settings.contact_rate_per_hour && save({ contact_rate_per_hour: Number(e.target.value) }, "Saved.")} /></div>
+            <div className="field"><label htmlFor="ms-grate">Auto replies in total / hour</label>
+              <input className="input mono" id="ms-grate" type="number" min={1} max={2000} defaultValue={settings.global_rate_per_hour}
+                onBlur={(e) => Number(e.target.value) !== settings.global_rate_per_hour && save({ global_rate_per_hour: Number(e.target.value) }, "Saved.")} /></div>
+          </div>
+          <div className="two">
+            <div className="field"><label htmlFor="ms-ttl">Approvals expire after (hours)</label>
+              <input className="input mono" id="ms-ttl" type="number" min={1} max={168} defaultValue={settings.approval_ttl_hours}
+                onBlur={(e) => Number(e.target.value) !== settings.approval_ttl_hours && save({ approval_ttl_hours: Number(e.target.value) }, "Saved.")} /></div>
+            <div className="field"><label htmlFor="ms-unknown">Someone not in Contacts writes</label>
+              <select className="select" id="ms-unknown" value={settings.unknown_contact_action}
+                onChange={(e) => save({ unknown_contact_action: e.target.value as Settings["unknown_contact_action"] }, "Saved.")}>
+                <option value="ignore">Ignore (list under Discovered)</option><option value="notify">Notify me</option></select></div>
+          </div>
+          <div className="two">
+            <div className="field"><label htmlFor="ms-ownerch">Alerts and briefings go to</label>
+              <select className="select" id="ms-ownerch" value={settings.owner_channel} onChange={(e) => save({ owner_channel: e.target.value }, "Saved.")}>
+                <option value="whatsapp">My WhatsApp</option><option value="telegram">My Telegram</option></select></div>
+            <div className="field"><label htmlFor="ms-openwa">OpenWA address</label>
+              <input className="input mono" id="ms-openwa" defaultValue={settings.openwa_url}
+                onBlur={(e) => e.target.value !== settings.openwa_url && save({ openwa_url: e.target.value }, "Saved.")} /></div>
+          </div>
+        </article>
+
+        <MemoryCard />
       </div>
     </div>
   );

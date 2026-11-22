@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · Logo exploration, round 2</title>
+<style>
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Inter";src:url("https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Geist";src:url("https://cdn.jsdelivr.net/fontsource/fonts/geist-sans@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Space Grotesk";src:url("https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-600-normal.woff2") format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("https://cdn.jsdelivr.net/fontsource/fonts/instrument-serif@latest/latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+:root{
+  --bg:#0E0E20;--bg-deep:#08081A;--surface:#1B1B39;
+  --fg:#F6F3FF;--fg-2:#D8D5E8;--muted:#AAA8C9;--subtle:#74718E;
+  --violet:#8B5CF6;--violet-b:#A78BFA;--cyan:#67E8F9;--amber:#FBBF24;
+  --border:rgba(167,139,250,.2);--border-h:rgba(167,139,250,.45);--border-s:rgba(255,255,255,.06);
+  --ui:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --word:Inter;--word-w:600;--word-ls:-.03em;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--fg);font:14px/1.55 var(--ui);-webkit-font-smoothing:antialiased;padding-bottom:110px;
+  background:radial-gradient(50% 40% at 10% 0%,rgba(139,92,246,.14),transparent 60%),radial-gradient(40% 40% at 100% 100%,rgba(103,232,249,.06),transparent 60%),var(--bg);background-attachment:fixed}
+a{color:var(--violet-b)}
+.wrap{max-width:1340px;margin:0 auto;padding:56px 28px 0}
+.eyebrow{font:500 11px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font:600 52px/1.02 var(--ui);letter-spacing:-.035em;margin:14px 0 16px}
+h1 em{font-style:normal;background:linear-gradient(90deg,#C4B5FD,#67E8F9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:780px;color:var(--fg-2);font-size:15.5px;margin:0}
+.brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:26px 0 0}
+.brief div{border:1px solid var(--border-s);border-radius:14px;padding:14px 16px;background:rgba(27,27,57,.45)}
+.brief b{display:block;font-size:12.5px;margin-bottom:3px}
+.brief span{color:var(--muted);font-size:12.5px}
+
+.toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:30px -28px 18px;padding:12px 28px;background:rgba(14,14,32,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-s)}
+.toolbar .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--muted);font:500 12px/1 var(--ui);padding:9px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:rgba(139,92,246,.22);color:var(--fg)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:18px}
+.card{border:1px solid var(--border);border-radius:22px;background:linear-gradient(180deg,rgba(34,34,71,.7),rgba(24,24,52,.7));overflow:hidden;transition:border-color .2s,box-shadow .2s,transform .25s cubic-bezier(.2,.8,.2,1)}
+.card:hover{border-color:var(--border-h);transform:translateY(-3px)}
+.card.picked{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 46px rgba(103,232,249,.18)}
+.card.short:not(.picked){border-color:var(--amber)}
+.stage{height:270px;display:grid;place-items:center;position:relative;border-bottom:1px solid var(--border-s);
+  background:radial-gradient(55% 55% at 50% 48%,rgba(139,92,246,.18),transparent 70%),var(--bg-deep)}
+.stage.white{background:#FFFFFF}
+.stage.violet{background:linear-gradient(145deg,#7A4BEB,#4C3FD8)}
+.stage .mk{width:150px;height:150px;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.card:hover .stage .mk{transform:scale(1.04)}
+.stage .num{position:absolute;left:18px;top:16px;font:500 12px/1 var(--mono);color:var(--subtle);letter-spacing:.08em}
+.stage.white .num{color:#A09CB8}.stage.violet .num{color:rgba(255,255,255,.6)}
+.body{padding:18px 20px 20px}
+.title{display:flex;align-items:baseline;gap:10px}
+.title h3{margin:0;font:600 21px/1.1 var(--ui);letter-spacing:-.02em}
+.title .kind{font:500 10.5px/1 var(--mono);color:var(--subtle);text-transform:uppercase;letter-spacing:.1em}
+.idea{margin:8px 0 4px;color:var(--fg-2);font-size:13.5px}
+.why{margin:0;color:var(--muted);font-size:12.8px}
+.why b{color:var(--fg-2);font-weight:600}
+
+.row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin:16px 0 8px}
+.row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 14px}
+.pv{border:1px solid var(--border-s);border-radius:12px;background:rgba(8,8,26,.6);height:72px;display:grid;place-items:center;position:relative;overflow:hidden}
+.pv small{position:absolute;bottom:4px;left:0;right:0;text-align:center;font:500 8.5px/1 var(--mono);color:var(--subtle);letter-spacing:.06em;text-transform:uppercase}
+.pv .in{margin-top:-10px;display:flex;align-items:center;gap:10px}
+.pv.w{background:#fff;border-color:#E6E2F5}.pv.w small{color:#9B97B5}
+.lock .m{width:30px;height:30px;display:block}
+.lock .t{font-family:var(--word);font-weight:var(--word-w);font-size:27px;line-height:1;letter-spacing:var(--word-ls)}
+.pv.w .lock .t{color:#14112B}
+.app{width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,#7A4BEB,#4C3FD8);display:grid;place-items:center;box-shadow:0 6px 16px rgba(76,63,216,.35),inset 0 1px 0 rgba(255,255,255,.25)}
+.app .m{width:27px;height:27px;display:block}
+.solo .m{width:34px;height:34px;display:block}
+.fav{display:flex;align-items:center;gap:6px;background:#2A2A52;border-radius:7px 7px 0 0;padding:5px 9px;font:500 10px/1 var(--ui);color:var(--fg-2)}
+.fav .m{width:16px;height:16px;display:block}
+.pv.tab{place-items:end start;padding:0 0 0 10px}
+.ava{width:26px;height:26px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center}
+.ava .m{width:15px;height:15px;display:block}
+.bubble{font:400 11px/1.3 var(--ui);color:var(--fg-2);background:rgba(255,255,255,.04);border:1px solid var(--border-s);border-radius:10px 10px 10px 3px;padding:6px 9px}
+
+.actions{display:flex;gap:8px}
+.btn{flex:1;height:38px;border-radius:11px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--fg);font:600 12.5px/1 var(--ui);cursor:pointer}
+.btn:hover{border-color:var(--border-h)}
+.btn.star[aria-pressed=true]{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,.08)}
+.btn.pick{background:linear-gradient(135deg,#7A4BEB,#5F52F0);border-color:transparent}
+.btn.pick[aria-pressed=true]{background:linear-gradient(135deg,#0891B2,#22D3EE);color:#04121A}
+
+.bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(980px,calc(100% - 32px));border:1px solid var(--border-h);border-radius:16px;background:rgba(14,14,32,.94);backdrop-filter:blur(14px);padding:12px 14px 12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);z-index:10}
+.bar .m{width:34px;height:34px;flex:none}
+.bar .txt{flex:1;font-size:13px;color:var(--fg-2)}
+.bar .txt b{font-size:15px;color:var(--fg)}
+.bar .txt .s{font:500 11px/1.4 var(--mono);color:var(--amber)}
+.bar .btn{flex:none;padding:0 18px}
+footer{margin:40px 0 0;color:var(--subtle);font:500 11px/1.6 var(--mono)}
+@media (max-width:520px){h1{font-size:36px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Donna · brand · round 2</div>
+  <h1>A mark for an assistant<br>that <em>runs things</em>.</h1>
+  <p class="lede">15 new symbols, with no letterforms and no pixels. Each is about what Donna does: she takes things off your plate, runs your operations in the background, and comes back to you only when it matters. "Donna" sits beside the mark as a wordmark, and you can try four typefaces with the switch above the cards.</p>
+  <div class="brief">
+    <div><b>Works in one colour</b><span>Every mark is also shown flat, in black on white. A logo that needs its gradient isn't finished.</span></div>
+    <div><b>Works at 16px</b><span>Each card shows it as a browser tab icon and a chat avatar, where most marks fail.</span></div>
+    <div><b>Owns an idea</b><span>Each one says something specific about an operational assistant, not just "AI".</span></div>
+    <div><b>Fits Neon Dusk</b><span>Violet to indigo with a cyan accent, so it sits naturally in the pixel-styled app around it.</span></div>
+  </div>
+
+  <div class="toolbar">
+    <span class="eyebrow">Stage</span>
+    <div class="seg" id="segBg"><button data-v="dark">Dark</button><button data-v="white">White</button><button data-v="violet">Violet</button></div>
+    <span class="eyebrow" style="margin-left:8px">Wordmark</span>
+    <div class="seg" id="segFont"><button data-v="inter">Inter</button><button data-v="geist">Geist</button><button data-v="grotesk">Space Grotesk</button><button data-v="serif">Instrument Serif</button></div>
+    <span class="eyebrow" style="margin-left:8px">Show</span>
+    <div class="seg" id="segF"><button data-v="all">All</button><button data-v="star">Starred</button></div>
+    <span class="sp"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <footer>docs/design/donna-logo-ideas-r2.html · round 2 · every mark is an original vector drawn in this file on a 64×64 grid</footer>
+</div>
+
+<div class="bar">
+  <div class="m" id="barMark"></div>
+  <div class="txt" id="barTxt"></div>
+  <button class="btn" id="copy">Copy choice</button>
+</div>
+
+<script>
+const r=d=>d*Math.PI/180, f=n=>+n.toFixed(2);
+const pt=(cx,cy,R,deg)=>[f(cx+R*Math.cos(r(deg))),f(cy-R*Math.sin(r(deg)))];
+const star=(cx,cy,R,k=R*.14)=>`M${cx} ${cy-R}Q${cx+k} ${cy-k} ${cx+R} ${cy}Q${cx+k} ${cy+k} ${cx} ${cy+R}Q${cx-k} ${cy+k} ${cx-R} ${cy}Q${cx-k} ${cy-k} ${cx} ${cy-R}Z`;
+const S=(w)=>`fill="none" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
+
+const MARKS=[
+ {name:'Orbit',kind:'symbol',
+  idea:'A core with a ring around it and one small satellite moving along the ring.',
+  why:'<b>Your world, kept in motion.</b> You are the centre, and Donna is the ring that keeps everything circling on schedule: meetings, messages, reminders. The satellite is the one task she is carrying right now. Calm, confident and instantly readable.',
+  draw:(P,A,id)=>{const rx=28,ry=7,t=r(34),sx=f(rx*Math.cos(t)),sy=f(ry*Math.sin(t)),T='translate(32 32) rotate(-24)';
+   return `<defs><mask id="m${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><path transform="${T}" d="M-28 0A28 7 0 0 0 28 0" fill="none" stroke="#000" stroke-width="8"/></mask></defs>
+   <path transform="${T}" d="M-28 0A28 7 0 0 1 28 0" ${S(3.6)} stroke="${P}"/>
+   <circle cx="32" cy="32" r="13" fill="${P}" mask="url(#m${id})"/>
+   <g transform="${T}"><path d="M-28 0A28 7 0 0 0 28 0" ${S(3.6)} stroke="${P}"/><circle cx="${sx}" cy="${sy}" r="4.8" fill="${A}"/></g>`}},
+ {name:'Handoff',kind:'symbol',
+  idea:'Two arcs that pass the motion from one to the other, forming a continuous S-wave.',
+  why:'<b>Delegation, drawn.</b> You start a thing (violet) and Donna carries it through (cyan). One continuous gesture with no hard edges. It also works as a loading animation, with the two halves chasing each other.',
+  draw:(P,A)=>`<path d="M10 32A15 15 0 0 1 40 32" ${S(8)} stroke="${P}"/><path d="M54 32A15 15 0 0 1 24 32" ${S(8)} stroke="${A}"/>`},
+ {name:'North Star',kind:'symbol',
+  idea:'A four-point star inside a compass ring, with a small cyan star rising beside it.',
+  why:'<b>She points you to what matters next.</b> The star nods to the "AI sparkle" everyone knows, and the ring turns it into a compass, which means direction, not magic. The rising twin is the next thing on your list.',
+  draw:(P,A)=>`<circle cx="32" cy="32" r="27" ${S(3)} stroke="${P}"/><path d="${star(32,32,20)}" fill="${P}"/><path d="${star(45,19,5.2)}" fill="${A}"/>`},
+ {name:'Dispatch',kind:'symbol',
+  idea:'A folded paper plane in two tones, with the lit fold catching the cyan.',
+  why:'<b>"Consider it sent."</b> An operational assistant\'s core verb is to send: replies, invites, WhatsApps, follow-ups. Folded-paper geometry feels crafted rather than techy, and the origami language is in fashion right now.',
+  draw:(P,A)=>`<path d="M6 30L58 8L28 38Z" fill="${P}"/><path d="M28 38L58 8L42 56Z" fill="${A}"/><path d="M28 38L28 51L35.5 44.5Z" fill="${P}" opacity=".6"/>`},
+ {name:'Keystone',kind:'symbol',
+  idea:'A five-stone arch whose raised, cyan centre stone holds the rest in place.',
+  why:'<b>Take her out and it all falls.</b> The keystone is the one piece holding the structure together: the quiet indispensable role, said architecturally. Sturdy, timeless and premium.',
+  draw:(P,A)=>{const c=[32,45],g=4,span=(180-4*g)/5;let s='';for(let i=0;i<5;i++){const a1=180-i*(span+g),a2=a1-span,ro=i===2?29:25,ri=13;
+   const p1=pt(...c,ro,a1),p2=pt(...c,ro,a2),p3=pt(...c,ri,a2),p4=pt(...c,ri,a1);
+   s+=`<path d="M${p1}A${ro} ${ro} 0 0 1 ${p2}L${p3}A${ri} ${ri} 0 0 0 ${p4}Z" fill="${i===2?A:P}"/>`}return s}},
+ {name:'Converge',kind:'symbol',
+  idea:'Three streams (email, calendar, chat) curve into one line that ends in a single point.',
+  why:'<b>Everything, through one place.</b> It is literally Donna\'s architecture: many channels and tools resolved into one assistant and one answer. It reads as "focus" and "routing", the essence of operations.',
+  draw:(P,A)=>`<path d="M8 14C26 14 28 32 42 32M8 32H42M8 50C26 50 28 32 42 32" ${S(5)} stroke="${P}"/><circle cx="50.5" cy="32" r="7" fill="${A}"/>`},
+ {name:'Closed Loop',kind:'symbol',
+  idea:'A circle that is almost complete. The tick that finishes it breaks out through the gap.',
+  why:'<b>She closes the loop.</b> The best compliment for an assistant is "it\'s handled". The circle is the task cycle, and the tick escaping it is the moment it\'s done. Very clear at 16px.',
+  draw:(P,A)=>{const s=pt(32,32,22,80),e=pt(32,32,22,30);return `<path d="M${s}A22 22 0 1 0 ${e}" ${S(6)} stroke="${P}"/><path d="M21 32L29.5 40.5L50 16.5" ${S(6)} stroke="${A}"/>`}},
+ {name:'Bloom',kind:'symbol',
+  idea:'Six translucent circles overlap into a flower around a bright cyan centre.',
+  why:'<b>Many hands, one calm centre.</b> The soft overlaps feel human and breathing, closer to a wellness brand than a robot, which suits a personal assistant you share your life with. It animates beautifully, with the petals breathing while she thinks.',
+  draw:(P,A)=>{let s='';for(let i=0;i<6;i++){const c=pt(32,32,12,90+60*i);s+=`<circle cx="${c[0]}" cy="${c[1]}" r="11.5" fill="${P}" opacity=".55"/>`}return s+`<circle cx="32" cy="32" r="5" fill="${A}"/>`}},
+ {name:'On Call',kind:'symbol',
+  idea:'A cyan point sending out three widening arcs, like a signal from a corner.',
+  why:'<b>Always reachable, always listening.</b> She is there on WhatsApp, Telegram and the web, and she pings you when something needs you. It is dynamic because it leans forward and outward, and the arcs can pulse in sequence as a "notification" state.',
+  draw:(P,A)=>{let s=`<circle cx="14" cy="50" r="6" fill="${A}"/>`;[17,28,39].forEach(R=>s+=`<path d="M14 ${50-R}A${R} ${R} 0 0 1 ${14+R} 50" ${S(6)} stroke="${P}"/>`);return s}},
+ {name:'Tandem',kind:'symbol',
+  idea:'Two rounded squares overlap, and the shared area lights up cyan.',
+  why:'<b>You and her, working as one.</b> The overlap is the part you no longer have to think about. It is quietly clever, very "product company" (it sits well next to Linear or Raycast), and it scales from favicon to billboard.',
+  draw:(P,A,id)=>`<defs><clipPath id="c${id}"><rect x="8" y="8" width="32" height="32" rx="11"/></clipPath></defs><rect x="8" y="8" width="32" height="32" rx="11" fill="${P}"/><rect x="24" y="24" width="32" height="32" rx="11" fill="${P}" opacity=".5"/><rect x="24" y="24" width="32" height="32" rx="11" fill="${A}" clip-path="url(#c${id})"/>`},
+ {name:'Night Shift',kind:'symbol',
+  idea:'A crescent moon with a cyan spark rising out of its hollow.',
+  why:'<b>She works while you sleep.</b> Scheduled tasks, morning briefings and overnight follow-ups are the most "operational" promise there is. It is poetic, distinctive in the AI space and very ownable.',
+  draw:(P,A,id)=>`<defs><mask id="m${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#000"/><circle cx="29" cy="35" r="24" fill="#fff"/><circle cx="42" cy="24" r="19" fill="#000"/></mask></defs><rect width="64" height="64" fill="${P}" mask="url(#m${id})"/><path d="${star(47,17,8.5)}" fill="${A}"/><path d="${star(36,10,3.2)}" fill="${A}" opacity=".7"/>`},
+ {name:'Prism',kind:'symbol',
+  idea:'One beam enters a prism and leaves as three cyan rays.',
+  why:'<b>One request becomes many actions.</b> You say one sentence, and Donna fans it out into the email, the calendar invite and the reminder. Precise and intelligent, with a hint of science.',
+  draw:(P,A)=>`<path d="M32 11L53 48H11Z" fill="${P}" fill-opacity=".16" stroke="${P}" stroke-width="3.5" stroke-linejoin="round"/><path d="M3 35L21.5 31" ${S(3.5)} stroke="${P}"/><path d="M21.5 31L42 30" ${S(2.5)} stroke="${P}" opacity=".5"/><path d="M42 30L61 21M42 30L61 30.5M42 30L61 40" ${S(3.5)} stroke="${A}"/>`},
+ {name:'Checklist',kind:'symbol',
+  idea:'An abstract three-line list. The first item is done (cyan) and the rest are still to do.',
+  why:'<b>Operations, plainly.</b> It is the most literal idea here: an assistant that works through your list. Very practical and trustworthy, close to a productivity tool, but the least emotional option.',
+  draw:(P,A)=>{let s='';[[16,31,1],[32,26,0],[48,18,0]].forEach(([y,w,d])=>{s+=d?`<circle cx="13" cy="${y}" r="6" fill="${A}"/>`:`<circle cx="13" cy="${y}" r="4.6" ${S(3)} stroke="${P}"/>`;s+=`<rect x="25" y="${y-3.5}" width="${w}" height="7" rx="3.5" fill="${P}" ${d?'opacity=".45"':''}/>`});return s}},
+ {name:'Trinity',kind:'symbol',
+  idea:'Three interlocking rings with a cyan point where all three meet.',
+  why:'<b>You, your world, and Donna at the intersection.</b> She lives where your people, your tools and your time overlap. Balanced and symmetric, though interlocking rings are a well-used shape.',
+  draw:(P,A)=>`<circle cx="32" cy="21" r="14" ${S(4.5)} stroke="${P}"/><circle cx="21.5" cy="39.5" r="14" ${S(4.5)} stroke="${P}"/><circle cx="42.5" cy="39.5" r="14" ${S(4.5)} stroke="${P}"/><circle cx="32" cy="33.4" r="3.6" fill="${A}"/>`},
+ {name:'Focus',kind:'symbol',
+  idea:'A six-blade camera aperture, half open, with the blades in alternating tones.',
+  why:'<b>She filters the noise.</b> An aperture lets in only what you need: the important email, the real request. Precise and engineered like a lens, and the blades can open and close as an "active" state.',
+  draw:(P,A)=>{const c=32,R=27,ri=9.5,H=[];for(let i=0;i<6;i++){const a=r(-90+60*i);H.push([c+ri*Math.cos(a),c+ri*Math.sin(a)])}
+   const E=i=>{const h=H[i],n=H[(i+1)%6],dx=n[0]-h[0],dy=n[1]-h[1],L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,px=n[0]-c,py=n[1]-c,b=px*ux+py*uy,cc=px*px+py*py-R*R,t=-b+Math.sqrt(b*b-cc);return[f(n[0]+t*ux),f(n[1]+t*uy)]};
+   let s='';for(let i=0;i<6;i++){const h=H[i].map(f),n=H[(i+1)%6].map(f),e=E(i),ep=E((i+5)%6);
+   s+=`<path d="M${h}L${n}L${e}A${R} ${R} 0 0 0 ${ep}Z" fill="${i===0?A:P}" ${i%2&&i?'opacity=".72"':''}/>`}return s}},
+];
+
+/* paints: color | mono black | mono white | on-violet */
+let uid=0;
+function svg(M,mode){
+  const id=++uid;let P,A,defs='';
+  if(mode==='color'){defs=`<defs><linearGradient id="gp${id}" gradientUnits="userSpaceOnUse" x1="8" y1="6" x2="56" y2="60"><stop offset="0" stop-color="#C9B8FF"/><stop offset=".55" stop-color="#8B5CF6"/><stop offset="1" stop-color="#5B4BEA"/></linearGradient><linearGradient id="ga${id}" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="54" y2="54"><stop offset="0" stop-color="#A5F3FC"/><stop offset="1" stop-color="#22D3EE"/></linearGradient></defs>`;P=`url(#gp${id})`;A=`url(#ga${id})`}
+  else if(mode==='black'){P=A='#14112B'}
+  else if(mode==='white'){P=A='#F6F3FF'}
+  else if(mode==='onviolet'){P='#FFFFFF';A='#A5F3FC'}
+  return `<svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true">${defs}${M.draw(P,A,id)}</svg>`;
+}
+
+const st=Object.assign({star:[],pick:null,bg:'dark',font:'inter',f:'all'},JSON.parse(localStorage.getItem('donna-logo-r2')||'{}'));
+const FONTS={inter:['Inter',600,'-.035em'],geist:['Geist',600,'-.03em'],grotesk:['"Space Grotesk"',600,'-.03em'],serif:['"Instrument Serif"',400,'-.01em']};
+const num=i=>String(i+1).padStart(2,'0');
+const grid=document.getElementById('grid');
+
+function stageMode(){return st.bg==='white'?'black':st.bg==='violet'?'onviolet':'color'}
+function card(M,i){
+  return `<article class="card" data-i="${i}">
+   <div class="stage"><span class="num">${num(i)}</span><div class="mk" data-hero></div></div>
+   <div class="body">
+    <div class="title"><h3>${M.name}</h3><span class="kind">${M.kind}</span></div>
+    <p class="idea">${M.idea}</p><p class="why">${M.why}</p>
+    <div class="row">
+      <div class="pv"><div class="in lock"><span class="m">${svg(M,'color')}</span><span class="t">Donna</span></div><small>lockup · dark</small></div>
+      <div class="pv"><div class="in"><span class="app"><span class="m">${svg(M,'onviolet')}</span></span></div><small>app icon</small></div>
+      <div class="pv w"><div class="in solo"><span class="m">${svg(M,'black')}</span></div><small>one colour</small></div>
+    </div>
+    <div class="row2">
+      <div class="pv w"><div class="in lock"><span class="m" style="width:24px;height:24px">${svg(M,'black')}</span><span class="t" style="font-size:21px">Donna</span></div><small>lockup · light</small></div>
+      <div class="pv tab"><div class="fav"><span class="m">${svg(M,'color')}</span>Donna · Inbox</div><small style="text-align:right;padding-right:8px">favicon 16px</small></div>
+      <div class="pv"><div class="in"><span class="ava"><span class="m">${svg(M,'color')}</span></span><span class="bubble">On it.</span></div><small>chat avatar</small></div>
+    </div>
+    <div class="actions"><button class="btn star" data-star></button><button class="btn pick" data-pick></button></div>
+   </div></article>`;
+}
+grid.innerHTML=MARKS.map(card).join('');
+
+function sync(){
+  const [fam,w,ls]=FONTS[st.font];const rs=document.documentElement.style;rs.setProperty('--word',fam);rs.setProperty('--word-w',w);rs.setProperty('--word-ls',ls);
+  const mode=stageMode();
+  document.querySelectorAll('.card').forEach(c=>{const i=+c.dataset.i,s=st.star.includes(i),p=st.pick===i;
+    c.classList.toggle('short',s);c.classList.toggle('picked',p);
+    const stg=c.querySelector('.stage');stg.className='stage'+(st.bg==='dark'?'':' '+st.bg);
+    const h=c.querySelector('[data-hero]');if(h.dataset.mode!==mode){h.innerHTML=svg(MARKS[i],mode);h.dataset.mode=mode}
+    const sb=c.querySelector('[data-star]');sb.setAttribute('aria-pressed',s);sb.textContent=s?'★ Starred':'☆ Star';
+    const pb=c.querySelector('[data-pick]');pb.setAttribute('aria-pressed',p);pb.textContent=p?'✓ Picked':`Pick #${num(i)}`;
+    c.style.display=st.f==='star'&&!s&&!p?'none':''});
+  [['segBg','bg'],['segFont','font'],['segF','f']].forEach(([id,k])=>document.querySelectorAll(`#${id} button`).forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===st[k])));
+  const stars=st.star.slice().sort((a,b)=>a-b).map(i=>`#${num(i)} ${MARKS[i].name}`);
+  document.getElementById('barMark').innerHTML=st.pick!=null?svg(MARKS[st.pick],'color'):'';
+  document.getElementById('barTxt').innerHTML=(st.pick!=null?`Picked <b>#${num(st.pick)} ${MARKS[st.pick].name}</b> · wordmark in ${FONTS[st.font][0].replace(/"/g,'')}`:'Nothing picked yet. Star a few, then press <b>Pick</b>.')+(stars.length?`<br><span class="s">★ ${stars.join(' · ')}</span>`:'');
+  localStorage.setItem('donna-logo-r2',JSON.stringify(st));
+}
+grid.addEventListener('click',e=>{const c=e.target.closest('.card');if(!c)return;const i=+c.dataset.i;
+  if(e.target.closest('[data-star]')){st.star=st.star.includes(i)?st.star.filter(x=>x!==i):[...st.star,i];sync()}
+  if(e.target.closest('[data-pick]')){st.pick=st.pick===i?null:i;sync()}});
+[['segBg','bg'],['segFont','font'],['segF','f']].forEach(([id,k])=>document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>{st[k]=b.dataset.v;sync()}));
+document.getElementById('copy').onclick=async()=>{
+  const p=st.pick!=null?`#${num(st.pick)} ${MARKS[st.pick].name}`:'none yet';
+  const s=st.star.slice().sort((a,b)=>a-b).map(i=>`#${num(i)} ${MARKS[i].name}`).join(', ')||'none';
+  const t=`Donna logo (round 2) pick: ${p}. Wordmark: ${FONTS[st.font][0].replace(/"/g,'')}. Shortlist: ${s}.`;
+  const b=document.getElementById('copy');
+  try{await navigator.clipboard.writeText(t);b.textContent='Copied ✓';setTimeout(()=>b.textContent='Copy choice',1400)}catch{prompt('Copy this:',t)}};
+sync();
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 """Start Donna: `python -m donna` → http://127.0.0.1:8765 (opens the browser)."""
 import argparse
+import os
 import threading
 import webbrowser
 
@@ -10,8 +11,9 @@ from . import ROOT
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="donna", description="Run the Donna web app locally.")
-    parser.add_argument("command", nargs="?", choices=["serve", "migrate"], default="serve",
-                        help="serve (default) or migrate: apply PostgreSQL migrations and exit")
+    parser.add_argument("command", nargs="?", choices=["serve", "migrate", "openwa-setup", "openwa-start"], default="serve",
+                        help="serve (default); migrate: apply PostgreSQL migrations; openwa-setup / openwa-start: "
+                             "install or start the WhatsApp gateway (the Connect button in Donna does both)")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true", help="don't open the browser")
     parser.add_argument("--reload", action="store_true", help="auto-reload on code changes (development)")
@@ -19,8 +21,12 @@ def main() -> None:
 
     if args.command == "migrate":
         raise SystemExit(migrate())
+    if args.command.startswith("openwa-"):
+        from . import openwa
+        raise SystemExit(openwa.main(["start"] if args.command == "openwa-start" else []))
 
     url = f"http://127.0.0.1:{args.port}"
+    os.environ["DONNA_URL"] = url  # where local services (OpenWA's webhook) reach Donna
     if not (ROOT / "web" / "dist" / "index.html").exists():
         print("The web UI isn't built yet. Run:  cd web; npm install; npm run build   (or scripts\\start.ps1)")
     if not args.no_browser:

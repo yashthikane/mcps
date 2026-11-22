@@ -1,4 +1,7 @@
-"""SQLite storage for conversations, messages, MCP servers and settings (data/donna.db)."""
+"""SQLite storage for conversations, messages, MCP servers and settings (data/donna.db).
+
+Schema changes after the base SCHEMA are numbered files in migrations/sqlite/, applied once in
+order and tracked with PRAGMA user_version. Never edit an applied migration; add a new file."""
 import json
 import sqlite3
 import threading
@@ -6,7 +9,9 @@ import time
 import uuid
 from pathlib import Path
 
-from . import DATA_DIR
+from . import DATA_DIR, ROOT
+
+MIGRATIONS = ROOT / "migrations" / "sqlite"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS conversations (
@@ -42,7 +47,9 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
 DEFAULT_SETTINGS = {
-    "model": "openai/gpt-oss-120b",
+    "model": "openai/gpt-oss-120b",  # Groq model
+    "llm_provider": "groq",           # groq | claude_code (the Claude Code CLI, signed in with your own subscription)
+    "claude_model": "opus",           # Claude Code model: an alias (opus, sonnet, fable) or a full name
     "timezone": "",
     "reasoning_effort": "medium",
     "pixel_grid": True,
@@ -52,6 +59,22 @@ DEFAULT_SETTINGS = {
     "usage": {"date": "", "requests": 0, "tokens": 0},  # Groq usage today (free tier: 1,000 requests/day)
     "onboarded": False,
     "permission_mode": "manual",  # chat mode: plan | manual | auto (composer switch)
+    # Messaging channels (WhatsApp, Telegram). Secrets live in the vault, never here.
+    "messaging_enabled": True,        # global kill switch: off = nothing is answered or sent on any channel
+    "require_trigger": True,          # contacts reach Donna only by writing the trigger; everything else is left for you
+    "trigger_word": "@donna",
+    "automations_enabled": True,      # off = scheduled tasks are skipped
+    "owner_name": "",                 # how Donna refers to you when talking to contacts
+    "owner_pronouns": "",             # he | she | they | "" (Donna then avoids gendered forms for you)
+    "assistant_profile": "",          # what Donna may tell contacts about you (role, how to reach you)
+    "default_language": "auto",       # auto = reply in the language the contact writes in
+    "default_tone": "friendly and professional",
+    "contact_rate_per_hour": 10,      # automatic replies per contact per hour (then drafts for approval)
+    "global_rate_per_hour": 60,       # automatic replies across all contacts per hour
+    "approval_ttl_hours": 24,
+    "unknown_contact_action": "ignore",  # ignore | notify: message from someone not in Contacts
+    "openwa_url": "http://127.0.0.1:2785",
+    "owner_channel": "whatsapp",      # where alerts, approvals and briefings reach you
 }
 
 
@@ -67,6 +90,32 @@ class Store:
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.executescript(SCHEMA)
         self.db.commit()
+        self._migrate()
+
+    def _migrate(self) -> None:
+        version = self.db.execute("PRAGMA user_version").fetchone()[0]
+        for path in sorted(MIGRATIONS.glob("*.sql")):
+            number = int(path.name.split("_", 1)[0])
+            if number <= version:
+                continue
+            try:
+                self.db.executescript(f"BEGIN;\n{path.read_text(encoding='utf-8')}\nPRAGMA user_version = {number};\nCOMMIT;")
+            except sqlite3.Error:
+                if self.db.in_transaction:
+                    self.db.execute("ROLLBACK")
+                raise
+            version = number
+
+    # Public helpers for the modules that own the newer tables (contacts, channels, approvals…).
+    def execute(self, sql: str, params=()) -> sqlite3.Cursor:
+        return self._q(sql, params)
+
+    def rows(self, sql: str, params=()) -> list[dict]:
+        return self._all(sql, params)
+
+    def row(self, sql: str, params=()) -> dict | None:
+        rows = self._all(sql, params)
+        return rows[0] if rows else None
 
     def _q(self, sql: str, params=()):
         with self._lock:
@@ -79,10 +128,11 @@ class Store:
             return [dict(r) for r in self.db.execute(sql, params).fetchall()]
 
     # ---------------------------------------------------------------- conversations
-    def create_conversation(self, title: str = "New chat") -> dict:
+    def create_conversation(self, title: str = "New chat", source: str = "web") -> dict:
         now = time.time()
         cid = uuid.uuid4().hex[:12]
-        self._q("INSERT INTO conversations VALUES (?,?,?,?,?)", (cid, title, 0, now, now))
+        self._q("INSERT INTO conversations (id, title, pinned, created_at, updated_at, source) VALUES (?,?,?,?,?,?)",
+                (cid, title, 0, now, now, source))
         return self.get_conversation(cid)
 
     def get_conversation(self, cid: str) -> dict | None:
@@ -92,7 +142,8 @@ class Store:
     def list_conversations(self) -> list[dict]:
         rows = self._all(
             "SELECT c.*, (SELECT content FROM messages m WHERE m.conversation_id=c.id AND m.role='assistant' "
-            "ORDER BY created_at DESC LIMIT 1) AS preview FROM conversations c ORDER BY pinned DESC, updated_at DESC")
+            "ORDER BY created_at DESC LIMIT 1) AS preview FROM conversations c WHERE c.source='web' "
+            "ORDER BY pinned DESC, updated_at DESC")
         return [_conv(r) for r in rows]
 
     def update_conversation(self, cid: str, title: str | None = None, pinned: bool | None = None) -> dict | None:
@@ -113,7 +164,7 @@ class Store:
     def add_message(self, cid: str, role: str, content: str, tool_events: list | None = None) -> dict:
         mid = uuid.uuid4().hex[:12]
         now = time.time()
-        self._q("INSERT INTO messages VALUES (?,?,?,?,?,?)",
+        self._q("INSERT INTO messages (id, conversation_id, role, content, tool_events, created_at) VALUES (?,?,?,?,?,?)",
                 (mid, cid, role, content, json.dumps(tool_events or []), now))
         if content:
             self._q("INSERT INTO messages_fts(content, message_id, conversation_id) VALUES (?,?,?)", (content, mid, cid))
@@ -132,7 +183,7 @@ class Store:
         if not q:
             return self.list_conversations()
         hits: dict[str, dict] = {}
-        for c in self._all("SELECT * FROM conversations WHERE title LIKE ?", (f"%{q}%",)):
+        for c in self._all("SELECT * FROM conversations WHERE source='web' AND title LIKE ?", (f"%{q}%",)):
             hits[c["id"]] = _conv(c)
         terms = " ".join('"' + t.replace('"', '""') + '"*' for t in q.split())
         try:
@@ -143,7 +194,7 @@ class Store:
             rows = []
         for r in rows:
             c = hits.get(r["conversation_id"]) or self.get_conversation(r["conversation_id"])
-            if c:
+            if c and c.get("source", "web") == "web":
                 c.setdefault("snippet", r["snip"])
                 hits[c["id"]] = c
         return sorted(hits.values(), key=lambda c: (-c["pinned"], -c["updated_at"]))

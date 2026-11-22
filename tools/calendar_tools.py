@@ -4,6 +4,7 @@
 # Calendar settings API), so "09:00" means 09:00 where the user lives.
 
 import asyncio
+import uuid
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -107,12 +108,40 @@ async def list_events(start_date: str, end_date: str = "", query: str = "") -> s
 
 
 @mcp.tool()
+async def check_availability(start: str, end: str = "") -> str:
+    """
+    Free and busy times on the primary calendar between two times, without any event details
+    (safe to share with other people). start/end: "2026-10-01T09:00" or a date "2026-10-01"
+    (a date alone covers the whole day). end defaults to the end of start's day.
+    """
+    def work():
+        svc = _cal()
+        tz = _timezone(svc)
+        t_min = _rfc3339(start, tz)
+        t_max = _rfc3339(end, tz, end_of_day=_is_date(end)) if end else _rfc3339(start[:10], tz, end_of_day=True)
+        res = svc.freebusy().query(body={"timeMin": t_min, "timeMax": t_max, "timeZone": tz,
+                                         "items": [{"id": "primary"}]}).execute()
+        busy = res.get("calendars", {}).get("primary", {}).get("busy", [])
+        z = ZoneInfo(tz)
+
+        def local(v: str) -> str:
+            return datetime.fromisoformat(v.replace("Z", "+00:00")).astimezone(z).strftime("%a %d %b %H:%M")
+        window = f"{local(t_min)} → {local(t_max)} ({tz})"
+        if not busy:
+            return f"Free for the whole window {window}."
+        return f"Window {window}. Busy (everything else is free):\n" + "\n".join(
+            f"- {local(b['start'])} → {local(b['end'])}" for b in busy)
+    return await _run(work, "checking availability")
+
+
+@mcp.tool()
 async def create_event(summary: str, start_time: str, end_time: str, description: str = "",
-                       location: str = "", attendees: str = "") -> str:
+                       location: str = "", attendees: str = "", add_meet: bool = False) -> str:
     """
     Create a calendar event. Times use the calendar's timezone:
     timed event "2026-10-01T09:00", all-day event "2026-10-01" (end_time is the day after the last day).
     attendees: comma-separated emails (they receive invitations).
+    add_meet: true to attach a Google Meet video link.
     """
     def work():
         svc = _cal()
@@ -124,9 +153,14 @@ async def create_event(summary: str, start_time: str, end_time: str, description
             body["location"] = location
         if attendees:
             body["attendees"] = [{"email": a.strip()} for a in attendees.split(",") if a.strip()]
-        event = svc.events().insert(calendarId="primary", body=body,
+        if add_meet:
+            body["conferenceData"] = {"createRequest": {"requestId": uuid.uuid4().hex,
+                                                        "conferenceSolutionKey": {"type": "hangoutsMeet"}}}
+        event = svc.events().insert(calendarId="primary", body=body, conferenceDataVersion=1 if add_meet else 0,
                                     sendUpdates="all" if attendees else "none").execute()
-        return f"Event created: {_fmt(event)}\nLink: {event.get('htmlLink')}"
+        meet = event.get("hangoutLink") or next(
+            (e.get("uri") for e in (event.get("conferenceData") or {}).get("entryPoints", []) if e.get("entryPointType") == "video"), "")
+        return f"Event created: {_fmt(event)}\nLink: {event.get('htmlLink')}" + (f"\nGoogle Meet: {meet}" if meet else "")
     return await _run(work, "creating event")
 
 

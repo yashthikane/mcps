@@ -32,3 +32,6 @@ web/dist/
 # Donna scheduler
 scheduler/node_modules/
 scheduler/dist/
+
+# OpenWA (WhatsApp gateway), installed by scripts/setup-whatsapp.ps1
+external/

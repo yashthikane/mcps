@@ -14,8 +14,9 @@ from zoneinfo import ZoneInfo
 
 from psycopg.types.json import Jsonb
 
-from . import llm, vault
-from .agent import MODES, RUNS, Run, run_chat
+from . import contacts, llm
+from .agent import MODES
+from .runtime import run_agent_turn
 from .notify import DEFAULT_CHANNELS, Note, Notifier
 from .pg import Postgres
 from .scheduler_client import SchedulerClient, SchedulerUnavailable
@@ -24,9 +25,9 @@ log = logging.getLogger("donna.tasks")
 
 TYPES = ("reminder", "ai_task")
 RECURRENCE = ("once", "interval", "cron")
-CHANNELS = ("windows", "in_app")
+CHANNELS = ("windows", "in_app", "owner_chat")
 EDITABLE = ("title", "description", "message", "prompt", "run_at", "timezone", "recurrence_type",
-            "recurrence_rule", "notification_channels", "permission_mode")
+            "recurrence_rule", "notification_channels", "permission_mode", "deliver_contact_id")
 SCHEDULE_FIELDS = ("run_at", "timezone", "recurrence_type", "recurrence_rule")
 RESULT_CHARS = 4000
 
@@ -79,6 +80,7 @@ def _task_out(r: dict) -> dict:
     out["prompt"] = payload.get("prompt", "")
     out["conversation_id"] = payload.get("conversation_id")
     out["permission_mode"] = payload.get("permission_mode", "manual")
+    out["deliver_contact_id"] = payload.get("deliver_contact_id")
     return out
 
 
@@ -106,6 +108,7 @@ class TaskService:
         self.notifier = notifier
         self.store = store
         self.hub = hub
+        self.channels = None  # ChannelManager, set by the app: delivery to WhatsApp/Telegram
 
     # ------------------------------------------------------------------ helpers
     def default_timezone(self) -> str:
@@ -163,11 +166,15 @@ class TaskService:
             if mode not in MODES:
                 raise TaskError("Permission mode must be plan, manual or auto.")
             payload["permission_mode"] = mode
+        if "deliver_contact_id" in data:
+            payload["deliver_contact_id"] = str(data["deliver_contact_id"] or "").strip() or None
+            if payload["deliver_contact_id"] and not contacts.get(self.store, payload["deliver_contact_id"]):
+                raise TaskError("That contact doesn't exist.")
         if ttype == "ai_task" and not payload.get("prompt"):
             raise TaskError("An AI task needs a prompt: what should Donna do?")
         channels = data.get("notification_channels", cur.get("notification_channels")) or list(DEFAULT_CHANNELS)
         if not isinstance(channels, list) or any(c not in CHANNELS for c in channels):
-            raise TaskError("Notification channels must be windows and/or in_app.")
+            raise TaskError("Notification channels must be windows, in_app and/or owner_chat.")
         description = data.get("description", cur.get("description"))
         return {"title": title[:200], "description": (str(description).strip()[:2000] or None) if description else None,
                 "type": ttype, "timezone": tz_name, "recurrence_type": rtype, "recurrence_rule": rule,
@@ -301,12 +308,21 @@ class TaskService:
         channels = task["notification_channels"] or list(DEFAULT_CHANNELS)
         note = {"task_id": task["id"], "execution_id": execution_id}
 
+        if not self.store.settings().get("automations_enabled", True):
+            return {"success": True, "status": "skipped", "result": "Automations are switched off in Settings."}
+        if task["deliver_contact_id"] and (problem := self._contact_problem(task["deliver_contact_id"])):
+            return {"success": False, "status": "failed", "retryable": False, "result": problem}
+
         if mode == "missed":
             await self.notifier.send(Note(f"Missed reminder: {task['title']}",
                                           f"It was due {when}, while Donna wasn't running.", "warn", **note), channels)
             return {"success": True, "status": "missed", "result": f"Missed-reminder notice sent (was due {when})."}
 
         if task["type"] == "reminder":  # deterministic: no Groq call
+            if task["deliver_contact_id"]:
+                sent = await self._to_contact(task, task["message"] or task["title"])
+                return {"success": sent["ok"], "status": "succeeded" if sent["ok"] else "failed",
+                        "retryable": not sent["ok"], "result": sent["detail"]}
             delivered = await self.notifier.send(Note(task["title"], task["message"] or f"Reminder · {when}", **note), channels)
             if not delivered:
                 return {"success": False, "status": "failed", "retryable": True, "result": "No notification channel worked."}
@@ -319,8 +335,8 @@ class TaskService:
     async def _run_ai(self, task: dict, when: str, channels: list[str], note: dict) -> dict:
         if not task["prompt"]:
             return {"success": False, "status": "failed", "retryable": False, "result": "This AI task has no prompt."}
-        if not vault.get(vault.GROQ_KEY) and not llm.FAKE:
-            return {"success": False, "status": "failed", "retryable": False, "result": "Add your Groq API key in Settings."}
+        if problem := llm.problem(self.store.settings()):
+            return {"success": False, "status": "failed", "retryable": False, "result": problem}
 
         # One conversation per task, so every run's reply is in the chat history.
         cid = task["conversation_id"]
@@ -328,29 +344,40 @@ class TaskService:
             cid = self.store.create_conversation(f"⏰ {task['title']}"[:120])["id"]
             await self.pg.run("UPDATE scheduled_tasks SET payload = payload || %s WHERE id = %s",
                               (Jsonb({"conversation_id": cid}), _uuid(task["id"])))
-        if any(r.conversation_id == cid for r in RUNS.values()):
+        res = await run_agent_turn(self.store, self.hub, cid, f"[Scheduled task · {when}] {task['prompt']}",
+                                   mode=task["permission_mode"], unattended=True)
+        if res.busy:
             return {"success": False, "status": "failed", "retryable": True, "result": "That conversation is busy."}
-
-        run = Run(cid, unattended=True, mode=task["permission_mode"])
-        RUNS[run.id] = run
-        reply, error = "", None
-        try:
-            async for ev in run_chat(self.store, self.hub, run, f"[Scheduled task · {when}] {task['prompt']}", set()):
-                if ev["type"] == "error":
-                    error = ev["message"]
-                elif ev["type"] == "done":
-                    reply = ev["message"]["content"]
-        finally:
-            RUNS.pop(run.id, None)
+        reply, error = res.text, res.error
 
         if error:
             transient = any(w in error.lower() for w in ("limit", "can't reach", "server error", "try again"))
             return {"success": False, "status": "failed", "retryable": transient, "result": error, "conversation_id": cid}
-        status = "approval_required" if run.approval_needed else "succeeded"
-        title = f"{task['title']} · needs your approval" if run.approval_needed else task["title"]
-        await self.notifier.send(Note(title, _plain(reply)[:200] or "Done.", "warn" if run.approval_needed else "info",
-                                      conversation_id=cid, **note), channels)
+        status = "approval_required" if res.approval_needed else "succeeded"
+        title = f"{task['title']} · needs your approval" if res.approval_needed else task["title"]
+        if task["deliver_contact_id"] and reply.strip() and not res.approval_needed:
+            sent = await self._to_contact(task, reply)
+            if not sent["ok"]:
+                return {"success": False, "status": "failed", "retryable": True, "result": sent["detail"], "conversation_id": cid}
+        await self.notifier.send(Note(title, _plain(reply)[:200] or "Done.", "warn" if res.approval_needed else "info",
+                                      conversation_id=cid, full_text=reply, **note), channels)
         return {"success": True, "status": status, "result": reply[:RESULT_CHARS], "conversation_id": cid}
+
+    def _contact_problem(self, contact_id: str) -> str | None:
+        """Why this task may not message the contact, or None. Checked at every run, not only at creation."""
+        c = contacts.get(self.store, contact_id)
+        if not c:
+            return "The contact this task messages was deleted."
+        caps = contacts.effective_capabilities(self.store, c["id"], "")
+        if not c["is_owner"] and (c["mode"] == "disabled" or c["paused"] or caps.get("initiate") != "on"):
+            return (f"{c['display_name']} doesn't allow Donna to message them first. Turn on "
+                    "\"Message them first\" for them in Contacts.")
+        return None
+
+    async def _to_contact(self, task: dict, text: str) -> dict:
+        if not self.channels:
+            return {"ok": False, "detail": "Messaging channels aren't running."}
+        return await self.channels.send_to_contact(task["deliver_contact_id"], text)
 
 
 def _plain(markdown: str) -> str:

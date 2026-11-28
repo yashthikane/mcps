@@ -1,6 +1,6 @@
-import { lazy, memo, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ThinkingOrb } from "thinking-orbs";
-import type { Connection, Conversation, Message, PermissionMode, ToolEvent } from "../api";
+import { api, type Connection, type Conversation, type Message, type PermissionMode, type ToolEvent } from "../api";
 import { Icon, toolIcon } from "../icons";
 import AmbientBackground from "./ambient/AmbientBackground";
 import { liveOrb } from "./orbState";
@@ -108,6 +108,7 @@ const BotMsg = memo(function BotMsg({ m }: { m: Message }) {
     <div className="msg-bot">
       <div className="who">Donna <span className="ts">{clock(m.created_at)}</span></div>
       {m.tool_events.length > 0 && <ToolList tools={m.tool_events} />}
+      <Pictures tools={m.tool_events} />
       {m.content && <div className="bot-text md"><Suspense fallback={<p style={{ whiteSpace: "pre-wrap" }}>{m.content}</p>}><Markdown text={m.content} /></Suspense></div>}
       {m.content && (
         <div className="msg-acts">
@@ -131,6 +132,7 @@ function LiveTurn({ live, mode, reduced, onDecide }: { live: Live; mode: Permiss
         </span>
       </div>
       {shown.length > 0 && <ToolList tools={shown} />}
+      <Pictures tools={shown} />
       {waiting.map((t) => <Approval key={t.call_id} t={t} onDecide={onDecide} />)}
       {(live.text || !waiting.length) && (
         <div className="bot-text md">
@@ -144,6 +146,124 @@ function LiveTurn({ live, mode, reduced, onDecide }: { live: Live; mode: Permiss
 
 function ToolList({ tools }: { tools: ToolEvent[] }) {
   return <div className="toollist">{tools.map((t) => <ToolCard key={t.call_id} t={t} />)}</div>;
+}
+
+const PICTURE = /\bimg_[0-9a-f]{12}\.(?:jpg|png|webp)\b/;
+
+const REVEAL_MS = 1300;  // the blur-to-sharp animation in donna.css (pic-clear)
+const HOLD_MS = 500;     // how long "100%" stays before the badge goes
+const STALE_MS = 120000; // a tool call can't run longer than this (the hub stops waiting at 90 s)
+const secondsKey = (model: string) => `donna.imageSeconds.${model}`;
+
+/** How far along a picture probably is, from elapsed time alone: the image service reports no progress.
+ *  It reaches 90% at the model's usual duration, then creeps towards 99% until the picture really arrives. */
+export function estimatePercent(elapsed: number, expected: number): number {
+  const x = elapsed / Math.max(1, expected);
+  return Math.min(99, x <= 1 ? 90 * x : 90 + 9 * (1 - Math.exp(-(x - 1) * 1.5)));
+}
+
+/** A picture that is being made or revealed right now. It lives outside the components because the live reply is
+ *  swapped for the saved message when a turn ends: the new <Picture> picks the reveal up where the old one was. */
+interface Making { started: number; expected?: number; model?: string; arrived?: number; from?: number; file?: string }
+const MAKING = new Map<string, Making>();
+
+function makingOf(t: ToolEvent, file: string | undefined): Making | null {
+  const now = performance.now();
+  let m = MAKING.get(t.call_id);
+  if (m && (m.arrived !== undefined ? now - m.arrived > REVEAL_MS + HOLD_MS : now - m.started > STALE_MS)) { MAKING.delete(t.call_id); m = undefined; }
+  if (t.status === "running") {
+    if (!m) { m = { started: now }; MAKING.set(t.call_id, m); }
+    return m;
+  }
+  return m && (m.file === undefined || m.file === file) ? m : null;  // null: an older picture, opened from history
+}
+
+function percentOf(m: Making): number {
+  const now = performance.now();
+  if (m.arrived !== undefined) return (m.from ?? 0) + (100 - (m.from ?? 0)) * Math.min(1, (now - m.arrived) / REVEAL_MS);
+  return estimatePercent((now - m.started) / 1000, m.expected ?? 12);
+}
+
+/** Pictures made by generate_image, found by the file name in each tool result (not in the model's text). */
+function Pictures({ tools }: { tools: ToolEvent[] }) {
+  const mine = tools.filter((t) => t.name === "generate_image");
+  for (const t of mine) if (t.status === "error" || t.status === "rejected") MAKING.delete(t.call_id);
+  const pics = mine.filter((t) => t.status === "running" || (t.status === "done" && PICTURE.test(t.preview)));
+  if (!pics.length) return null;
+  return <div className="pics">{pics.map((t) => <Picture key={t.call_id} t={t} />)}</div>;
+}
+
+/** One picture. Watched live, it is a blurred haze with an estimated percentage that resolves into the sharp
+ *  image when it arrives; opened later from history, it is just the image. Both end with a Download button. */
+function Picture({ t }: { t: ToolEvent }) {
+  const file = t.status === "done" ? t.preview.match(PICTURE)?.[0] : undefined;
+  const src = file ? `/api/v1/images/${file}` : undefined;
+  const [m] = useState(() => makingOf(t, file));
+  const [born] = useState(() => performance.now());
+  const [pct, setPct] = useState(() => (m ? percentOf(m) : 100));
+  // milliseconds of the reveal already played when this component appeared; null until the picture has loaded
+  const [clearFrom, setClearFrom] = useState<number | null>(() => (m?.arrived !== undefined ? born - m.arrived : null));
+  const [finished, setFinished] = useState(!m);
+
+  useEffect(() => {  // pace the percentage by this model's last real time, or by its usual time
+    if (!m || m.expected !== undefined || m.arrived !== undefined) return;
+    api.imageModels().then((r) => {
+      const found = r.models.find((x) => x.id === t.args.model) ?? r.models.find((x) => x.id === r.current);
+      if (!found) return;
+      let learned = 0;
+      try { learned = Number(localStorage.getItem(secondsKey(found.id))); } catch { /* storage is optional */ }
+      m.model = found.id;
+      m.expected = learned > 0 ? learned : found.seconds;
+    }).catch(() => { /* keep the default pace */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!m || finished) return;
+    const id = setInterval(() => {
+      setPct(percentOf(m));
+      if (m.arrived !== undefined && performance.now() - m.arrived > REVEAL_MS + HOLD_MS) { MAKING.delete(t.call_id); setFinished(true); }
+    }, 80);
+    return () => clearInterval(id);
+  }, [m, finished, t.call_id]);
+
+  const loaded = () => {
+    if (!m || m.arrived !== undefined) return;
+    m.from = percentOf(m);
+    m.arrived = performance.now();
+    m.file = file;
+    if (m.model && t.ms > 0) try { localStorage.setItem(secondsKey(m.model), (t.ms / 1000).toFixed(1)); } catch { /* optional */ }
+    setClearFrom(0);
+  };
+  const failed = () => { MAKING.delete(t.call_id); setFinished(true); };
+
+  const revealing = !finished && clearFrom !== null;
+  return (
+    <figure className="pic">
+      <div className={`pic-frame${finished ? "" : " busy"}`}>
+        {m && !finished && (
+          <div className="pic-haze" aria-hidden="true" style={{ "--p": pct / 100, "--t": `${((m.started - born) / 1000).toFixed(2)}s` } as CSSProperties}><i /><i /><i /></div>
+        )}
+        {src && (
+          <a className="pic-img" href={src} target="_blank" rel="noopener noreferrer" title="Open full size">
+            <img className={`pic-photo${finished ? "" : revealing ? " clear" : " wait"}`} src={src} width={1024} height={1024}
+              style={revealing ? { animationDelay: `-${Math.round(clearFrom)}ms` } : undefined}
+              alt={typeof t.args.prompt === "string" ? t.args.prompt : "Generated image"} loading={m ? undefined : "lazy"}
+              onLoad={loaded} onError={failed} />
+          </a>
+        )}
+        {!finished && (
+          <span className="pic-pct" role="progressbar" aria-label="Generating the picture, estimated progress" aria-valuemin={0} aria-valuemax={100}
+            aria-valuenow={Math.round(pct)} title="Estimated from how long this model usually takes">{Math.round(pct)}%</span>
+        )}
+      </div>
+      {src && (finished || revealing) && (
+        <figcaption>
+          <a className="btn btn-secondary btn-sm" href={src} download={`donna-${file}`}><Icon name="download" size={14} />Download</a>
+        </figcaption>
+      )}
+    </figure>
+  );
 }
 
 const STATUS: Record<string, [string, string]> = {
@@ -261,7 +381,7 @@ function Composer({ busy, blocked, connections, onSend, onStop, onCommand, mode,
   const modeRef = useRef<HTMLDivElement>(null);
   useOutside(menu === "plus", () => setMenu(null), plusRef);
   useOutside(menu === "mode", () => setMenu(null), modeRef);
-  const usable = connections.filter((c) => c.id !== "utils" && (c.state === "connected" || c.setup === "google" || c.setup === "notion"));
+  const usable = connections.filter((c) => c.id !== "utils" && (c.state === "connected" || c.setup === "google" || c.setup === "notion" || c.setup === "images"));
   const slash = text.startsWith("/") && !text.includes(" ") ? SLASH.filter((s) => s.cmd.startsWith(text.toLowerCase())) : [];
   const m = MODES.find((x) => x.id === mode) ?? MODES[1];
 

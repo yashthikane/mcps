@@ -74,6 +74,16 @@ Keep `requirements.txt` UTF-8. PowerShell's `pip freeze >` writes UTF-16.
 - `donna/vault.py`: keyring (Windows Credential Manager, service `donna`).
   - Values over 500 characters are chunked, because WinVault rejects long passwords.
   - On startup, `GROQ_API_KEY` and `INTERNAL_INTERGRATION_TOKEN` are imported from `.env`.
+- `donna/images.py`: image generation (the `images` connection, tool `generate_image` in `tools/image_tools.py`).
+  - `MODELS` is the registry: one line per model (id, label, provider, remote name, request kind). The tool description, the Connections card and the model picker all read it. A new service is one function in `PROVIDERS`.
+  - Today's provider is Cloudflare Workers AI on the owner's free account (10,000 Neurons/day): FLUX.1 takes JSON, FLUX.2 takes multipart. Account ID and token live in the vault.
+  - The chosen model is the `image_model` setting (the **Model** button on the card); the tool's `model` argument overrides it for one picture.
+  - The chat model writes the prompt. Pictures are saved in `data/images` and served by `GET /api/v1/images/{name}`. The tool result carries only the file name; `Chat.tsx` (`Pictures`) shows the picture from it, so no image bytes or link go through the model.
+  - While a picture is being made, `Picture` shows a blurred haze with a percentage in the corner, then the image clears from blurred to sharp and a Download button appears. Cloudflare reports no progress, so the percentage is an estimate from elapsed time: `Model.seconds` at first, then the model's last real duration (localStorage). The reveal state lives in a module-level map so it survives the live reply being swapped for the saved message. `DONNA_FAKE_IMAGE_SECONDS` slows the fake generation so UI tests can see this.
+  - Connecting (`POST /connections/images`) makes one test picture and saves the credentials only if it worked.
+  - It is in `hub.WRITES` (hidden in plan mode), not `CONFIRM`. The owner's own phone chat doesn't get it (the owner uses the web chat).
+  - Contacts get it through the `images` capability ("Make pictures", off by default). `agent.images_left` caps it per contact per 24 h (`contact_images_per_day`, counted from `image.generated` audit rows). It is in `permissions.DRAFTABLE`, so it also runs while drafting a Suggest-mode reply: the picture names ride in the draft's `args.images`.
+  - `ChannelManager.send_reply` sends the text, then each picture from the turn's tool events (`pictures()`), through `BaseChannel.send_image` (WhatsApp: OpenWA `send-image` with base64; Telegram: `sendPhoto` upload). Sent pictures are `channel_messages` rows of type `image` with `attachments [{file}]`, shown in the Inbox.
 - `tools/google_auth.py`: one Google sign-in shared by Gmail and Calendar.
   - Scopes are gmail.modify + gmail.send + calendar.
   - Only `{refresh_token, scopes, email}` and the OAuth client are stored.

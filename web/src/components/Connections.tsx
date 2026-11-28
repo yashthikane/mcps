@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { api, ApiError, type Connection, type ServerConfig, type ToolInfo } from "../api";
+import { api, ApiError, type Connection, type ImageModel, type ServerConfig, type ToolInfo } from "../api";
 import { Icon } from "../icons";
 import { Dialog, DialogHead, Result, StatePill, Switch, useToast } from "./ui";
 
-export type WizardKind = "google" | "notion" | "mcp";
+export type WizardKind = "google" | "notion" | "images" | "mcp";
 
 /* ============================================================================ page */
 export default function ConnectionsPage({ connections, reload, openWizard, onTools, channels }: {
@@ -82,7 +82,8 @@ function ConnCard({ c, reload, openWizard, onTools }: {
         <button className="btn btn-ghost btn-sm" onClick={() => setConfirm(false)}>Cancel</button>
         <button className="btn btn-danger btn-sm" onClick={() => {
           setConfirm(false);
-          act("remove", () => (c.kind === "mcp" ? api.removeServer(c.id) : google ? api.disconnectGoogle() : api.disconnectNotion()),
+          act("remove", () => (c.kind === "mcp" ? api.removeServer(c.id) : google ? api.disconnectGoogle()
+            : c.setup === "images" ? api.disconnectImages() : api.disconnectNotion()),
             c.kind === "mcp" ? `Removed ${c.name}.` : `${google ? "Google" : c.name} disconnected.`);
         }}>{c.kind === "mcp" ? "Remove" : "Disconnect"}</button>
       </>
@@ -122,7 +123,10 @@ function ConnCard({ c, reload, openWizard, onTools }: {
           <button className="btn btn-secondary btn-sm" disabled={!!busy} onClick={() => act("restart", () => api.restartServer(c.id), `${c.name} restarted.`)}>
             {busy === "restart" ? "Restarting…" : "Restart"}</button>
         )}
-        {(c.setup === "google" || c.setup === "notion" || c.kind === "mcp") && (
+        {c.setup === "images" && c.state === "connected" && (
+          <button className="btn btn-secondary btn-sm" onClick={() => openWizard("images")}>Model</button>
+        )}
+        {(c.setup === "google" || c.setup === "notion" || c.setup === "images" || c.kind === "mcp") && (
           <button className="btn btn-ghost btn-sm" onClick={() => setConfirm(true)}>{c.kind === "mcp" ? "Remove" : "Disconnect"}</button>
         )}
       </>
@@ -386,6 +390,98 @@ export function NotionWizard({ onDone, onClose }: { onDone: () => void; onClose:
         {res?.state === "err" && <Result kind="err"><span className="st-err mono" style={{ fontSize: 12 }}>✕ {res.text}</span></Result>}
         {res?.state === "ok" && <Result><span className="okline">✓ Connected · {res.pages?.length ? `${res.pages.length} shared item(s)` : "no pages shared yet"}</span>
           {res.pages?.length ? <ul>{res.pages.slice(0, 6).map((pg, k) => <li key={k}>{pg}</li>)}</ul> : <span className="help">Share pages in Notion (step 2) and Donna will see them right away.</span>}</Result>}
+      </>)}
+    </Wizard>
+  );
+}
+
+/* ============================================================================ Image generation */
+/** Connect Cloudflare Workers AI, then pick the model. Opened at the last step ("Model" on the card) once connected. */
+export function ImagesWizard({ startAt, onDone, onClose }: { startAt: number; onDone: () => void; onClose: () => void }) {
+  const toast = useToast();
+  const [i, setI] = useState(startAt);
+  const [have, setHave] = useState(startAt > 0);
+  const [account, setAccount] = useState("");
+  const [token, setToken] = useState("");
+  const [res, setRes] = useState<{ state: "busy" | "ok" | "err"; image?: string; text?: string } | null>(startAt > 1 ? { state: "ok" } : null);
+  const [models, setModels] = useState<ImageModel[]>([]);
+  const [model, setModel] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.imageModels().then((r) => { setModels(r.models); setModel(r.current); }).catch((e) => toast((e as Error).message, "err"));
+  }, [toast]);
+
+  const ready = account.trim() !== "" && token.trim() !== "";
+  const connect = async () => {
+    setRes({ state: "busy" });
+    try {
+      const r = await api.connectImages(account.trim(), token.trim());
+      setRes({ state: "ok", image: r.image, text: `${r.model} answered in ${r.seconds} s` });
+    } catch (e) {
+      setRes({ state: "err", text: (e as Error).message });
+    }
+  };
+  const finish = async () => {
+    setSaving(true);
+    try {
+      await api.saveSettings({ image_model: model });
+      toast(`Image generation is ready with ${models.find((m) => m.id === model)?.label ?? model}.`);
+      onDone();
+    } catch (e) {
+      toast((e as Error).message, "err");
+      setSaving(false);
+    }
+  };
+  const can = [have, res?.state === "ok", !!model][i];
+  return (
+    <Wizard eyebrow="■ Connect // Images" title="Image generation" steps={["Cloudflare", "Connect", "Model"]} index={i}
+      onBack={() => setI(i - 1)} onClose={onClose} canNext={!!can} busy={res?.state === "busy" || saving}
+      nextLabel={i === 2 ? (saving ? "Saving…" : "Finish") : "Continue"} onNext={() => { if (i < 2) setI(i + 1); else finish(); }}>
+      {i === 0 && (<>
+        <h3 className="wz-h">Get a free Workers AI token</h3>
+        <p>Donna makes pictures with models hosted on Cloudflare Workers AI, on your own free account.</p>
+        <ol className="steps-list">
+          <li>Create a free account at {ext("https://dash.cloudflare.com/sign-up", "dash.cloudflare.com")} and verify your email.</li>
+          <li>Open {ext("https://dash.cloudflare.com/?to=/:account/ai/workers-ai", "Workers AI")} and select <b>Use REST API</b>.</li>
+          <li>Select <b>Create a Workers AI API Token</b>, keep the prefilled permissions (Workers AI Read and Edit), then <b>Create API Token</b> and copy it.</li>
+          <li>Copy the <b>Account ID</b> shown on the same page.</li>
+        </ol>
+        <ul className="checks"><Check checked={have} onChange={setHave}>I have the Account ID and the token</Check></ul>
+      </>)}
+      {i === 1 && (<>
+        <h3 className="wz-h">Paste the Account ID and token</h3>
+        <div className="field">
+          <label htmlFor="img-account">Account ID</label>
+          <input className="input mono" id="img-account" autoComplete="off" placeholder="32 letters and digits" value={account}
+            onChange={(e) => { setAccount(e.target.value); setRes(null); }} />
+        </div>
+        <div className="field">
+          <label htmlFor="img-token">Workers AI API token</label>
+          <div className="srow">
+            <input className="input mono grow" id="img-token" type="password" autoComplete="off" value={token}
+              onChange={(e) => { setToken(e.target.value); setRes(null); }} onKeyDown={(e) => { if (e.key === "Enter" && ready) connect(); }} />
+            <button className="btn btn-secondary" onClick={connect} disabled={!ready || res?.state === "busy"}>Connect</button>
+          </div>
+          <span className="help">Donna checks them by making one small test picture. Both are stored in Windows Credential Manager.</span>
+        </div>
+        {res?.state === "busy" && <Result kind="busy"><span className="help">Making a test picture…</span></Result>}
+        {res?.state === "err" && <Result kind="err"><span className="st-err mono" style={{ fontSize: 12 }}>✕ {res.text}</span></Result>}
+        {res?.state === "ok" && (res.image ? (
+          <Result><span className="okline">✓ Connected · {res.text}</span>
+            <img className="wz-pic" src={`/api/v1/images/${res.image}`} alt="Test picture: a paper boat on a lake" /></Result>
+        ) : <Result><span className="okline">✓ Already connected</span><span className="help">Paste a new Account ID and token only if you want to replace them.</span></Result>)}
+      </>)}
+      {i === 2 && (<>
+        <h3 className="wz-h">Choose the model</h3>
+        <div className="presets" role="radiogroup" aria-label="Image model" style={{ gridTemplateColumns: "1fr" }}>
+          {models.map((m) => (
+            <button key={m.id} className="preset" role="radio" aria-checked={model === m.id} onClick={() => setModel(m.id)}>
+              <b>{m.label}</b><span className="meta">{m.note}</span><span className="meta">Estimated {m.daily} images a day</span>
+            </button>
+          ))}
+        </div>
+        <span className="help">The daily numbers are estimates for Cloudflare's free allowance, which resets at 00:00 UTC. Donna writes the detailed prompt from what you ask; you can also name a model in chat for a single picture.</span>
       </>)}
     </Wizard>
   );

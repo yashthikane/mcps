@@ -41,6 +41,13 @@ def memory_keyring(monkeypatch):
     keyring.set_keyring(previous)
 
 
+@pytest.fixture(autouse=True)
+def image_dir(tmp_path, monkeypatch):
+    """Generated pictures go to a throwaway folder, so a test (or its wipe) never touches data/images."""
+    from donna import images
+    monkeypatch.setattr(images, "DIR", tmp_path / "images")
+
+
 @pytest.fixture
 def store(tmp_path):
     from donna.store import Store

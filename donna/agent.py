@@ -33,6 +33,7 @@ KEYWORDS = {
     "weather": r"weather|temperature|\brain|forecast|sunny|humid",
     "utils": r"square|joke|funny",
     "schedule": r"remind|schedul|snooze|recurring|\btasks?\b|every (day|morning|evening|night|week|hour|\d+ ?(min|hour))|every (mon|tue|wed|thu|fri|sat|sun)",
+    "images": r"\bimages?\b|pictures?\b|\bphotos?\b|\bdraw|illustrat|\blogo\b|poster|wallpaper|sketch|artwork|\bpaint",
     "memory": r"remember|forget|memor|\byaad\b|note (that|this)",
     "requests": r"callback|call (me|back)|phone|request|enquir|inquir|meeting|message for|tell \w+|urgent",
     "messaging": r"whatsapp|telegram|\bcontacts?\b|\btext (him|her|them)\b|message (him|her|them|to)|send (a |an )?message|"
@@ -129,7 +130,7 @@ def system_prompt(settings: dict, mode: str = "manual") -> str:
     return (
         "You are Donna, a capable personal assistant running locally for one user. "
         f"Current date and time: {now.strftime('%A, %d %B %Y, %H:%M')} ({tz}).\n"
-        "You can act on the user's Gmail, Google Calendar, Notion, the weather and any connected MCP servers through tools.\n"
+        "You can act on the user's Gmail, Google Calendar, Notion, the weather, image generation and any connected MCP servers through tools.\n"
         "Rules:\n"
         "- Use IDs returned by tools (email, draft, event, page, database IDs). Never invent IDs; look them up first.\n"
         "- For calendar times use local time without an offset, e.g. 2026-10-01T09:00; all-day events use dates.\n"
@@ -215,6 +216,8 @@ async def run_chat(store, hub: MCPHub, run: Run, text: str, forced_groups: set[s
         available = [t for t in available if t.group != "schedule"]
     if run.mode == "plan":  # plan mode may only read
         available = [t for t in available if not t.writes]
+    if ctx and ctx.channel_id and not ctx.is_contact:  # the owner makes pictures in the web chat; contacts get them sent
+        available = [t for t in available if t.group != "images"]
     if ctx:  # a contact only ever sees the tools their capabilities allow
         available = [] if ctx.no_tools else [t for t in available if permissions.decide(ctx, t) != "deny"]
     if ctx and ctx.is_contact:  # recording why they're writing is always part of a contact's turn
@@ -297,6 +300,14 @@ async def call_tool(hub: MCPHub, tool: Tool, args: dict, ctx: TurnContext | None
     return await hub.call(tool, args)
 
 
+def images_left(store, ctx: TurnContext, settings: dict) -> int:
+    """Pictures this contact may still get in the last 24 hours (contact_images_per_day): the free Cloudflare
+    allowance is shared with the owner, so no contact can use it all."""
+    made = store.row("SELECT COUNT(*) AS n FROM audit_log WHERE actor=? AND action='image.generated' AND at>?",
+                     (f"contact:{ctx.contact['id']}", time.time() - 86400))["n"]
+    return int(settings.get("contact_images_per_day", 5)) - made
+
+
 def find_tool(hub: MCPHub, name: str, settings: dict) -> Tool | None:
     return hub.find(name, settings) or runtime_tools.find(name)
 
@@ -335,6 +346,12 @@ async def _run_tool(store, hub: MCPHub, run: Run, settings: dict, call_id: str, 
         audit.record(store, actor, "tool.denied", tool.name, outcome="denied", args=args)
         for ev in finish("rejected", "Not permitted: you aren't allowed to do this for this person. Don't retry; tell them "
                          "you can't help with that and that you'll pass it on.", "Not permitted"):
+            yield ev
+        return
+    if ctx and ctx.is_contact and tool.name == "generate_image" and decision == "allow" and images_left(store, ctx, settings) <= 0:
+        audit.record(store, f"contact:{ctx.contact['id']}", "tool.denied", tool.name, outcome="denied", reason="daily picture limit")
+        for ev in finish("rejected", "Not done: they've reached today's limit of pictures. Don't retry; tell them kindly "
+                         "you can make more tomorrow.", "Daily picture limit reached"):
             yield ev
         return
     gated = needs_approval(tool, args) or decision == "approve"
@@ -381,5 +398,7 @@ async def _run_tool(store, hub: MCPHub, run: Run, settings: dict, call_id: str, 
     t0 = time.perf_counter()
     ok, out = await call_tool(hub, tool, args, ctx, store)
     record.update(ok=ok, ms=round((time.perf_counter() - t0) * 1000))
+    if ok and tool.name == "generate_image" and ctx and ctx.is_contact:  # counted for the daily limit
+        audit.record(store, f"contact:{ctx.contact['id']}", "image.generated", ctx.channel_conversation_id, args=args)
     for ev in finish("done" if ok else "error", out):
         yield ev

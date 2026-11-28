@@ -26,7 +26,7 @@ import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from .. import approvals, audit, availability, contact_requests, contacts, identity, llm, memory, openwa, runtime_tools
+from .. import approvals, audit, availability, contact_requests, contacts, identity, images, llm, memory, openwa, runtime_tools
 from ..agent import call_tool, find_tool
 from ..notify import Note
 from ..permissions import TurnContext
@@ -46,6 +46,16 @@ DELIVERY_RANK = {"queued": 0, "sent": 1, "delivered": 2, "read": 3, "failed": 1}
 
 def _a(word: str) -> str:
     return f"an {word}" if word[:1] in "aeiou" else f"a {word}"
+
+
+def pictures_in(text: str) -> list[str]:
+    return [m.group(0) for m in images.NAME.finditer(text or "")][:1]  # a tool result names one picture
+
+
+def pictures(tool_events: list[dict]) -> list[str]:
+    """Pictures generate_image made during a turn, from the file name in each successful result."""
+    return [p for e in tool_events or [] if e.get("name") == "generate_image" and e.get("status") == "done"
+            for p in pictures_in(e.get("preview") or "")]
 
 
 class ChannelManager:
@@ -414,19 +424,21 @@ class ChannelManager:
             await self._alert_approval(code)
         if flow:
             self._advance_flow(conv["id"], turn_started)
+        pics = pictures(res.tool_events)  # made by generate_image during the turn: sent after the text
         if mode == "auto":
-            if reply:
-                sent = await self.send_text(conv, reply, author="donna")
+            if reply or pics:
+                sent = await self.send_reply(conv, reply, pics)
                 if not sent.ok and not sent.uncertain:
                     return done("failed", f"Reply not delivered: {sent.error}", "failed")
             done("done", "Answered.", "answered")
         else:
-            if reply:
-                req = approvals.create(self.store, ctx, "reply", args={"text": reply},
-                                       description=f"Reply to {name}: {reply[:160]}")
+            if reply or pics:
+                extra = f" (+ {len(pics)} picture{'s' if len(pics) > 1 else ''})" if pics else ""
+                req = approvals.create(self.store, ctx, "reply", args={"text": reply, **({"images": pics} if pics else {})},
+                                       description=f"Reply to {name}{extra}: {reply[:160]}")
                 await self.notify_owner(
                     f"Suggested reply to {name}" + (f" ({why})" if why else ""),
-                    f"{name}: {(msg.text or text)[:200]}\nDonna: {reply[:400]}\n\n"
+                    f"{name}: {(msg.text or text)[:200]}\nDonna: {reply[:400]}{extra}\n\n"
                     f"Reply \"approve {req['id']}\" to send it, or \"reject {req['id']}\".",
                     conversation_id=conv["conversation_id"])
             done("done", "Drafted a reply for your approval." + (f" ({why})" if why else ""), "drafted")
@@ -697,13 +709,58 @@ class ChannelManager:
         return conv
 
     # ================================================================== outbound
+    def _blocked(self, conv: dict) -> str:
+        """Why nothing may be sent into this conversation right now ("" = it may)."""
+        channel = self.row(conv["channel_id"])
+        return ("Messaging is switched off (kill switch)." if not self.store.settings().get("messaging_enabled", True)
+                else f"{self.label(conv['channel_id'])} isn't connected." if not channel or not channel["enabled"]
+                else f"{self.label(conv['channel_id'])} is paused." if channel["paused"] else "")
+
+    async def send_reply(self, conv: dict, text: str, pics: list[str] = (), author: str = "donna") -> SendResult:
+        """A reply with Donna's generated pictures: the text first, then each picture."""
+        result = SendResult(ok=True)
+        if text:
+            result = await self.send_text(conv, text, author=author)
+            if not result.ok:
+                return result
+        for name in pics:
+            result = await self.send_picture(conv, name, author=author)
+            if not result.ok:
+                break
+        return result
+
+    async def send_picture(self, conv: dict, name: str, author: str = "donna") -> SendResult:
+        """Send one picture from data/images and record it like any other outgoing message."""
+        file = images.path(name)
+        block = self._blocked(conv) or ("" if file else "The picture was deleted.")
+        mid = uuid.uuid4().hex[:12]
+        self.store.execute(
+            "INSERT INTO channel_messages (id, channel_conversation_id, direction, author, message_type, content, attachments, "
+            "status, error, created_at) VALUES (?,?,'out',?,'image','',?,?,?,?)",
+            (mid, conv["id"], author, json.dumps([{"type": "image", "file": name}]), "failed" if block else "queued", block, time.time()))
+        if block:
+            return SendResult(ok=False, error=block)
+        adapter = self.adapter(conv["channel_id"])
+        data = await asyncio.to_thread(file.read_bytes)
+        mimetype = images.MIMETYPES[file.suffix.lstrip(".")]
+        result = await adapter.send_image(conv["external_chat_id"], data, mimetype, f"donna-{name}", idempotency_key=mid)
+        if not result.ok and result.retryable:
+            await asyncio.sleep(2)
+            result = await adapter.send_image(conv["external_chat_id"], data, mimetype, f"donna-{name}", idempotency_key=mid)
+        status = "sent" if result.ok else "unconfirmed" if result.uncertain else "failed"
+        self.store.execute("UPDATE channel_messages SET status=?, external_id=?, error=? WHERE id=?",
+                           (status, result.external_id, result.error[:500], mid))
+        if not result.ok:
+            audit.record(self.store, f"channel:{conv['channel_id']}", "message.send", conv["id"], outcome="failed",
+                         kind="image", error=result.error)
+        self.store.execute("UPDATE channel_conversations SET last_message_at=?, updated_at=? WHERE id=?",
+                           (time.time(), time.time(), conv["id"]))
+        return result
+
     async def send_text(self, conv: dict, text: str, author: str = "donna") -> SendResult:
         """Send one reply into a channel conversation (split when long) and record its delivery."""
         settings = self.store.settings()
-        channel = self.row(conv["channel_id"])
-        block = ("Messaging is switched off (kill switch)." if not settings.get("messaging_enabled", True)
-                 else f"{self.label(conv['channel_id'])} isn't connected." if not channel or not channel["enabled"]
-                 else f"{self.label(conv['channel_id'])} is paused." if channel["paused"] else "")
+        block = self._blocked(conv)
         adapter = self.adapter(conv["channel_id"])
         if author == "donna":
             text = identity.clean(text, identity.owner_name(settings, self.store), settings.get("owner_pronouns", ""))
@@ -827,13 +884,15 @@ class ChannelManager:
     async def _send_approved_reply(self, row: dict, decided_by: str, edited_text: str | None) -> dict:
         draft = str(row["args"].get("text", ""))
         text = (edited_text or draft).strip()
+        pics = [p for p in row["args"].get("images") or [] if images.NAME.fullmatch(str(p))]  # pictures made while drafting
         why = approvals.still_allowed(self.store, row, None)
         conv = self.conversation(row["channel_conversation_id"] or "")
-        if why or not conv or not text:
+        if why or not conv or not (text or pics):
             return approvals.finish(self.store, row["id"], "failed", why or "The conversation no longer exists.", decided_by)
         edited = text != draft.strip()
-        self.store.add_message(conv["conversation_id"], "assistant", text)
-        sent = await self.send_text(conv, text, author="owner" if edited else "donna")
+        if text:
+            self.store.add_message(conv["conversation_id"], "assistant", text)
+        sent = await self.send_reply(conv, text, pics, author="owner" if edited else "donna")
         return approvals.finish(self.store, row["id"], "executed" if sent.ok else "failed",
                                 ("Sent your edited reply." if edited else "Sent.") if sent.ok else sent.error, decided_by)
 
@@ -947,5 +1006,6 @@ class ChannelManager:
                 f"\"{row['description']}\": {outcome} Tell them the outcome briefly and naturally.]")
         async with self._lock(conv["id"]), self._llm:
             res = await run_agent_turn(self.store, self.hub, conv["conversation_id"], note, ctx)
-        if res.text.strip() and not res.error:
-            await self.send_text(conv, res.text.strip(), author="donna")
+        # an approved picture request: the picture itself goes along with the note
+        pics = pictures_in(row["result"] or "") if row["tool"] == "generate_image" and row["status"] == "executed" else []
+        await self.send_reply(conv, res.text.strip() if not res.error else "", pics)

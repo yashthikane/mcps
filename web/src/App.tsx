@@ -6,7 +6,7 @@ import { StatusCard, StatusPill } from "./components/Availability";
 import ChannelsSection from "./components/Channels";
 import ContactsPage from "./components/Contacts";
 import InboxPage from "./components/Inbox";
-import ConnectionsPage, { GoogleWizard, McpWizard, NotionWizard, ToolsDialog, type WizardKind } from "./components/Connections";
+import ConnectionsPage, { GoogleWizard, ImagesWizard, McpWizard, NotionWizard, ToolsDialog, type WizardKind } from "./components/Connections";
 import Onboarding from "./components/Onboarding";
 import Palette, { type Command } from "./components/Palette";
 import SettingsPage from "./components/Settings";
@@ -217,7 +217,9 @@ export default function App() {
   /* ------------------------------------------------------------------ commands */
   const openWizard = useCallback((kind: WizardKind) => {
     const g = connections.find((c) => c.id === "gmail");
-    const startAt = kind === "google" && g && ["needs_auth", "needs_reauth"].includes(g.auth_state ?? g.state) ? 3 : 0;
+    const img = connections.find((c) => c.id === "images");
+    const startAt = kind === "google" && g && ["needs_auth", "needs_reauth"].includes(g.auth_state ?? g.state) ? 3
+      : kind === "images" && img?.auth_state === "connected" ? 2 : 0;  // already connected: straight to the model picker
     setWizard({ kind, startAt });
   }, [connections]);
 
@@ -252,6 +254,7 @@ export default function App() {
     { id: "settings", label: "Open Settings", icon: "sliders", run: () => setView("settings") },
     { id: "google", label: "Connect Google (Gmail + Calendar)", icon: "mail", run: () => openWizard("google") },
     { id: "notion", label: "Connect Notion", icon: "doc", run: () => openWizard("notion") },
+    { id: "images", label: "Image generation: connect or change the model", icon: "image", run: () => openWizard("images") },
     { id: "mcp", label: "Add MCP server", icon: "terminal", run: () => openWizard("mcp") },
     { id: "tools", label: "Show all tools", icon: "wrench", run: () => setToolsDlg({ open: true }) },
     { id: "sidebar", label: "Collapse or expand the sidebar", icon: "panel", run: toggleRail },
@@ -364,6 +367,7 @@ export default function App() {
       <ToolsDialog open={toolsDlg.open} only={toolsDlg.only} connections={connections} reload={reloadConnections} onClose={() => setToolsDlg({ open: false })} />
       {wizard?.kind === "google" && <GoogleWizard startAt={wizard.startAt} onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {wizard?.kind === "notion" && <NotionWizard onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
+      {wizard?.kind === "images" && <ImagesWizard startAt={wizard.startAt} onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {wizard?.kind === "mcp" && <McpWizard home={settings?.home ?? "C:\\Users\\you"} onClose={() => setWizard(null)} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {onboarding && settings && !wizard && (
         <Onboarding settings={settings} connections={connections} onSettings={(s) => { setSettings(s); refreshHealth(); }}

@@ -134,6 +134,26 @@ class TelegramChannel(BaseChannel):
             return SendResult(ok=False, error=str(e), retryable=e.retryable)
         return SendResult(ok=True, external_id=f"{message.recipient_id}:{r.get('message_id', '')}")
 
+    async def send_image(self, recipient_id: str, data: bytes, mimetype: str, filename: str, caption: str = "",
+                         idempotency_key: str = "") -> SendResult:
+        """sendPhoto as a multipart upload (Telegram has no idempotency key; the manager never retries an
+        uncertain send)."""
+        token = vault.get(vault.TELEGRAM_TOKEN)
+        if not token:
+            return SendResult(ok=False, error="Add your Telegram bot token in Connections first.")
+        fields = {"chat_id": recipient_id, **({"caption": caption[:1024]} if caption else {})}
+        try:
+            async with httpx.AsyncClient(timeout=60, transport=self._transport) as c:
+                r = await c.post(f"{API}/bot{token}/sendPhoto", data=fields, files={"photo": (filename, data, mimetype)})
+            body = r.json()
+        except httpx.TimeoutException as e:  # the upload may have arrived
+            return SendResult(ok=False, error=f"Telegram didn't answer ({type(e).__name__}).", uncertain=True)
+        except (httpx.HTTPError, ValueError):
+            return SendResult(ok=False, error="Can't reach Telegram. Check your internet connection.", retryable=True)
+        if not body.get("ok"):
+            return SendResult(ok=False, error=f"Telegram: {body.get('description', 'error')}")
+        return SendResult(ok=True, external_id=f"{recipient_id}:{(body.get('result') or {}).get('message_id', '')}")
+
     def identity_for(self, value: str) -> tuple[str, str]:
         value = value.strip()
         if not re.fullmatch(r"-?\d{4,}", value):

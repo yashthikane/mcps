@@ -9,7 +9,8 @@ from keyring.errors import PasswordDeleteError
 SERVICE = "donna-e2e"
 data = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.environ.get("TEMP", "."), "donna-e2e-data")
 shutil.rmtree(data, ignore_errors=True)
-for name in ("groq_api_key", "notion_token", "google_client", "google_token", "postgres_url", "internal_api_token"):
+for name in ("groq_api_key", "notion_token", "google_client", "google_token", "postgres_url", "internal_api_token",
+             "cloudflare_account_id", "cloudflare_api_token"):
     for key in [name, f"{name}#count"] + [f"{name}#{i}" for i in range(10)]:
         try:
             keyring.delete_password(SERVICE, key)

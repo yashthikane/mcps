@@ -59,6 +59,7 @@ DEFAULT_SETTINGS = {
     "usage": {"date": "", "requests": 0, "tokens": 0},  # Groq usage today (free tier: 1,000 requests/day)
     "onboarded": False,
     "permission_mode": "manual",  # chat mode: plan | manual | auto (composer switch)
+    "image_model": "flux-2-klein-4b",  # image generation model, an id from images.MODELS
     # Messaging channels (WhatsApp, Telegram). Secrets live in the vault, never here.
     "messaging_enabled": True,        # global kill switch: off = nothing is answered or sent on any channel
     "require_trigger": True,          # contacts reach Donna only by writing the trigger; everything else is left for you
@@ -71,6 +72,7 @@ DEFAULT_SETTINGS = {
     "default_tone": "friendly and professional",
     "contact_rate_per_hour": 10,      # automatic replies per contact per hour (then drafts for approval)
     "global_rate_per_hour": 60,       # automatic replies across all contacts per hour
+    "contact_images_per_day": 5,      # pictures per contact per 24 h (their "Make pictures" permission); 0 = none
     "approval_ttl_hours": 24,
     "unknown_contact_action": "ignore",  # ignore | notify: message from someone not in Contacts
     "openwa_url": "http://127.0.0.1:2785",

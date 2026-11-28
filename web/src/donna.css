@@ -153,6 +153,30 @@ kbd{font:500 10px/1 var(--font-mono);color:var(--donna-text-muted);padding:3px 5
 .dock{position:relative;z-index:2;flex:none;padding:8px 24px 14px}
 .dock .composer-wrap{max-width:700px;margin:0 auto}
 
+/* generated pictures (chat) and the test picture in the image wizard */
+.pics{display:flex;flex-wrap:wrap;gap:12px;margin:2px 0 10px}
+.pic{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:7px;max-width:100%}
+.pic-frame{position:relative;width:420px;max-width:100%;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid var(--donna-border);background:#120e2a}
+.pic-frame:not(.busy):hover,.pic-frame:not(.busy):focus-within{border-color:var(--donna-accent-bright)}
+.pic-img{position:absolute;inset:0;display:block}
+/* arrives blurred and slightly enlarged (so the soft edges stay outside the frame), then clears; a negative
+   animation-delay set by Chat.tsx resumes the reveal part-way when the live reply is swapped for the saved one */
+.pic-photo{display:block;width:100%;height:100%;object-fit:cover}
+.pic-photo.wait{opacity:0}
+.pic-photo.clear{animation:pic-clear 1.3s cubic-bezier(.2,.7,.2,1) both}
+@keyframes pic-clear{0%{opacity:0;filter:blur(26px);transform:scale(1.1)}35%{opacity:1}100%{opacity:1;filter:blur(0);transform:none}}
+/* the placeholder while the picture is being made: soft colour pools that tighten a little as the estimate rises */
+.pic-haze{position:absolute;inset:-14%;background:#1b1440;filter:blur(calc(42px - var(--p,0) * 22px))}
+.pic-haze i{position:absolute;width:62%;height:62%;border-radius:50%;animation:pic-drift 9s ease-in-out var(--t,0s) infinite alternate}
+.pic-haze i:nth-child(1){left:2%;top:4%;background:#8b5cf6}
+.pic-haze i:nth-child(2){right:0;top:22%;background:#22d3ee;opacity:.75;animation-duration:11s;animation-delay:calc(var(--t,0s) - 3s)}
+.pic-haze i:nth-child(3){left:20%;bottom:-6%;background:#f472b6;opacity:.7;animation-duration:13s;animation-delay:calc(var(--t,0s) - 6s)}
+@keyframes pic-drift{from{transform:translate(-8%,-6%) scale(.9)}to{transform:translate(12%,10%) scale(1.15)}}
+.pic-pct{position:absolute;right:10px;bottom:10px;min-width:48px;padding:6px 8px;border-radius:8px;text-align:center;
+  background:rgba(8,8,13,.72);border:1px solid rgba(255,255,255,.14);color:#fff;font:500 12px/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.pic figcaption .btn{text-decoration:none}
+.wz-pic{display:block;width:160px;height:160px;object-fit:cover;border-radius:10px;border:1px solid var(--donna-border);margin-top:8px}
+
 /* tool cards */
 .toollist{display:flex;flex-direction:column;gap:5px;margin:2px 0 8px}
 .toolcall{border-radius:11px;border:1px solid var(--donna-border);background:rgba(14,14,21,.85);overflow:hidden;animation:rise .2s var(--ease)}

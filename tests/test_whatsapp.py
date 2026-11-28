@@ -45,6 +45,8 @@ class FakeOpenWA:
             return httpx.Response(200, json={"id": "sess-1", "status": "initializing"})
         if path == "/api/sessions/sess-1/messages/send-text":
             return httpx.Response(201, json={"messageId": "true_91999@c.us_ABC", "timestamp": 1})
+        if path == "/api/sessions/sess-1/messages/send-image":
+            return httpx.Response(201, json={"messageId": "true_91999@c.us_IMG", "timestamp": 1})
         if path == "/api/sessions/sess-1/messages/send-poll":
             if self.refuse_polls:
                 return httpx.Response(400, json={"message": "polls unsupported"})
@@ -316,3 +318,14 @@ async def test_an_engine_failure_after_sending_is_unconfirmed_not_retried(secret
     ch, _ = channel(openwa, {"session_id": "sess-1"})
     res = await ch.send(OutgoingMessage(channel_id="whatsapp", recipient_id="1@c.us", text="hi", idempotency_key="k1"))
     assert not res.ok and res.uncertain and not res.retryable and len(calls) == 1
+
+
+async def test_picture_is_sent_as_base64_with_an_idempotency_key(secret):
+    openwa = FakeOpenWA()
+    ch, _ = channel(openwa, {"session_id": "sess-1"})
+    res = await ch.send_image("91999@c.us", b"\xff\xd8\xffpicture", "image/jpeg", "donna-img_0123456789ab.jpg", idempotency_key="p1")
+    assert res.ok and res.external_id == "true_91999@c.us_IMG"
+    _, path, body, headers = openwa.requests[-1]
+    assert path == "/api/sessions/sess-1/messages/send-image" and headers["idempotency-key"] == "p1"
+    assert body == {"chatId": "91999@c.us", "base64": "/9j/cGljdHVyZQ==", "mimetype": "image/jpeg",
+                    "filename": "donna-img_0123456789ab.jpg"}

@@ -20,6 +20,16 @@ const Pill = ({ map, s }: { map: Record<string, [string, string]>; s: string }) 
   const [cls, label] = map[s] ?? ["off", s];
   return <span className={`pill ${cls}`}>{label}</span>;
 };
+/** Pictures Donna made for a contact (sent, or attached to a drafted reply); each opens full size. */
+const SentPictures = ({ names }: { names: string[] }) => (
+  <div className="b-pics">
+    {names.map((n) => (
+      <a key={n} href={`/api/v1/images/${n}`} target="_blank" rel="noopener noreferrer" title="Open full size">
+        <img src={`/api/v1/images/${n}`} alt="Picture Donna made" width={160} height={160} loading="lazy" />
+      </a>
+    ))}
+  </div>
+);
 const chanLabel = (id: string) => (id === "whatsapp" ? "WhatsApp" : id === "telegram" ? "Telegram" : id);
 const until = (t: number) => {
   const m = Math.round((t - Date.now() / 1000) / 60);
@@ -177,7 +187,8 @@ function Thread({ conv, reload, onGone }: { conv: InboxConversation; reload: () 
               {m.message_type !== "text" && <span className="tag">{m.message_type}</span>}
               <Pill map={m.direction === "in" ? IN_PILL : OUT_PILL} s={m.status} />
             </div>
-            <div className="b-text">{m.content || <i className="meta">(no text)</i>}</div>
+            {m.attachments.some((a) => a.file) ? <SentPictures names={m.attachments.flatMap((a) => (a.file ? [a.file] : []))} />
+              : <div className="b-text">{m.content || <i className="meta">(no text)</i>}</div>}
             {(m.error || (m.event_status === "failed" && m.event_result)) && (
               <div className="b-err">
                 <span className="st-err">{m.error || m.event_result}</span>
@@ -436,8 +447,11 @@ function Approvals({ onCounts }: { onCounts: () => void }) {
                 <span className="pill warn">{until(a.expires_at)}</span>
               </div>
               {a.kind === "reply" ? (
-                <textarea className="input textarea" rows={3} aria-label="Reply text" value={edits[a.id] ?? String(a.args.text ?? "")}
-                  onChange={(e) => setEdits({ ...edits, [a.id]: e.target.value })} />
+                <>
+                  <textarea className="input textarea" rows={3} aria-label="Reply text" value={edits[a.id] ?? String(a.args.text ?? "")}
+                    onChange={(e) => setEdits({ ...edits, [a.id]: e.target.value })} />
+                  {Array.isArray(a.args.images) && a.args.images.length > 0 && <SentPictures names={a.args.images.map(String)} />}
+                </>
               ) : (
                 <pre className="approval-args">{JSON.stringify(a.args, null, 2)}</pre>
               )}

@@ -138,6 +138,11 @@ class BaseChannel(ABC):
         return await self.send(OutgoingMessage(channel_id=self.id, recipient_id=recipient_id, text=fallback,
                                                idempotency_key=idempotency_key))
 
+    async def send_image(self, recipient_id: str, data: bytes, mimetype: str, filename: str, caption: str = "",
+                         idempotency_key: str = "") -> SendResult:
+        """Deliver one picture (Donna's generated images). Channels that can't send pictures keep this default."""
+        return SendResult(ok=False, error=f"{self.label} can't send pictures yet.")
+
     def identity_for(self, value: str) -> tuple[str, str]:
         """(external_id, phone digits) for what the owner typed when adding a contact."""
         return value.strip(), ""

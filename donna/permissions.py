@@ -39,6 +39,9 @@ CAPABILITIES: dict[str, dict] = {
                     "tools": {"search_notion", "list_pages", "read_page_content", "query_database"}},
     "notion.write": {"label": "Write to Notion", "help": "Create pages and add text.",
                      "tools": {"create_page", "update_page_title", "append_text_to_page"}},
+    "images": {"label": "Make pictures", "help": "Generates pictures they ask for and sends them in the chat. Uses your "
+               "free Cloudflare allowance, so each contact gets a few a day (Settings → Messaging).",
+               "tools": {"generate_image"}},
     "memory": {"label": "Remember things about them", "help": "Notes about this contact only.", "tools": {"remember"}},
     "requests": {"label": "Take requests for you", "help": "Callbacks, meeting requests, enquiries and messages: Donna "
                  "records them and tells you. Which types is set in their profile.",
@@ -52,6 +55,9 @@ CONTACT_DEFAULTS = {"general": "on", "memory": "on", "requests": "on"}
 OWNER_ONLY = {"list_memories", "forget_memory", "list_contacts", "read_chat", "send_message", "list_requests", "resolve_request"}
 # Runtime tools only a contact's turn may use (they act on that contact's own conversation).
 CONTACT_ONLY = {"record_request", "update_request", "suggest_meeting_slots"}
+# Tools that write only on this computer and whose result rides along with the reply: they may run while Donna
+# drafts a reply for approval, because nothing reaches the contact until the owner sends the draft.
+DRAFTABLE = {"generate_image"}
 
 
 @dataclass
@@ -117,7 +123,7 @@ def decide(ctx: TurnContext | None, tool, args: dict | None = None) -> str:
     level = ctx.capabilities.get(cap, "off") if cap else "off"
     if level not in ("on", "approval"):
         return "deny"
-    if ctx.suggest_only and tool.writes:
+    if ctx.suggest_only and tool.writes and tool.name not in DRAFTABLE:
         return "deny"
     if tool.name == "schedule_task" and args is not None:
         # A contact may leave the owner a reminder, never an AI task: its prompt would run later,

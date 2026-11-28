@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import DATA_DIR, ROOT, approvals, audit, availability, contact_requests, contacts, identity, inbox, llm, memory, permissions, pg, runtime_tools, tasks, vault
+from . import DATA_DIR, ROOT, approvals, audit, availability, contact_requests, contacts, identity, images, inbox, llm, memory, permissions, pg, runtime_tools, tasks, vault
 from .agent import MODES, RUNS, Run, run_chat
 from .channels.base import ChannelError, WebhookRejected
 from .channels.manager import ChannelManager
@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
     app.state.store = Store(app.state.db_path) if getattr(app.state, "db_path", None) else Store()
     app.state.hub = MCPHub(app.state.store, mcp)
     await app.state.hub.start()
+    images.store = app.state.store  # the generate_image tool reads the chosen model from settings
 
     # Scheduling (PostgreSQL + the Node scheduler). Donna works without it; only /scheduled-tasks fails.
     app.state.internal_token = vault.internal_token()
@@ -88,6 +89,7 @@ async def lifespan(app: FastAPI):
     await app.state.channels.stop()
     runtime_tools.services.store = runtime_tools.services.channels = None
     tasks.service = None
+    images.store = None
     await app.state.hub.stop()
     await app.state.pg.close()
 
@@ -274,12 +276,20 @@ async def _google_state() -> dict:
     return await asyncio.to_thread(google_auth.status)
 
 
+def _images_state() -> dict:
+    if not images.connected():
+        return {"state": "not_set_up"}
+    model = images.current()
+    return {"state": "connected", "detail": f"Model: {model.label}. Estimated {model.daily} images a day on Cloudflare's free allowance."}
+
+
 @app.get("/api/v1/connections")
 async def connections(request: Request):
     store, hub = S(request), H(request)
     settings = store.settings()
     off_conn, off_tools = set(settings["disabled_connections"]), set(settings["disabled_tools"])
     google, notion = await _google_state(), await _notion_state()
+    by_setup = {"google": google, "notion": notion, "images": _images_state()}
     tools_by_group: dict[str, list] = {}
     for t in hub.builtin_tools:
         tools_by_group.setdefault(t.group, []).append(
@@ -287,7 +297,7 @@ async def connections(request: Request):
              "enabled": t.name not in off_tools})
     out = []
     for c in BUILTIN:
-        auth = google if c["setup"] == "google" else notion if c["setup"] == "notion" else {"state": "connected"}
+        auth = by_setup.get(c["setup"], {"state": "connected"})
         state = "off" if c["id"] in off_conn else auth["state"]
         detail = {"gmail": f"Signed in as {auth.get('email')}" if auth.get("email") else "",
                   "calendar": "Primary calendar" if auth["state"] == "connected" else "",
@@ -431,6 +441,41 @@ def notion_disconnect():
     vault.delete(vault.NOTION_TOKEN)
     _notion_cache.update(t=0.0)
     return {"ok": True}
+
+
+# ----------------------------------------------------------------------------- Image generation
+class ImagesIn(BaseModel):
+    account_id: str
+    token: str
+
+
+@app.post("/api/v1/connections/images")
+async def images_connect(body: ImagesIn):
+    """Checks the Cloudflare credentials by making one small test picture, then saves them in the vault."""
+    try:
+        name, model, seconds = await images.connect(body.account_id, body.token)
+    except images.ImageError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True, "image": name, "model": model.label, "seconds": round(seconds, 1)}
+
+
+@app.delete("/api/v1/connections/images")
+def images_disconnect():
+    images.disconnect()
+    return {"ok": True}
+
+
+@app.get("/api/v1/images/models")
+def image_models():
+    return {"current": images.current().id, "models": images.catalog()}
+
+
+@app.get("/api/v1/images/{name}")
+def image_file(name: str):
+    target = images.path(name)
+    if not target:
+        raise HTTPException(404, "No such image")
+    return FileResponse(target, headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
 # ----------------------------------------------------------------------------- MCP servers
@@ -1194,6 +1239,7 @@ class SettingsIn(BaseModel):
     reduce_motion: bool | None = None
     onboarded: bool | None = None
     permission_mode: str | None = None
+    image_model: str | None = None
     messaging_enabled: bool | None = None
     require_trigger: bool | None = None
     trigger_word: str | None = None
@@ -1205,6 +1251,7 @@ class SettingsIn(BaseModel):
     default_tone: str | None = None
     contact_rate_per_hour: int | None = None
     global_rate_per_hour: int | None = None
+    contact_images_per_day: int | None = None
     approval_ttl_hours: float | None = None
     unknown_contact_action: str | None = None
     openwa_url: str | None = None
@@ -1272,6 +1319,8 @@ def put_settings(body: SettingsIn, request: Request):
         raise HTTPException(400, "permission_mode must be plan, manual or auto")
     if values.get("llm_provider", "groq") not in llm.PROVIDERS:
         raise HTTPException(400, "llm_provider must be groq or claude_code")
+    if "image_model" in values and values["image_model"] not in images.MODELS:
+        raise HTTPException(400, f"image_model must be one of: {', '.join(images.MODELS)}")
     if "claude_model" in values and not re.fullmatch(r"[a-z0-9.\-]{2,60}", values["claude_model"]):
         raise HTTPException(400, "Claude model must be an alias like opus or sonnet, or a model ID like claude-opus-5-5")
     if "trigger_word" in values:
@@ -1282,7 +1331,8 @@ def put_settings(body: SettingsIn, request: Request):
         raise HTTPException(400, "owner_pronouns must be he, she or they")
     if values.get("unknown_contact_action", "ignore") not in ("ignore", "notify"):
         raise HTTPException(400, "unknown_contact_action must be ignore or notify")
-    for k, lo, hi in (("contact_rate_per_hour", 1, 500), ("global_rate_per_hour", 1, 2000), ("approval_ttl_hours", 0.1, 168)):
+    for k, lo, hi in (("contact_rate_per_hour", 1, 500), ("global_rate_per_hour", 1, 2000), ("approval_ttl_hours", 0.1, 168),
+                      ("contact_images_per_day", 0, 100)):
         if k in values and not lo <= values[k] <= hi:
             raise HTTPException(400, f"{k} must be between {lo} and {hi}")
     _check_away_settings(values)
@@ -1391,6 +1441,7 @@ def export(request: Request):
 def wipe(request: Request):
     for run in list(RUNS.values()):
         run.cancel()
+    images.clear()  # the pictures belonged to the conversations being deleted
     return {"ok": True, "deleted": S(request).wipe()}
 
 

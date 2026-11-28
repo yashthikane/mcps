@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · image loading ideas</title>
+<style>
+:root{
+  --bg:#08080d;--panel:#0e0e15;--raised:#14141d;--border:#23232f;--border-hi:#3a3a4c;
+  --text:#e2e2e8;--strong:#f4f4f8;--muted:#8b8b99;
+  --violet:#8b5cf6;--bright:#c9a7ff;--cyan:#22d3ee;--pink:#f472b6;--green:#34d399;--amber:#fbbf24;
+  --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --sans:"Geist",Inter,system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 16px 64px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.eyebrow b{color:var(--violet);font-weight:500}
+h1{font:600 26px/1.2 var(--sans);color:var(--strong);margin:10px 0 8px;letter-spacing:-.01em}
+h2{font:600 16px/1.3 var(--sans);color:var(--strong);margin:0}
+.lede{max-width:68ch;color:var(--muted);margin:0}
+.lede b{color:var(--text);font-weight:500}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 14px}
+.seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--border)}
+.seg button{appearance:none;border:0;background:none;color:var(--muted);font:500 12.5px/1 var(--sans);padding:8px 12px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--strong);box-shadow:inset 0 0 0 1px var(--border-hi)}
+.seg button:focus-visible,.card:focus-visible,.dl:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
+.check{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer}
+.check input{accent-color:var(--violet);width:15px;height:15px}
+
+/* the mock chat turn */
+.stage{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:28px;align-items:start}
+.turn{min-width:0}
+.who{font:600 13px/1 var(--sans);color:var(--strong);margin-bottom:10px}
+.who span{font:400 10.5px/1 var(--mono);color:var(--muted);margin-left:6px}
+.toolcall{display:flex;align-items:center;gap:9px;min-height:36px;padding:0 10px;border-radius:11px;border:1px solid var(--border);background:rgba(14,14,21,.85);margin-bottom:8px;font-size:12.5px}
+.toolcall b{font:500 12px/1 var(--mono);color:var(--strong);flex:none}
+.toolcall .args{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.st{flex:none;font:500 10.5px/1 var(--mono);padding:4px 7px;border-radius:6px;background:rgba(139,92,246,.14);color:var(--bright)}
+.st.done{background:rgba(52,211,153,.12);color:var(--green)}
+.ms{flex:none;font:400 11px/1 var(--mono);color:var(--muted);min-width:38px;text-align:right}
+.frame{position:relative;width:100%;max-width:420px;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#0d0d16}
+.frame canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
+.frame .px{transition:opacity .4s ease}
+.frame .px.gone{opacity:0}
+.cap{display:flex;align-items:center;gap:10px;min-height:32px;margin-top:8px;font:400 12px/1.3 var(--mono);color:var(--muted)}
+.cap .sq{color:var(--violet)}
+.cap b{color:var(--text);font-weight:500}
+.dl{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:9px;border:1px solid var(--border-hi);background:var(--raised);color:var(--strong);font:500 12.5px/1 var(--sans);text-decoration:none}
+.dl:hover{border-color:var(--bright)}
+.dl svg{width:14px;height:14px}
+.reply{margin:10px 0 0;font-size:13.5px;color:var(--text);transition:opacity .3s}
+.reply[hidden]{display:block;opacity:0}
+.about{min-width:0}
+.about .num{font:500 11px/1 var(--mono);color:var(--violet);letter-spacing:.08em}
+.about h2{margin:8px 0 6px;font-size:20px}
+.about p{margin:0 0 10px;color:var(--muted);max-width:52ch}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:14px 0 0;font-size:13px}
+.facts dt{font:500 11px/1.7 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.facts dd{margin:0;color:var(--text)}
+.note{margin-top:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--raised);font-size:12.5px;color:var(--muted)}
+
+/* the ten ideas */
+.sec{display:flex;align-items:baseline;gap:12px;margin:34px 0 14px}
+.sec span{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{appearance:none;text-align:left;color:inherit;font:inherit;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:9px;transition:border-color .15s,background .15s}
+.card:hover{border-color:var(--border-hi)}
+.card[aria-pressed="true"]{border-color:var(--violet);background:rgba(139,92,246,.08)}
+.card canvas{width:100%;aspect-ratio:1;border-radius:9px;display:block;background:#0d0d16}
+.card .n{font:500 10.5px/1 var(--mono);color:var(--violet);letter-spacing:.08em}
+.card h3{margin:3px 0 2px;font:600 13.5px/1.3 var(--sans);color:var(--strong)}
+.card p{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr);gap:18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="eyebrow"><b>■</b> Donna // image generation // mockup</span>
+  <h1>Ten pixel loaders for "Donna is making a picture"</h1>
+  <p class="lede">Each idea fills the picture's place in the chat while Cloudflare works, then reveals the image and shows the
+    <b>Download</b> button. Pick one below to see it in a chat turn. Cloudflare sends no progress, so every loader is
+    open-ended and the counter shows real elapsed time.</p>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Simulated generation time">
+      <button type="button" data-dur="15" aria-pressed="false">FLUX.2 klein · about 15 s</button>
+      <button type="button" data-dur="6" aria-pressed="true">Demo · 6 s</button>
+      <button type="button" data-dur="3" aria-pressed="false">FLUX.1 schnell · about 3 s</button>
+      <button type="button" data-dur="0" aria-pressed="false">Keep loading</button>
+    </div>
+    <label class="check"><input type="checkbox" id="reduced"> Reduced motion (still frame)</label>
+  </div>
+
+  <section class="stage" aria-label="Preview in a chat turn">
+    <div class="turn">
+      <div class="who">Donna <span>12:50 am</span></div>
+      <div class="toolcall">
+        <b>generate_image</b>
+        <span class="args">prompt: Watercolor painting of mountains at dusk above a calm lake, a low sun on the right…</span>
+        <span class="st" id="st">Running</span><span class="ms" id="ms">0.0s</span>
+      </div>
+      <div class="frame">
+        <canvas id="final" width="840" height="840" aria-label="The finished sample picture"></canvas>
+        <canvas id="loader" class="px" aria-hidden="true"></canvas>
+      </div>
+      <div class="cap" id="cap" role="status"></div>
+      <p class="reply" id="reply" hidden>Here is your dusk mountain scene.</p>
+    </div>
+    <div class="about">
+      <span class="num" id="a-num"></span>
+      <h2 id="a-name"></h2>
+      <p id="a-blurb"></p>
+      <dl class="facts">
+        <dt>Reveal</dt><dd id="a-reveal"></dd>
+        <dt>At 3 s</dt><dd id="a-short"></dd>
+        <dt>Mood</dt><dd id="a-mood"></dd>
+      </dl>
+      <div class="note">The sample picture is drawn by this page. In Donna the loader sits where the generated image will appear, at the same 420 px square.</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>The ten ideas</h2><span>Select one to preview it above.</span></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const G = 60;  // logical pixels per side; the canvas is scaled up without smoothing
+  const rgb = (r, g, b) => ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
+  const mix = (a, b, t) => {
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const ar = a & 255, ag = (a >> 8) & 255, ab = (a >> 16) & 255;
+    return rgb(ar + ((b & 255) - ar) * t | 0, ag + (((b >> 8) & 255) - ag) * t | 0, ab + (((b >> 16) & 255) - ab) * t | 0);
+  };
+  const hash = (x, y, z = 0) => {
+    let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(z | 0, 1274126177);
+    h = Math.imul(h ^ (h >>> 13), 1103515245);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  };
+  const C = { bg: rgb(13, 13, 22), dim: rgb(24, 22, 40), deep: rgb(42, 31, 110), violet: rgb(139, 92, 246), bright: rgb(201, 167, 255),
+              cyan: rgb(34, 211, 238), pink: rgb(244, 114, 182), white: rgb(244, 240, 255) };
+  // a value 0..1 → Donna's palette, mostly dark violets with a few bright accents
+  const tone = (h) => h < .5 ? mix(C.bg, C.deep, .25 + h) : h < .78 ? mix(C.deep, C.violet, (h - .5) * 3.2) : h < .92 ? C.violet : h < .97 ? C.cyan : C.pink;
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const fill = (b, c) => b.fill(c);
+
+  /* ------------------------------------------------------------------ the sample picture */
+  function paint(size) {
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = size;
+    const c = cv.getContext("2d"), W = size, H = size;
+    let seed = 7;
+    const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const sky = c.createLinearGradient(0, 0, 0, H * .66);
+    sky.addColorStop(0, "#150c3a"); sky.addColorStop(.45, "#4b2385"); sky.addColorStop(.8, "#e0679f"); sky.addColorStop(1, "#fbbf77");
+    c.fillStyle = sky; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(255,255,255,${.25 + rnd() * .6})`; const r = W * (.0012 + rnd() * .002); c.beginPath(); c.arc(rnd() * W, rnd() * H * .36, r, 0, 7); c.fill(); }
+    const sx = W * .7, sy = H * .5;
+    const glow = c.createRadialGradient(sx, sy, 0, sx, sy, W * .3);
+    glow.addColorStop(0, "rgba(255,236,190,.95)"); glow.addColorStop(.25, "rgba(255,190,140,.45)"); glow.addColorStop(1, "rgba(255,160,160,0)");
+    c.fillStyle = glow; c.fillRect(0, 0, W, H);
+    c.fillStyle = "#fff3d2"; c.beginPath(); c.arc(sx, sy, W * .075, 0, 7); c.fill();
+    const ridge = (base, amp, color, step) => {
+      c.fillStyle = color; c.beginPath(); c.moveTo(0, H);
+      let y = base + (rnd() - .5) * amp;
+      for (let x = 0; x <= W + step; x += step) { y += (rnd() - .5) * amp; y = Math.max(base - amp * 1.6, Math.min(base + amp * 1.1, y)); c.lineTo(x, y * H); }
+      c.lineTo(W, H); c.closePath(); c.fill();
+    };
+    ridge(.52, .07, "#5a3a9c", W / 16); ridge(.6, .06, "#352069", W / 22); ridge(.67, .04, "#1c1242", W / 30);
+    const lake = c.createLinearGradient(0, H * .7, 0, H);
+    lake.addColorStop(0, "#3a2470"); lake.addColorStop(.35, "#20164d"); lake.addColorStop(1, "#0b0920");
+    c.fillStyle = lake; c.fillRect(0, H * .72, W, H * .28);
+    for (let i = 0; i < 26; i++) { const y = H * (.73 + rnd() * .25), w = W * (.03 + rnd() * .12); c.fillStyle = `rgba(255,205,160,${.1 + rnd() * .3})`; c.fillRect(sx - w / 2 + (rnd() - .5) * W * .12, y, w, Math.max(1, H * .004)); }
+    return cv;
+  }
+  const HI = paint(840);
+  const sampled = (k) => {  // the sample at k×k blocks, as G×G pixels
+    const small = document.createElement("canvas"); small.width = small.height = k;
+    small.getContext("2d").drawImage(HI, 0, 0, k, k);
+    const out = document.createElement("canvas"); out.width = out.height = G;
+    const c = out.getContext("2d"); c.imageSmoothingEnabled = false; c.drawImage(small, 0, 0, G, G);
+    return new Uint32Array(c.getImageData(0, 0, G, G).data.buffer);
+  };
+  const LEVELS = [3, 6, 12, 20, 30, 60].map(sampled);
+  const LO = LEVELS[LEVELS.length - 1];
+
+  /* a square spiral over a 20×20 grid, from the centre outwards */
+  const SP = 20, SPIRAL = new Int16Array(SP * SP).fill(-1);
+  (() => {
+    let x = SP / 2, y = SP / 2, dx = -1, dy = 0, run = 1, n = 0, guard = 0;
+    const put = () => { if (x >= 0 && y >= 0 && x < SP && y < SP && SPIRAL[y * SP + x] < 0) SPIRAL[y * SP + x] = n++; };
+    put();
+    while (n < SP * SP && guard++ < 400) {
+      for (let turn = 0; turn < 2; turn++) { for (let i = 0; i < run; i++) { x += dx; y += dy; put(); } [dx, dy] = [-dy, dx]; }
+      run++;
+    }
+  })();
+
+  /* ------------------------------------------------------------------ reveals: loader pixels → the picture */
+  const REVEAL = {
+    mosaic: { label: "The picture sharpens from big blocks to fine pixels.",
+      run: (b, p) => b.set(LEVELS[Math.min(LEVELS.length - 1, Math.floor(p * LEVELS.length))]) },
+    rows: { label: "A bright line prints the picture row by row.",
+      run: (b, p) => { const edge = Math.floor(p * (G + 1)); for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) { const i = y * G + x; if (y < edge) b[i] = LO[i]; else if (y === edge) b[i] = C.white; } } },
+    scatter: { label: "Pixels switch to the picture in random order.",
+      run: (b, p) => { for (let i = 0; i < G * G; i++) if (hash(i % G, (i / G) | 0, 91) < p * 1.02) b[i] = LO[i]; } },
+    dither: { label: "The picture fades in through the same dither pattern.",
+      run: (b, p) => { for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) if ((BAYER[(y & 3) * 4 + (x & 3)] + .5) / 16 < p * 1.05) b[y * G + x] = LO[y * G + x]; } },
+    tiles: { label: "Tiles turn over to the picture in a diagonal wave.",
+      run: (b, p) => { for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) { const d = (((x / 6) | 0) + ((y / 6) | 0)) / 18, q = p * 1.25 - d; if (q > .08) b[y * G + x] = LO[y * G + x]; else if (q > 0) b[y * G + x] = C.white; } } },
+    spiral: { label: "The picture unrolls from the centre along the spiral.",
+      run: (b, p) => { const lim = p * SP * SP * 1.02; for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) { const n = SPIRAL[((y / 3) | 0) * SP + ((x / 3) | 0)]; if (n < lim - 8) b[y * G + x] = LO[y * G + x]; else if (n < lim) b[y * G + x] = C.white; } } },
+  };
+
+  /* ------------------------------------------------------------------ the ten loaders */
+  const GLYPH = ["###########", "#.........#", "#.......o.#", "#.........#", "#...#.....#", "#..###..#.#", "#.#####.###", "###########"];
+  const DEMOS = [
+    { name: "Mosaic refine", blurb: "Colour blocks keep splitting into smaller ones, like a picture coming into focus, then start again.",
+      reveal: "mosaic", short: "Works: one full pass takes under 3 s.", mood: "Calm, closest to how the image really arrives.",
+      draw(b, t) {
+        const ks = [3, 6, 12, 20, 30], step = Math.floor(t / .55), k = ks[step % ks.length], cell = G / k, round = Math.floor(step / ks.length);
+        for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) b[y * G + x] = tone(hash((x / cell) | 0, (y / cell) | 0, round * 7 + k));
+      } },
+    { name: "Scanline print", blurb: "A bright line sweeps down and prints rows of pixels over the previous pass, like an old plotter.",
+      reveal: "rows", short: "Works: a sweep takes about 2.5 s.", mood: "Technical, steady.",
+      draw(b, t) {
+        const span = G + 6, pos = (t * 28) % span, sweep = Math.floor(t * 28 / span), y0 = Math.floor(pos);
+        for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+          const i = y * G + x;
+          if (y < y0) b[i] = tone(hash(x >> 1, y >> 1, sweep));
+          else if (y === y0) b[i] = C.white;
+          else if (y === y0 + 1) b[i] = C.bright;
+          else b[i] = mix(C.bg, tone(hash(x >> 1, y >> 1, sweep - 1)), sweep ? .38 : .0);
+        }
+      } },
+    { name: "Falling pixels", blurb: "Coloured grains drop from the top and pile up until the frame is full, then drain away.",
+      reveal: "scatter", short: "Partly: the frame is only about half full by 3 s.", mood: "Playful, the most eye-catching.",
+      init(s) { s.n = 30; s.g = new Uint8Array(900); s.acc = 0; s.last = 0; s.drain = false; },
+      draw(b, t, s) {
+        const n = s.n, g = s.g;
+        s.acc += Math.min(.2, Math.max(0, t - s.last)); s.last = t;
+        while (s.acc > 1 / 30) {
+          s.acc -= 1 / 30;
+          if (s.drain) g.fill(0, n * (n - 1));
+          for (let y = n - 2; y >= 0; y--) for (let k = 0; k < n; k++) {
+            const x = (y & 1) ? k : n - 1 - k, i = y * n + x, v = g[i];
+            if (!v) continue;
+            const side = Math.random() < .5 ? -1 : 1;
+            if (!g[i + n]) { g[i + n] = v; g[i] = 0; }
+            else if (x + side >= 0 && x + side < n && !g[i + n + side]) { g[i + n + side] = v; g[i] = 0; }
+            else if (x - side >= 0 && x - side < n && !g[i + n - side]) { g[i + n - side] = v; g[i] = 0; }
+          }
+          let count = 0;
+          for (let i = 0; i < 900; i++) if (g[i]) count++;
+          if (s.drain) { if (!count) s.drain = false; }
+          else {
+            for (let k = 0; k < 6; k++) { const x = (Math.random() * n) | 0; if (!g[x]) { const r = Math.random(); g[x] = r < .5 ? 1 : r < .8 ? 2 : r < .92 ? 3 : 4; } }
+            if (count > 800) s.drain = true;
+          }
+        }
+        const pal = [C.bg, mix(C.deep, C.violet, .45), C.violet, C.cyan, C.pink];
+        for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) b[y * G + x] = pal[g[(y >> 1) * n + (x >> 1)]];
+      } },
+    { name: "Dither waves", blurb: "Slow waves rendered with a two-colour dither pattern, the way early computer graphics drew gradients.",
+      reveal: "dither", short: "Works: it has no cycle, so any length looks finished.", mood: "Retro, quiet, never distracting.",
+      draw(b, t) {
+        for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+          const thr = (BAYER[(y & 3) * 4 + (x & 3)] + .5) / 16;
+          const v = (Math.sin(x * .16 + t * 1.3) + Math.sin(y * .13 - t * 1.05) + Math.sin((x + y) * .09 + t * .7) + 3) / 6;
+          const w = (Math.sin(x * .07 - t * .6) + Math.sin(y * .1 + t * .45) + 2) / 4;
+          b[y * G + x] = v > thr ? (w > thr ? C.cyan : C.violet) : C.bg;
+        }
+      } },
+    { name: "Living cells", blurb: "Conway's Game of Life: cells are born cyan, age to violet and leave a faint trail when they die.",
+      reveal: "scatter", short: "Works: it is busy from the first frame.", mood: "Organic, different every time.",
+      init(s) { s.a = new Uint8Array(G * G); s.n = new Uint8Array(G * G); s.tr = new Float32Array(G * G); s.acc = 0; s.last = 0; s.age = 0; this.seed(s); },
+      seed(s) { for (let i = 0; i < G * G; i++) s.a[i] = Math.random() < .3 ? 1 : 0; s.age = 0; },
+      draw(b, t, s) {
+        s.acc += Math.min(.3, Math.max(0, t - s.last)); s.last = t;
+        while (s.acc > .1) {
+          s.acc -= .1; s.age++;
+          let alive = 0;
+          for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+            let c = 0;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && s.a[((y + dy + G) % G) * G + (x + dx + G) % G]) c++;
+            const i = y * G + x, was = s.a[i];
+            s.n[i] = was ? (c === 2 || c === 3 ? Math.min(250, was + 1) : 0) : (c === 3 ? 1 : 0);
+            if (s.n[i]) alive++; else if (was) s.tr[i] = 1;
+          }
+          [s.a, s.n] = [s.n, s.a];
+          if (alive < 160 || s.age > 90) this.seed(s);
+        }
+        for (let i = 0; i < G * G; i++) {
+          const v = s.a[i];
+          if (v) b[i] = v < 2 ? C.cyan : v < 5 ? mix(C.cyan, C.violet, (v - 1) / 4) : mix(C.violet, C.deep, Math.min(.6, (v - 5) / 20));
+          else { b[i] = mix(C.bg, C.deep, s.tr[i] * .7); s.tr[i] *= .93; }
+        }
+      } },
+    { name: "Tile flip", blurb: "A grid of tiles turns over in ripples that travel across the frame, like map chunks loading in a game.",
+      reveal: "tiles", short: "Works: ripples are continuous.", mood: "Game-like, rhythmic.",
+      draw(b, t) {
+        fill(b, C.bg);
+        const ox = 4.5 + Math.sin(t * .5) * 4, oy = 4.5 + Math.cos(t * .37) * 4;
+        for (let ty = 0; ty < 10; ty++) for (let tx = 0; tx < 10; tx++) {
+          const f = Math.sin(t * 2.6 - Math.hypot(tx - ox, ty - oy) * .75), w = Math.round(Math.abs(f) * 5), h = hash(tx, ty, 3);
+          const col = f > 0 ? mix(C.deep, C.violet, .3 + h * .6) : (h > .82 ? C.cyan : h > .7 ? C.pink : mix(C.bg, C.deep, .9));
+          const x0 = tx * 6 + ((5 - w) >> 1);
+          for (let y = ty * 6; y < ty * 6 + 5; y++) for (let x = x0; x < x0 + w; x++) b[y * G + x] = col;
+        }
+      } },
+    { name: "Border runner", blurb: "A comet of pixels runs around the frame while a small picture icon pulses in the middle.",
+      reveal: "mosaic", short: "Works: one lap takes about 2.5 s.", mood: "Minimal, the least busy of the ten.",
+      draw(b, t) {
+        fill(b, C.bg);
+        const n = 30, side = n - 3, L = side * 4, head = Math.floor(t * 42) % L;
+        const at = (k) => k < side ? [1 + k, 1] : k < side * 2 ? [n - 2, 1 + k - side] : k < side * 3 ? [n - 2 - (k - side * 2), n - 2] : [1, n - 2 - (k - side * 3)];
+        const dot = (cx, cy, col) => { for (let d = 0; d < 4; d++) b[(cy * 2 + (d >> 1)) * G + cx * 2 + (d & 1)] = col; };
+        for (let k = 0; k < L; k++) { const [x, y] = at(k); dot(x, y, C.dim); }
+        for (let i = 44; i >= 0; i--) { const [x, y] = at((head - i + L) % L), f = i / 44; dot(x, y, mix(mix(C.white, C.cyan, Math.min(1, f * 6)), mix(C.violet, C.dim, f), f)); }
+        const pulse = .55 + .45 * Math.sin(t * 3.2), gx = 19, gy = 22;
+        GLYPH.forEach((row, ry) => [...row].forEach((ch, rx) => {
+          if (ch === ".") return;
+          const col = ch === "o" ? mix(C.dim, C.pink, pulse) : ry === 0 || ry === 7 || rx === 0 || rx === 10 ? mix(C.dim, C.bright, pulse) : mix(C.dim, C.violet, pulse);
+          for (let d = 0; d < 4; d++) b[(gy + ry * 2 + (d >> 1)) * G + gx + rx * 2 + (d & 1)] = col;
+        }));
+      } },
+    { name: "Spiral fill", blurb: "Dots light up in a spiral from the centre to the edges, then go dark again in the same order.",
+      reveal: "spiral", short: "Partly: one fill takes 3 s, so short jobs end mid-spiral.", mood: "Hypnotic, shows a clear direction.",
+      draw(b, t) {
+        const N = SP * SP, cycle = 5.6, ph = (t % cycle) / cycle, front = ph < .55 ? (ph / .55) * N : N, back = ph < .55 ? 0 : ((ph - .55) / .45) * N;
+        for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+          const i = y * G + x;
+          if (x % 3 === 2 || y % 3 === 2) { b[i] = C.bg; continue; }
+          const n = SPIRAL[((y / 3) | 0) * SP + ((x / 3) | 0)];
+          if (n >= back && n < front) b[i] = ph < .55 && front - n < 7 ? mix(C.white, C.cyan, (front - n) / 7) : mix(C.violet, C.pink, n / N);
+          else b[i] = C.dim;
+        }
+      } },
+    { name: "Static tuning in", blurb: "TV static with a rolling band, where coloured blocks of a picture keep almost breaking through.",
+      reveal: "scatter", short: "Works: it has no cycle.", mood: "Moody; the most motion, so the least restful.",
+      draw(b, t) {
+        const f = Math.floor(t * 16), ghost = .5 + .5 * Math.sin(t * 1.4);
+        for (let y = 0; y < G; y++) {
+          const jump = hash(y >> 2, f >> 2, 5) > .94 ? ((hash(y >> 2, f, 6) * 9) | 0) - 4 : 0, band = .5 + .5 * Math.sin((y - t * 24) * .12);
+          for (let x = 0; x < G; x++) {
+            const xx = (x + jump + G) % G, n = hash(xx, y, f);
+            let col = mix(C.bg, n > .985 ? C.cyan : C.bright, n * (.22 + .42 * band));
+            col = mix(col, tone(hash((xx / 10) | 0, (y / 10) | 0, 11)), ghost * .34);
+            b[y * G + x] = col;
+          }
+        }
+      } },
+    { name: "Donna at work", blurb: "Donna's orb in pixel art, bobbing and glancing around while sparkles appear and three dots count time.",
+      reveal: "mosaic", short: "Works: it reads as a character at any length.", mood: "Friendly, on brand, gives Donna a face.",
+      draw(b, t) {
+        fill(b, C.bg);
+        const cx = 30, cy = 27 + Math.round(Math.sin(t * 2.2) * 1.5), r = 13;
+        for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
+          const d = Math.hypot(x - cx + .5, y - cy + .5);
+          if (d > r) continue;
+          let col = C.deep;
+          col = mix(col, C.violet, 1 - Math.hypot(x - (cx - 5 + Math.sin(t * .9) * 3), y - (cy - 4)) / 12);
+          col = mix(col, C.cyan, (1 - Math.hypot(x - (cx + 6), y - (cy + 4 + Math.cos(t * .8) * 3)) / 10) * .9);
+          col = mix(col, C.pink, (1 - Math.hypot(x - (cx - 2 + Math.sin(t * .6) * 2), y - (cy + 9)) / 8) * .8);
+          if (d > r - 1.6) col = mix(col, C.bg, .45);
+          b[y * G + x] = col;
+        }
+        const blink = (t % 3.4) > 3.24, look = Math.round(Math.sin(t * .7) * 1.6);
+        for (const ex of [cx - 5 + look, cx + 2 + look]) for (let y = blink ? cy : cy - 3; y < cy + (blink ? 1 : 3); y++) for (let x = ex; x < ex + 3; x++) b[y * G + x] = C.white;
+        const stars = [[9, 12], [50, 9], [53, 30], [7, 36], [46, 46], [14, 49]];
+        stars.forEach(([x, y], i) => {
+          const ph = (t * .55 + i * .37) % 1, col = [C.cyan, C.pink, C.white][i % 3];
+          if (ph < .45) b[y * G + x] = col;
+          if (ph > .1 && ph < .3) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) b[(y + dy) * G + x + dx] = mix(C.bg, col, .7);
+        });
+        const lit = Math.floor(t * 2.5) % 4;
+        for (let k = 0; k < 3; k++) for (let d = 0; d < 4; d++) b[(51 + (d >> 1)) * G + 25 + k * 4 + (d & 1)] = k < lit ? C.bright : C.dim;
+      } },
+  ];
+
+  /* ------------------------------------------------------------------ plumbing */
+  class Loader {
+    constructor(canvas, demo) {
+      canvas.width = canvas.height = G;
+      this.ctx = canvas.getContext("2d");
+      this.img = this.ctx.createImageData(G, G);
+      this.buf = new Uint32Array(this.img.data.buffer);
+      this.demo = demo;
+      this.reset();
+    }
+    reset() { this.s = {}; if (this.demo.init) this.demo.init(this.s); }
+    draw(t, reveal) {
+      this.demo.draw(this.buf, t, this.s);
+      if (reveal !== undefined) REVEAL[this.demo.reveal].run(this.buf, reveal);
+      this.ctx.putImageData(this.img, 0, 0);
+    }
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const grid = $("grid"), cap = $("cap"), st = $("st"), ms = $("ms"), reply = $("reply"), loaderCanvas = $("loader");
+  $("final").getContext("2d").drawImage(HI, 0, 0);
+  const dataUrl = HI.toDataURL("image/png");
+  const STILL = 2.3, REVEAL_S = 1.3, HOLD_S = 4.5;
+  let reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, dur = 6, sel = 0, stage, t0 = performance.now(), done = false, lastDraw = 0;
+  $("reduced").checked = reduced;
+
+  const cards = DEMOS.map((d, i) => {
+    const el = document.createElement("button");
+    el.type = "button"; el.className = "card"; el.setAttribute("aria-pressed", "false");
+    el.innerHTML = `<canvas class="px" aria-hidden="true"></canvas><div><span class="n">${String(i + 1).padStart(2, "0")}</span><h3></h3><p></p></div>`;
+    el.querySelector("h3").textContent = d.name;
+    el.querySelector("p").textContent = d.blurb;
+    el.addEventListener("click", () => select(i));
+    grid.appendChild(el);
+    return { el, loader: new Loader(el.querySelector("canvas"), d) };
+  });
+
+  function restart() {
+    t0 = performance.now(); done = false;
+    stage.reset();
+    loaderCanvas.classList.remove("gone");
+    st.textContent = "Running"; st.className = "st";
+    reply.hidden = true;
+  }
+  function select(i) {
+    sel = i;
+    const d = DEMOS[i];
+    cards.forEach((c, k) => c.el.setAttribute("aria-pressed", String(k === i)));
+    stage = new Loader(loaderCanvas, d);
+    $("a-num").textContent = `IDEA ${String(i + 1).padStart(2, "0")} OF ${DEMOS.length}`;
+    $("a-name").textContent = d.name;
+    $("a-blurb").textContent = d.blurb;
+    $("a-reveal").textContent = REVEAL[d.reveal].label;
+    $("a-short").textContent = d.short;
+    $("a-mood").textContent = d.mood;
+    restart();
+  }
+  function finish(seconds) {
+    done = true;
+    stage.buf.set(LO); stage.ctx.putImageData(stage.img, 0, 0);
+    loaderCanvas.classList.add("gone");
+    st.textContent = "Done"; st.className = "st done";
+    ms.textContent = `${seconds.toFixed(1)}s`;
+    cap.innerHTML = `<a class="dl" download="donna-image.png"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>Download</a><span>1024 × 1024</span>`;
+    cap.querySelector("a").href = dataUrl;
+    reply.hidden = false;
+  }
+
+  document.querySelectorAll(".seg button").forEach((btn) => btn.addEventListener("click", () => {
+    dur = Number(btn.dataset.dur);
+    document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === btn)));
+    restart();
+  }));
+  $("reduced").addEventListener("change", (e) => { reduced = e.target.checked; restart(); });
+
+  function tick(now) {
+    requestAnimationFrame(tick);
+    if (now - lastDraw < 40) return;  // about 24 frames a second keeps the pixels feeling stepped
+    lastDraw = now;
+    const t = now / 1000;
+    cards.forEach((c, i) => c.loader.draw(reduced ? STILL : t + i * 1.7));
+    const el = (now - t0) / 1000;
+    if (dur && el >= dur) {
+      const p = (el - dur) / REVEAL_S;
+      if (p < 1) stage.draw(reduced ? STILL : el, reduced ? 1 : p);
+      else if (!done) finish(dur);
+      else if (el > dur + REVEAL_S + HOLD_S) restart();
+      return;
+    }
+    stage.draw(reduced ? STILL : el);
+    ms.textContent = `${el.toFixed(1)}s`;
+    const whole = Math.floor(el);
+    if (cap.dataset.s !== String(whole) || cap.querySelector("a")) {
+      cap.dataset.s = String(whole);
+      cap.innerHTML = `<span class="sq">■</span><span>Generating with FLUX.2 klein 4B · <b>${whole} s</b></span>`;
+    }
+  }
+  select(0);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

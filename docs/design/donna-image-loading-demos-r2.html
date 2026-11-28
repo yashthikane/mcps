@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · image loading ideas, round 2</title>
+<style>
+:root{
+  --bg:#08080d;--panel:#0e0e15;--raised:#14141d;--border:#23232f;--border-hi:#3a3a4c;
+  --text:#e2e2e8;--strong:#f4f4f8;--muted:#8b8b99;
+  --violet:#8b5cf6;--bright:#c9a7ff;--cyan:#22d3ee;--pink:#f472b6;--green:#34d399;
+  --mono:"Geist Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --sans:"Geist",Inter,system-ui,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 16px 64px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.eyebrow b{color:var(--violet);font-weight:500}
+h1{font:600 26px/1.2 var(--sans);color:var(--strong);margin:10px 0 8px;letter-spacing:-.01em}
+h2{font:600 16px/1.3 var(--sans);color:var(--strong);margin:0}
+.lede{max-width:70ch;color:var(--muted);margin:0}
+.lede b{color:var(--text);font-weight:500}
+a{color:var(--bright)}
+
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:22px 0 14px}
+.seg{display:inline-flex;flex-wrap:wrap;padding:3px;border-radius:10px;background:var(--panel);border:1px solid var(--border)}
+.seg button{appearance:none;border:0;background:none;color:var(--muted);font:500 12.5px/1 var(--sans);padding:8px 12px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--strong);box-shadow:inset 0 0 0 1px var(--border-hi)}
+.seg button:focus-visible,.card:focus-visible,.dl:focus-visible,a:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
+.check{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer}
+.check input{accent-color:var(--violet);width:15px;height:15px}
+
+.stage{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:28px;align-items:start}
+.turn{min-width:0}
+.who{font:600 13px/1 var(--sans);color:var(--strong);margin-bottom:10px}
+.who span{font:400 10.5px/1 var(--mono);color:var(--muted);margin-left:6px}
+.toolcall{display:flex;align-items:center;gap:9px;min-height:36px;padding:0 10px;border-radius:11px;border:1px solid var(--border);background:rgba(14,14,21,.85);margin-bottom:8px;font-size:12.5px}
+.toolcall b{font:500 12px/1 var(--mono);color:var(--strong);flex:none}
+.toolcall .args{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.st{flex:none;font:500 10.5px/1 var(--mono);padding:4px 7px;border-radius:6px;background:rgba(139,92,246,.14);color:var(--bright)}
+.st.done{background:rgba(52,211,153,.12);color:var(--green)}
+.ms{flex:none;font:400 11px/1 var(--mono);color:var(--muted);min-width:38px;text-align:right}
+.frame{position:relative;width:100%;max-width:420px;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#0b0b12}
+.frame canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#loader{transition:opacity .35s ease}
+#loader.gone{opacity:0}
+.cap{display:flex;align-items:center;gap:10px;min-height:32px;margin-top:8px;font:400 12px/1.3 var(--mono);color:var(--muted)}
+.cap .sq{color:var(--violet)}
+.cap b{color:var(--text);font-weight:500}
+.dl{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:9px;border:1px solid var(--border-hi);background:var(--raised);color:var(--strong);font:500 12.5px/1 var(--sans);text-decoration:none}
+.dl:hover{border-color:var(--bright)}
+.dl svg{width:14px;height:14px}
+.reply{margin:10px 0 0;font-size:13.5px;color:var(--text);transition:opacity .3s}
+.reply[hidden]{display:block;opacity:0}
+.about{min-width:0}
+.about .num{font:500 11px/1 var(--mono);color:var(--violet);letter-spacing:.08em}
+.about h2{margin:8px 0 6px;font-size:20px}
+.about p{margin:0 0 10px;color:var(--muted);max-width:54ch}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 14px;margin:14px 0 0;font-size:13px}
+.facts dt{font:500 11px/1.7 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.facts dd{margin:0;color:var(--text);overflow-wrap:anywhere}
+.note{margin-top:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--raised);font-size:12.5px;color:var(--muted)}
+
+.sec{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:34px 0 14px}
+.sec span{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{appearance:none;text-align:left;color:inherit;font:inherit;cursor:pointer;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:9px;transition:border-color .15s,background .15s}
+.card:hover{border-color:var(--border-hi)}
+.card[aria-pressed="true"]{border-color:var(--violet);background:rgba(139,92,246,.08)}
+.card canvas{width:100%;aspect-ratio:1;border-radius:9px;display:block;background:#0b0b12}
+.card .n{font:500 10.5px/1 var(--mono);color:var(--violet);letter-spacing:.08em}
+.card h3{margin:3px 0 2px;font:600 13.5px/1.3 var(--sans);color:var(--strong)}
+.card p{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
+.card .from{margin-top:5px;font:400 10.5px/1.4 var(--mono);color:var(--muted)}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr);gap:18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="eyebrow"><b>■</b> Donna // image generation // mockup, round 2</span>
+  <h1>Ten loaders drawn from how the best products handle the wait</h1>
+  <p class="lede">Each idea starts from a real reference: an AI product's own generating state, a design system's guidance, or a
+    technique from a well-known creative-coding tutorial. They are <b>reinterpretations in Donna's colours</b>, not copies.
+    Pick one to see it in a chat turn, through to the reveal and the <b>Download</b> button.</p>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Simulated generation time">
+      <button type="button" data-dur="15" aria-pressed="false">FLUX.2 klein · about 15 s</button>
+      <button type="button" data-dur="6" aria-pressed="true">Demo · 6 s</button>
+      <button type="button" data-dur="3" aria-pressed="false">FLUX.1 schnell · about 3 s</button>
+      <button type="button" data-dur="0" aria-pressed="false">Keep loading</button>
+    </div>
+    <label class="check"><input type="checkbox" id="reduced"> Reduced motion (still frame)</label>
+  </div>
+
+  <section class="stage" aria-label="Preview in a chat turn">
+    <div class="turn">
+      <div class="who">Donna <span>12:50 am</span></div>
+      <div class="toolcall">
+        <b>generate_image</b>
+        <span class="args">prompt: Watercolor painting of mountains at dusk above a calm lake, a low sun on the right…</span>
+        <span class="st" id="st">Running</span><span class="ms" id="ms">0.0s</span>
+      </div>
+      <div class="frame">
+        <canvas id="final" width="840" height="840" aria-label="The finished sample picture"></canvas>
+        <canvas id="loader" aria-hidden="true"></canvas>
+      </div>
+      <div class="cap" id="cap" role="status"></div>
+      <p class="reply" id="reply" hidden>Here is your dusk mountain scene.</p>
+    </div>
+    <div class="about">
+      <span class="num" id="a-num"></span>
+      <h2 id="a-name"></h2>
+      <p id="a-blurb"></p>
+      <dl class="facts">
+        <dt>Inspired by</dt><dd><a id="a-ref" target="_blank" rel="noopener noreferrer"></a></dd>
+        <dt>Reveal</dt><dd id="a-reveal"></dd>
+        <dt>At 3 s</dt><dd id="a-short"></dd>
+        <dt>Mood</dt><dd id="a-mood"></dd>
+      </dl>
+      <div class="note">Cloudflare sends no progress while it works, so all ten are open-ended and the counter shows real elapsed time. The sample picture is drawn by this page.</div>
+    </div>
+  </section>
+
+  <div class="sec"><h2>The ten ideas</h2><span>Select one to preview it above.</span></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const TAU = Math.PI * 2;
+  const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+  const ease = (x) => { x = clamp(x); return x * x * (3 - 2 * x); };
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const mix3 = (a, b, t) => { t = clamp(t); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; };
+  const pack = (c, a = 255) => ((a << 24) | ((c[2] & 255) << 16) | ((c[1] & 255) << 8) | (c[0] & 255)) >>> 0;
+  const css = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+  const hash = (x, y, z = 0) => {
+    let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(z | 0, 1274126177);
+    h = Math.imul(h ^ (h >>> 13), 1103515245);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  };
+  const V = [139, 92, 246], CY = [34, 211, 238], PK = [244, 114, 182], DEEP = [27, 20, 64], INK = [11, 11, 18], WHITE = [244, 240, 255], AMBER = [251, 191, 119];
+  const BG = "#0b0b12";
+
+  /* ------------------------------------------------------------------ the sample picture and versions of it */
+  function paint(size) {
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = size;
+    const c = cv.getContext("2d"), W = size, H = size;
+    let seed = 7;
+    const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const sky = c.createLinearGradient(0, 0, 0, H * .66);
+    sky.addColorStop(0, "#150c3a"); sky.addColorStop(.45, "#4b2385"); sky.addColorStop(.8, "#e0679f"); sky.addColorStop(1, "#fbbf77");
+    c.fillStyle = sky; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(255,255,255,${.25 + rnd() * .6})`; const r = W * (.0012 + rnd() * .002); c.beginPath(); c.arc(rnd() * W, rnd() * H * .36, r, 0, 7); c.fill(); }
+    const sx = W * .7, sy = H * .5;
+    const glow = c.createRadialGradient(sx, sy, 0, sx, sy, W * .3);
+    glow.addColorStop(0, "rgba(255,236,190,.95)"); glow.addColorStop(.25, "rgba(255,190,140,.45)"); glow.addColorStop(1, "rgba(255,160,160,0)");
+    c.fillStyle = glow; c.fillRect(0, 0, W, H);
+    c.fillStyle = "#fff3d2"; c.beginPath(); c.arc(sx, sy, W * .075, 0, 7); c.fill();
+    const ridge = (base, amp, color, step) => {
+      c.fillStyle = color; c.beginPath(); c.moveTo(0, H);
+      let y = base + (rnd() - .5) * amp;
+      for (let x = 0; x <= W + step; x += step) { y += (rnd() - .5) * amp; y = Math.max(base - amp * 1.6, Math.min(base + amp * 1.1, y)); c.lineTo(x, y * H); }
+      c.lineTo(W, H); c.closePath(); c.fill();
+    };
+    ridge(.52, .07, "#5a3a9c", W / 16); ridge(.6, .06, "#352069", W / 22); ridge(.67, .04, "#1c1242", W / 30);
+    const lake = c.createLinearGradient(0, H * .7, 0, H);
+    lake.addColorStop(0, "#3a2470"); lake.addColorStop(.35, "#20164d"); lake.addColorStop(1, "#0b0920");
+    c.fillStyle = lake; c.fillRect(0, H * .72, W, H * .28);
+    for (let i = 0; i < 26; i++) { const y = H * (.73 + rnd() * .25), w = W * (.03 + rnd() * .12); c.fillStyle = `rgba(255,205,160,${.1 + rnd() * .3})`; c.fillRect(sx - w / 2 + (rnd() - .5) * W * .12, y, w, Math.max(1, H * .004)); }
+    return cv;
+  }
+  const HI = paint(840);
+  const shrink = (n) => { const cv = document.createElement("canvas"); cv.width = cv.height = n; const c = cv.getContext("2d"); c.imageSmoothingQuality = "high"; c.drawImage(HI, 0, 0, n, n); return cv; };
+  const SMALL = [5, 10, 20, 40, 84].map(shrink);                 // the picture at growing resolution
+  const pixels = (n) => shrink(n).getContext("2d").getImageData(0, 0, n, n).data;
+  const HI_BLUR = (() => { const a = shrink(22), b = document.createElement("canvas"); b.width = b.height = 420; const c = b.getContext("2d"); c.imageSmoothingQuality = "high"; c.drawImage(a, 0, 0, 420, 420); return b; })();
+  const GRAIN = (() => { const cv = document.createElement("canvas"); cv.width = cv.height = 128; const c = cv.getContext("2d"), im = c.createImageData(128, 128); for (let i = 0; i < 128 * 128; i++) { const v = Math.random() * 255; im.data[i * 4] = im.data[i * 4 + 1] = im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; } c.putImageData(im, 0, 0); return cv; })();
+  function grain(c, S, t, alpha) {
+    if (alpha <= 0) return;
+    const f = Math.floor(t * 14), ox = (hash(f, 1) * 128) | 0, oy = (hash(f, 2) * 128) | 0;
+    c.save(); c.globalAlpha = alpha; c.globalCompositeOperation = "overlay";
+    for (let y = -oy; y < S; y += 128) for (let x = -ox; x < S; x += 128) c.drawImage(GRAIN, x, y);
+    c.restore();
+  }
+  /* a small pixel buffer that is drawn scaled up and smoothed: a cheap way to get soft, shader-like fields */
+  function field(n) {
+    const cv = document.createElement("canvas"); cv.width = cv.height = n;
+    const c = cv.getContext("2d"), img = c.createImageData(n, n);
+    return { cv, n, buf: new Uint32Array(img.data.buffer), flush() { c.putImageData(img, 0, 0); } };
+  }
+  const paintField = (c, f, S) => { f.flush(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high"; c.drawImage(f.cv, 0, 0, S, S); };
+  const rounded = (c, x, y, w, h, r) => { c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); };
+  const superellipse = (th, e) => 1 / Math.pow(Math.pow(Math.abs(Math.cos(th)), e) + Math.pow(Math.abs(Math.sin(th)), e), 1 / e);
+  function sparkle(c, x, y, r, rot = 0) {  // a four-point star
+    c.beginPath();
+    for (let i = 0; i <= 48; i++) { const th = (i / 48) * TAU, rr = r * superellipse(th, .55); c.lineTo(x + Math.cos(th + rot) * rr, y + Math.sin(th + rot) * rr); }
+    c.closePath();
+  }
+
+  /* ------------------------------------------------------------------ the ten loaders
+     draw(c, S, t, p, s): c is a 2D context S units square, t is seconds, p is -1 while loading and 0..1 during the reveal. */
+  const N_SHAPE = 120;
+  const SHAPES = [() => 1, (th) => 1.28 * superellipse(th, .55), (th) => .93 * superellipse(th, 4), (th) => .88 + .12 * Math.cos(8 * th), (th) => .84 + .16 * Math.cos(3 * th)]
+    .map((fn) => Float32Array.from({ length: N_SHAPE }, (_, i) => fn((i / N_SHAPE) * TAU)));
+  const RAMP = " .,:;-=+*#%@";
+  const PIX24 = pixels(24), PIX28 = pixels(28);
+  const lum = (d, i) => (d[i * 4] * .2126 + d[i * 4 + 1] * .7152 + d[i * 4 + 2] * .0722) / 255;
+
+  const DEMOS = [
+    { name: "Top-down develop", ref: ["ChatGPT image generation, as described by observers", "https://cuwffoz.pages.dev/posts/chatgpt-s-new-image-generation-feels-like-dial-up-all-over-again"],
+      blurb: "A soft, out-of-focus colour field with film grain while Donna works. When the picture arrives it starts blurred and comes into focus from the top down.",
+      reveal: "A focus line travels down; everything above it is sharp.", short: "Works: the field has no cycle, and the reveal is the star.", mood: "Photographic, patient.",
+      init(s) { s.f = field(40); },
+      draw(c, S, t, p, s) {
+        const f = s.f, n = f.n;
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+          const u = x / n, v = y / n, a = .5 + .5 * Math.sin(u * 3.1 + t * .5 + Math.sin(v * 2.3 - t * .3)), b = .5 + .5 * Math.sin(v * 3.7 - t * .4 + Math.cos(u * 2.9 + t * .2));
+          f.buf[y * n + x] = pack(mix3(mix3(DEEP, V, a * .85), mix3(PK, CY, b), a * b * .6));
+        }
+        paintField(c, f, S);
+        if (p < 0) {
+          const y = (((t * .22) % 1.3) - .15) * S, g = c.createLinearGradient(0, y - S * .14, 0, y + S * .14);
+          g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(.5, "rgba(255,255,255,.09)"); g.addColorStop(1, "rgba(255,255,255,0)");
+          c.fillStyle = g; c.fillRect(0, 0, S, S);
+        } else {
+          c.globalAlpha = clamp(p / .18); c.drawImage(HI_BLUR, 0, 0, S, S); c.globalAlpha = 1;
+          const y0 = clamp((p - .12) / .88) * S * 1.14 - S * .14, strips = 12, h = S * .14 / strips, k = HI.height / S;
+          if (y0 > 0) c.drawImage(HI, 0, 0, HI.width, y0 * k, 0, 0, S, y0);
+          for (let i = 0; i < strips; i++) {
+            const y = y0 + i * h;
+            if (y + h <= 0 || y >= S) continue;
+            c.globalAlpha = 1 - (i + .5) / strips;
+            c.drawImage(HI, 0, Math.max(0, y) * k, HI.width, h * k, 0, Math.max(0, y), S, h);
+          }
+          c.globalAlpha = .35 * (1 - p); c.fillStyle = "#fff"; c.fillRect(0, y0 + S * .07, S, 1); c.globalAlpha = 1;
+        }
+        grain(c, S, t, p < 0 ? .16 : .16 * (1 - p));
+      } },
+    { name: "Latent preview", ref: ["Step-by-step previews in diffusion tools (Diffusers streaming previews)", "https://theneuralbase.com/diffusers/learn/advanced/streaming-generation-previews/"],
+      blurb: "A noisy smear that gains detail in visible steps, the way diffusion tools preview an image while it is still being denoised. Then it starts over with a new guess.",
+      reveal: "The real picture arrives the same way: five steps from smear to sharp.", short: "Works: one run of steps takes about 3 s.", mood: "Honest about how the model works.",
+      init(s) { s.f = [4, 7, 12, 20, 34].map(field); },
+      draw(c, S, t, p, s) {
+        if (p < 0) {
+          const step = Math.floor(t / .55), level = Math.min(4, step % 6), seed = Math.floor(step / 6), f = s.f[level], n = f.n;
+          for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+            const u = (x + .5) / n, v = (y + .5) / n;
+            let val = 0, amp = 1, tot = 0;
+            for (let o = 0; o <= level; o++) { const fr = 2.1 * Math.pow(1.9, o); val += amp * Math.sin(u * fr + hash(seed, o, 1) * TAU) * Math.sin(v * fr * .9 + hash(seed, o, 2) * TAU); tot += amp; amp *= .55; }
+            val = .5 + .5 * val / tot + (v - .5) * .5;
+            f.buf[y * n + x] = pack(val < .4 ? mix3(DEEP, V, val / .4) : val < .7 ? mix3(V, PK, (val - .4) / .3) : mix3(PK, AMBER, (val - .7) / .3));
+          }
+          paintField(c, f, S);
+          grain(c, S, t, .5 - level * .09);
+        } else {
+          const q = p * SMALL.length, i = Math.min(SMALL.length - 1, Math.floor(q));
+          c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
+          c.drawImage(SMALL[i], 0, 0, S, S);
+          if (i + 1 < SMALL.length) { c.globalAlpha = ease(q - i); c.drawImage(SMALL[i + 1], 0, 0, S, S); c.globalAlpha = 1; }
+          grain(c, S, t, .4 * (1 - p));
+        }
+      } },
+    { name: "Edge glow", ref: ["Apple Intelligence's glowing screen edge (open-source recreation)", "https://app.unpkg.com/apple-intelligence-glow@1.0.0/files/README.md"],
+      blurb: "The frame stays dark and calm while a band of colour circles its edge and breathes, as if the picture is being lit from behind.",
+      reveal: "The light floods inward, then the picture fades up through it.", short: "Works: it never has to finish a cycle.", mood: "Premium, quiet, very little motion.",
+      draw(c, S, t, p) {
+        const g = c.createConicGradient(t * .9, S / 2, S / 2);
+        [[0, V], [.18, CY], [.36, [96, 165, 250]], [.56, PK], [.76, AMBER], [1, V]].forEach(([o, col]) => g.addColorStop(o, css(col)));
+        const flood = p < 0 ? 0 : ease(p / .45), inset = S * (.05 + .016 * Math.sin(t * 1.7)) * (1 - flood);
+        c.fillStyle = g; c.fillRect(0, 0, S, S);
+        if (flood < 1) {
+          c.save(); c.filter = `blur(${(S * .05).toFixed(1)}px)`; c.globalAlpha = 1 - flood; c.fillStyle = BG;
+          rounded(c, inset, inset, S - inset * 2, S - inset * 2, S * .05); c.fill(); c.restore();
+        }
+        c.strokeStyle = g; c.lineWidth = 2; c.strokeRect(1, 1, S - 2, S - 2);
+        if (p >= 0) { c.globalAlpha = ease((p - .3) / .7); c.drawImage(HI, 0, 0, S, S); c.globalAlpha = 1; }
+      } },
+    { name: "Gradient shimmer", ref: ["Microsoft Fluent 2 wait guidance: the Copilot gradient shimmer", "https://fluent2.microsoft.design/wait-ux"],
+      blurb: "The familiar placeholder, done properly: a picture outline on a quiet surface, crossed by a slanted band of colour with a sharp leading edge.",
+      reveal: "One last pass of the band wipes the picture in behind it.", short: "Works: a pass takes under 2 s.", mood: "Conventional and instantly understood.",
+      draw(c, S, t, p) {
+        c.fillStyle = "#11111a"; c.fillRect(0, 0, S, S);
+        const wash = c.createLinearGradient(0, 0, S, S);
+        wash.addColorStop(0, "rgba(139,92,246,.09)"); wash.addColorStop(1, "rgba(34,211,238,.03)");
+        c.fillStyle = wash; c.fillRect(0, 0, S, S);
+        const k = -.32, pos = p < 0 ? -.45 + ((t % 1.9) / 1.9) * 2 : -.3 + ease(p) * 1.95, edge = (y) => (pos + .28) * S + (y - S / 2) * k;
+        const near = Math.exp(-Math.pow(pos + .1 - .5, 2) / .04), u = S * .2, x0 = S / 2 - u / 2, y0 = S / 2 - u * .4;
+        c.strokeStyle = css(mix3(V, WHITE, near * .7), .3 + .6 * near); c.lineWidth = Math.max(1.5, S * .006); c.lineJoin = "round";
+        rounded(c, x0, y0, u, u * .8, u * .12); c.stroke();
+        c.beginPath(); c.moveTo(x0 + u * .12, y0 + u * .66); c.lineTo(x0 + u * .38, y0 + u * .36); c.lineTo(x0 + u * .56, y0 + u * .56); c.lineTo(x0 + u * .68, y0 + u * .44); c.lineTo(x0 + u * .88, y0 + u * .66); c.stroke();
+        c.beginPath(); c.arc(x0 + u * .72, y0 + u * .24, u * .07, 0, TAU); c.stroke();
+        if (p >= 0) { c.save(); c.beginPath(); c.moveTo(0, 0); c.lineTo(edge(0), 0); c.lineTo(edge(S), S); c.lineTo(0, S); c.closePath(); c.clip(); c.drawImage(HI, 0, 0, S, S); c.restore(); }
+        c.save(); c.transform(1, 0, k, 1, -k * S / 2, 0);
+        const a = (pos - .28) * S, band = c.createLinearGradient(a, 0, a + S * .56, 0);
+        band.addColorStop(0, css(V, 0)); band.addColorStop(.5, css(V, .16)); band.addColorStop(.84, css(CY, .3)); band.addColorStop(.965, "rgba(255,255,255,.5)"); band.addColorStop(1, "rgba(255,255,255,0)");
+        c.fillStyle = band; c.fillRect(a, -S * .2, S * .56, S * 1.4); c.restore();
+      } },
+    { name: "Morphing shape", ref: ["Gemini's morphing loader, built on Material 3 Expressive shapes", "https://9to5google.com/2026/01/17/gemini-gradient-design/"],
+      blurb: "One small shape in the centre keeps changing: circle, four-point star, soft square, flower. It turns as it morphs, with two sparkles keeping it company.",
+      reveal: "The shape grows until it fills the frame, with the picture inside it.", short: "Works: each shape lasts just over a second.", mood: "Playful, characterful, compact.",
+      draw(c, S, t, p) {
+        c.fillStyle = BG; c.fillRect(0, 0, S, S);
+        const halo = c.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S * .5);
+        halo.addColorStop(0, "rgba(139,92,246,.2)"); halo.addColorStop(1, "rgba(139,92,246,0)");
+        c.fillStyle = halo; c.fillRect(0, 0, S, S);
+        const k = t / 1.25, i = Math.floor(k) % SHAPES.length, j = (i + 1) % SHAPES.length, m = ease((k % 1 - .35) / .65);
+        const rot = t * .35 + (Math.floor(k) + m) * Math.PI / 4, grow = p < 0 ? 0 : ease(p), round = p < 0 ? 0 : ease(p * 2);
+        const R = S * (.17 * (1 + .04 * Math.sin(t * 3)) + grow * 1.0), cx = S / 2, cy = S / 2;
+        if (p < 0) for (const [dx, dy, ph] of [[.27, -.22, 0], [-.25, .24, 2.1]]) {
+          c.fillStyle = css(WHITE, .25 + .6 * (.5 + .5 * Math.sin(t * 2.2 + ph)));
+          sparkle(c, cx + dx * S, cy + dy * S, S * .028 * (.6 + .4 * Math.sin(t * 2.2 + ph)), t * .5); c.fill();
+        }
+        c.beginPath();
+        for (let q = 0; q <= N_SHAPE; q++) { const n = q % N_SHAPE, r = lerp(lerp(SHAPES[i][n], SHAPES[j][n], m), 1, round) * R, a = (n / N_SHAPE) * TAU + rot; c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+        c.closePath();
+        const g = c.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+        g.addColorStop(0, css(V)); g.addColorStop(.5, css(CY)); g.addColorStop(1, css(PK));
+        c.save(); c.shadowColor = "rgba(139,92,246,.7)"; c.shadowBlur = S * .09 * (1 - grow); c.fillStyle = g; c.globalAlpha = p < 0 ? 1 : 1 - ease(p * 1.6); c.fill(); c.restore();
+        if (p >= 0) { c.save(); c.clip(); c.globalAlpha = ease(p * 1.6); c.drawImage(HI, 0, 0, S, S); c.restore(); }
+      } },
+    { name: "Mesh gradient", ref: ["Stripe's flowing gradient, as reverse-engineered for the web", "https://www.bram.us/2021/10/13/how-to-create-the-stripe-website-gradient-effect"],
+      blurb: "Slow pools of violet, cyan and pink drifting into each other across the whole frame, with a touch of grain so it never looks flat.",
+      reveal: "The picture fades up through the colour and settles from a slight zoom.", short: "Works: it has no cycle.", mood: "Rich and ambient; the most colourful of the ten.",
+      init(s) { s.f = field(44); },
+      draw(c, S, t, p, s) {
+        const f = s.f, n = f.n, blobs = [[V, .23, .31, 0], [CY, .19, .27, 1.7], [PK, .29, .17, 3.1], [DEEP, .13, .22, 4.4], [[70, 52, 190], .17, .12, 5.5]]
+          .map(([col, a, b, ph]) => [col, .5 + .4 * Math.sin(t * a + ph), .5 + .4 * Math.cos(t * b + ph * 1.3)]);
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+          const u = x / n, v = y / n; let r = 0, g = 0, b = 0, w = 0;
+          for (const [col, bx, by] of blobs) { const k = 1 / Math.pow((u - bx) ** 2 + (v - by) ** 2 + .025, 1.4); r += col[0] * k; g += col[1] * k; b += col[2] * k; w += k; }
+          f.buf[y * n + x] = pack([r / w * .92, g / w * .92, b / w * .92]);
+        }
+        paintField(c, f, S);
+        grain(c, S, t, .1);
+        if (p >= 0) { const a = ease(p), sc = 1.07 - .07 * a, o = (S - S * sc) / 2; c.globalAlpha = a; c.drawImage(HI, o, o, S * sc, S * sc); c.globalAlpha = 1; }
+      } },
+    { name: "Halftone", ref: ["Codrops: building a real-time dithering shader", "https://tympanus.net/codrops/2025/06/04/building-a-real-time-dithering-shader/"],
+      blurb: "A grid of dots that swell and shrink in overlapping ripples, like a print screen being inked.",
+      reveal: "The dots take the picture's colours and sizes, then grow until they close up.", short: "Works: ripples are continuous.", mood: "Graphic, editorial.",
+      draw(c, S, t, p) {
+        c.fillStyle = BG; c.fillRect(0, 0, S, S);
+        const g = 24, cell = S / g, a = p < 0 ? 0 : ease(p / .5), b = p < 0 ? 0 : ease((p - .45) / .4);
+        for (let j = 0; j < g; j++) for (let i = 0; i < g; i++) {
+          const d = Math.hypot(i - g / 2 + Math.sin(t * .6) * 6, j - g / 2 + Math.cos(t * .5) * 6), v = .5 + .5 * Math.sin(d * .55 - t * 2.4), w = .5 + .5 * Math.sin((i + j) * .35 + t * 1.3);
+          let r = cell * .5 * (.12 + .8 * (v * .7 + w * .3)), col = mix3(V, CY, w);
+          if (p >= 0) { const k = j * g + i; r = lerp(lerp(r, cell * .5 * (.3 + .8 * lum(PIX24, k)), a), cell * .78, b); col = mix3(col, [PIX24[k * 4], PIX24[k * 4 + 1], PIX24[k * 4 + 2]], a); }
+          c.fillStyle = css(col, .92); c.beginPath(); c.arc((i + .5) * cell, (j + .5) * cell, r, 0, TAU); c.fill();
+        }
+        if (p >= 0) { c.globalAlpha = ease((p - .62) / .38); c.drawImage(HI, 0, 0, S, S); c.globalAlpha = 1; }
+      } },
+    { name: "ASCII terrain", ref: ["Codrops: real-time ASCII and dithering effects (Efecto)", "https://tympanus.net/codrops/2026/01/04/efecto-building-real-time-ascii-and-dithering-effects-with-webgl-shaders"],
+      blurb: "A rolling ridge drawn in text characters, with a bright crest and a shimmering sky. It echoes the ASCII mountain on Donna's welcome screen.",
+      reveal: "The characters redraw themselves as the picture, in its colours, before it turns solid.", short: "Works: the ridge is always moving.", mood: "The most Donna: it reuses a look the app already has.",
+      draw(c, S, t, p) {
+        c.fillStyle = BG; c.fillRect(0, 0, S, S);
+        const g = 28, cell = S / g, tt = Math.floor(t * 10) / 10, a = p < 0 ? 0 : ease(p / .55), groups = new Map();
+        c.font = `500 ${(cell * 1.08).toFixed(1)}px ui-monospace,"Cascadia Mono",Consolas,monospace`; c.textAlign = "center"; c.textBaseline = "middle";
+        for (let j = 0; j < g; j++) for (let i = 0; i < g; i++) {
+          const k = j * g + i;
+          let ch, col;
+          if (p >= 0 && hash(i, j, 5) < a * 1.02) { ch = RAMP[Math.min(RAMP.length - 1, 1 + Math.floor(Math.pow(lum(PIX28, k), .55) * (RAMP.length - 1)))]; const px = [PIX28[k * 4], PIX28[k * 4 + 1], PIX28[k * 4 + 2]], lift = Math.max(1, 175 / Math.max(px[0], px[1], px[2], 1));  // dark areas stay readable as text
+            col = css(mix3([Math.min(255, px[0] * lift), Math.min(255, px[1] * lift), Math.min(255, px[2] * lift)], WHITE, .12)); }
+          else {
+            const ridge = .46 + .16 * Math.sin(i * .33 + tt * .5) + .07 * Math.sin(i * .9 - tt * .8), depth = j / g - ridge;
+            const n = .5 + .5 * Math.sin(i * .41 + tt * 1.6 + Math.sin(j * .27 - tt * .7) * 1.8) * Math.cos(j * .31 - tt * .9);
+            if (depth < 0) { ch = RAMP[Math.floor(n * 3.4)]; col = css(V, .5); }
+            else if (depth < 1 / g) { ch = "#"; col = css(CY, 1); }
+            else { ch = RAMP[Math.min(RAMP.length - 1, 4 + Math.floor((n * .5 + Math.min(1, depth * 2.2) * .5) * 7))]; col = css(mix3(V, PK, depth * 1.4), .85); }
+          }
+          if (ch === " ") continue;
+          if (!groups.has(col)) groups.set(col, []);
+          groups.get(col).push(ch, (i + .5) * cell, (j + .5) * cell);
+        }
+        for (const [col, list] of groups) { c.fillStyle = col; for (let q = 0; q < list.length; q += 3) c.fillText(list[q], list[q + 1], list[q + 2]); }
+        if (p >= 0) { c.globalAlpha = ease((p - .55) / .45); c.drawImage(HI, 0, 0, S, S); c.globalAlpha = 1; }
+      } },
+    { name: "Noise bloom", ref: ["Codrops: a shader reveal driven by Perlin noise and a radial gradient", "https://tympanus.net/codrops/?p=83030"],
+      blurb: "A glowing shape with a restless, organic edge sits in the middle and pulses, sending faint rings outward like contour lines.",
+      reveal: "The shape swells past the edges; the picture is what is inside it.", short: "Works: it pulses rather than cycles.", mood: "Organic, alive, a little mysterious.",
+      init(s, S, px) { s.f = field(96); s.m = field(96); s.off = document.createElement("canvas"); s.off.width = s.off.height = px; },
+      draw(c, S, t, p, s) {
+        const f = s.f, m = s.m, n = f.n, R = p < 0 ? .2 + .03 * Math.sin(t * 1.3) : .2 + ease(p) * .95;
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+          const u = x / n, v = y / n, d = Math.hypot(u - .5, v - .5);
+          const nz = (Math.sin(u * 6.1 + t * .9) + Math.sin(v * 5.3 - t * 1.1) + Math.sin((u + v) * 4.4 + t * .6) + Math.sin((u - v) * 7.3 - t * .8)) / 4;
+          const val = (R - d) * 4 + nz * .55, ring = ((d * 13 - t * .7 + nz * 1.1) % 1 + 1) % 1;
+          let col = mix3(INK, V, .42 * Math.pow(1 - Math.abs(ring - .5) * 2, 8) * clamp(1.4 - d * 2));  // thin, soft contour rings
+          if (val > 0) col = val < .5 ? mix3(V, PK, val * 2) : mix3(PK, AMBER, clamp((val - .5) * 1.4));
+          col = mix3(col, WHITE, .75 * clamp(1 - Math.abs(val) / .09));  // a soft bright rim
+          f.buf[y * n + x] = pack(col);
+          m.buf[y * n + x] = pack(WHITE, Math.round(255 * ease(val / .22)));
+        }
+        paintField(c, f, S);
+        if (p >= 0) {
+          const o = s.off.getContext("2d"), w = s.off.width;
+          m.flush(); o.globalCompositeOperation = "source-over"; o.clearRect(0, 0, w, w); o.drawImage(HI, 0, 0, w, w);
+          o.globalCompositeOperation = "destination-in"; o.imageSmoothingQuality = "high"; o.drawImage(m.cv, 0, 0, w, w);
+          c.globalAlpha = ease(p * 2.2); c.drawImage(s.off, 0, 0, S, S); c.globalAlpha = 1;
+        }
+      } },
+    { name: "Empty canvas", ref: ["Figma's checkered placeholder for a generating image (forum thread)", "https://forum.figma.com/share-your-feedback-26/change-ai-image-generation-loading-animation-back-to-transparent-54295"],
+      blurb: "The design-tool way to say nothing is here yet: a transparency checkerboard inside a marching-ants selection, with a soft light roaming over it.",
+      reveal: "The squares fill with the picture in a diagonal wave and the selection lets go.", short: "Works: nothing in it has to finish.", mood: "Tool-like and precise; reads as a canvas being filled.",
+      draw(c, S, t, p) {
+        const g = 14, cell = S / g;
+        c.fillStyle = "#14141d"; c.fillRect(0, 0, S, S);
+        c.fillStyle = "#1c1c28";
+        for (let j = 0; j < g; j++) for (let i = (j & 1); i < g; i += 2) c.fillRect(i * cell, j * cell, cell, cell);
+        const lx = S * (.5 + .3 * Math.cos(t * .6)), ly = S * (.5 + .3 * Math.sin(t * .8)), light = c.createRadialGradient(lx, ly, 0, lx, ly, S * .5);
+        light.addColorStop(0, "rgba(139,92,246,.22)"); light.addColorStop(1, "rgba(139,92,246,0)");
+        c.fillStyle = light; c.fillRect(0, 0, S, S);
+        if (p >= 0) {
+          const k = HI.width / g;
+          for (let j = 0; j < g; j++) for (let i = 0; i < g; i++) {
+            const a = clamp((p * 1.55 - (i + j) / (2 * g)) * 4);
+            if (a <= 0) continue;
+            c.globalAlpha = a; c.drawImage(HI, i * k, j * k, k, k, i * cell, j * cell, cell + .5, cell + .5);
+          }
+          c.globalAlpha = 1;
+        }
+        const fade = p < 0 ? 1 : 1 - ease(p * 1.5), inset = S * .07, w = S - inset * 2;
+        if (fade > 0) {
+          c.save(); c.globalAlpha = fade; c.strokeStyle = css([201, 167, 255], .9); c.lineWidth = Math.max(1.2, S * .004);
+          c.setLineDash([S * .022, S * .016]); c.lineDashOffset = -t * S * .07; c.strokeRect(inset, inset, w, w); c.setLineDash([]);
+          const h = Math.max(5, S * .018);
+          for (const [x, y] of [[inset, inset], [inset + w, inset], [inset, inset + w], [inset + w, inset + w]]) { c.fillStyle = BG; c.fillRect(x - h / 2, y - h / 2, h, h); c.strokeRect(x - h / 2, y - h / 2, h, h); }
+          c.fillStyle = css(WHITE, .5 + .4 * Math.sin(t * 3)); sparkle(c, S / 2, S / 2, S * .04 * (.8 + .2 * Math.sin(t * 3)), t * .4); c.fill();
+          c.restore();
+        }
+      } },
+  ];
+
+  /* ------------------------------------------------------------------ plumbing */
+  class Loader {
+    constructor(canvas, demo, S, dpr) {
+      this.demo = demo; this.S = S;
+      canvas.width = canvas.height = Math.round(S * dpr);
+      this.px = canvas.width;
+      this.ctx = canvas.getContext("2d");
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.reset();
+    }
+    reset() { this.s = {}; if (this.demo.init) this.demo.init(this.s, this.S, this.px); }
+    draw(t, p = -1) {
+      const c = this.ctx, S = this.S;
+      c.save(); c.clearRect(0, 0, S, S);
+      if (p >= 1) c.drawImage(HI, 0, 0, S, S); else this.demo.draw(c, S, t, p, this.s);
+      c.restore();
+    }
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const grid = $("grid"), cap = $("cap"), st = $("st"), ms = $("ms"), reply = $("reply"), loaderCanvas = $("loader");
+  $("final").getContext("2d").drawImage(HI, 0, 0);
+  const dataUrl = HI.toDataURL("image/png"), DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const STILL = 2.3, REVEAL_S = 1.5, HOLD_S = 4.5;
+  let reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, dur = 6, stage, t0 = performance.now(), done = false, lastDraw = 0;
+  $("reduced").checked = reduced;
+
+  const cards = DEMOS.map((d, i) => {
+    const el = document.createElement("button");
+    el.type = "button"; el.className = "card"; el.setAttribute("aria-pressed", "false");
+    el.innerHTML = `<canvas aria-hidden="true"></canvas><div><span class="n">${String(i + 1).padStart(2, "0")}</span><h3></h3><p></p><div class="from"></div></div>`;
+    el.querySelector("h3").textContent = d.name;
+    el.querySelector("p").textContent = d.blurb;
+    el.querySelector(".from").textContent = `After: ${d.ref[0].split(/[,(]/)[0].trim()}`;
+    el.addEventListener("click", () => select(i));
+    grid.appendChild(el);
+    return { el, loader: new Loader(el.querySelector("canvas"), d, 220, 1) };
+  });
+
+  function restart() {
+    t0 = performance.now(); done = false;
+    stage.reset();
+    loaderCanvas.classList.remove("gone");
+    st.textContent = "Running"; st.className = "st";
+    reply.hidden = true;
+  }
+  function select(i) {
+    const d = DEMOS[i];
+    cards.forEach((c, k) => c.el.setAttribute("aria-pressed", String(k === i)));
+    stage = new Loader(loaderCanvas, d, 420, DPR);
+    $("a-num").textContent = `IDEA ${String(i + 1).padStart(2, "0")} OF ${DEMOS.length}`;
+    $("a-name").textContent = d.name;
+    $("a-blurb").textContent = d.blurb;
+    $("a-ref").textContent = d.ref[0]; $("a-ref").href = d.ref[1];
+    $("a-reveal").textContent = d.reveal;
+    $("a-short").textContent = d.short;
+    $("a-mood").textContent = d.mood;
+    restart();
+  }
+  function finish(seconds) {
+    done = true;
+    stage.draw(0, 1);
+    loaderCanvas.classList.add("gone");
+    st.textContent = "Done"; st.className = "st done";
+    ms.textContent = `${seconds.toFixed(1)}s`;
+    cap.innerHTML = `<a class="dl" download="donna-image.png"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"/></svg>Download</a><span>1024 × 1024</span>`;
+    cap.querySelector("a").href = dataUrl;
+    reply.hidden = false;
+  }
+
+  document.querySelectorAll(".seg button").forEach((btn) => btn.addEventListener("click", () => {
+    dur = Number(btn.dataset.dur);
+    document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === btn)));
+    restart();
+  }));
+  $("reduced").addEventListener("change", (e) => { reduced = e.target.checked; restart(); });
+
+  function tick(now) {
+    requestAnimationFrame(tick);
+    if (now - lastDraw < 30) return;
+    lastDraw = now;
+    const t = now / 1000;
+    cards.forEach((c, i) => c.loader.draw(reduced ? STILL : t + i * 1.7));
+    const el = (now - t0) / 1000;
+    if (dur && el >= dur) {
+      const p = (el - dur) / REVEAL_S;
+      if (p < 1) stage.draw(reduced ? STILL : el, reduced ? 1 : p);
+      else if (!done) finish(dur);
+      else if (el > dur + REVEAL_S + HOLD_S) restart();
+      return;
+    }
+    stage.draw(reduced ? STILL : el);
+    ms.textContent = `${el.toFixed(1)}s`;
+    const whole = Math.floor(el);
+    if (cap.dataset.s !== String(whole) || cap.querySelector("a")) {
+      cap.dataset.s = String(whole);
+      cap.innerHTML = `<span class="sq">■</span><span>Generating with FLUX.2 klein 4B · <b>${whole} s</b></span>`;
+    }
+  }
+  select(0);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

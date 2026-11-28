@@ -78,6 +78,8 @@ INTERNAL_TOKEN = "internal_api_token"  # shared by FastAPI and the scheduler ser
 OPENWA_KEY = "openwa_api_key"          # OpenWA's API_MASTER_KEY, written by scripts/setup-whatsapp.ps1
 OPENWA_SECRET = "openwa_webhook_secret"  # HMAC secret OpenWA signs webhooks with (generated on connect)
 TELEGRAM_TOKEN = "telegram_bot_token"   # from @BotFather
+CLOUDFLARE_ACCOUNT = "cloudflare_account_id"  # image generation (Workers AI), donna/images.py
+CLOUDFLARE_TOKEN = "cloudflare_api_token"     # a Workers AI API token (Read + Edit)
 
 
 def _del(name: str) -> None:

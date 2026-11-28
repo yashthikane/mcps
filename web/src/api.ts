@@ -47,12 +47,21 @@ export interface Connection {
   name: string;
   icon: string;
   source: string;
-  setup: "google" | "notion" | "mcp" | null;
+  setup: "google" | "notion" | "images" | "mcp" | null;
   state: ConnState;
   auth_state?: ConnState;
   detail: string;
   transport?: string;
   tools: ToolInfo[];
+}
+
+/** An image generation model from the backend registry (donna/images.py). `daily` is an estimate. */
+export interface ImageModel {
+  id: string;
+  label: string;
+  note: string;
+  daily: string;
+  seconds: number;  // usual time for one picture
 }
 
 export interface Usage {
@@ -74,6 +83,7 @@ export interface Settings {
   reduce_motion: boolean;
   onboarded: boolean;
   permission_mode: PermissionMode;
+  image_model: string;
   groq_key_set: boolean;
   groq_key_hint: string;
   usage: Usage;
@@ -91,6 +101,7 @@ export interface Settings {
   default_tone: string;
   contact_rate_per_hour: number;
   global_rate_per_hour: number;
+  contact_images_per_day: number;
   approval_ttl_hours: number;
   unknown_contact_action: "ignore" | "notify";
   openwa_url: string;
@@ -265,6 +276,7 @@ export interface ChannelMessage {
   author: "contact" | "donna" | "owner";
   message_type: string;
   content: string;
+  attachments: { type: string; file?: string; filename?: string }[];  // file: a picture Donna made (/api/v1/images/…)
   status: string;
   error: string;
   created_at: number;
@@ -448,6 +460,10 @@ export const api = {
   disconnectGoogle: (forgetClient = false) => request("DELETE", `/connections/google?forget_client=${forgetClient}`),
   connectNotion: (token: string) => request<{ ok: boolean; pages: string[] }>("POST", "/connections/notion", { token }),
   disconnectNotion: () => request("DELETE", "/connections/notion"),
+  connectImages: (account_id: string, token: string) =>
+    request<{ ok: boolean; image: string; model: string; seconds: number }>("POST", "/connections/images", { account_id, token }),
+  disconnectImages: () => request("DELETE", "/connections/images"),
+  imageModels: () => request<{ current: string; models: ImageModel[] }>("GET", "/images/models"),
   testServer: (cfg: ServerConfig) => request<{ ok: boolean; tools: ToolInfo[] }>("POST", "/mcp-servers/test", cfg),
   addServer: (cfg: ServerConfig) => request<{ id: string; state: string; error: string }>("POST", "/mcp-servers", cfg),
   removeServer: (id: string) => request("DELETE", `/mcp-servers/${id}`),

@@ -135,6 +135,8 @@ dialog.task-dlg{width:min(600px,calc(100vw - 32px))}
 .bubble.b-owner{align-self:flex-end;background:rgba(103,232,249,.08);border-color:rgba(103,232,249,.28)}
 .b-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
 .b-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+.b-pics{display:flex;flex-wrap:wrap;gap:6px}
+.b-pics img{display:block;width:160px;height:160px;object-fit:cover;border-radius:8px;border:1px solid var(--border-subtle)}
 .b-err{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
 .inbox-compose{display:flex;gap:8px;align-items:flex-end}
 .inbox-compose .textarea{flex:1;min-height:54px}

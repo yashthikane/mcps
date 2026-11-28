@@ -33,6 +33,8 @@ BUILTIN = [
      "tools": ["square", "get_jokes"]},
     {"id": "schedule", "name": "Scheduled tasks", "icon": "clock", "source": "Scheduler · built-in", "setup": None,
      "tools": ["schedule_task", "list_scheduled_tasks", "cancel_scheduled_task", "snooze_scheduled_task"]},
+    {"id": "images", "name": "Image generation", "icon": "image", "source": "Cloudflare Workers AI · built-in", "setup": "images",
+     "tools": ["generate_image"]},
 ]
 TOOL_GROUP = {t: c["id"] for c in BUILTIN for t in c["tools"]}
 
@@ -42,7 +44,7 @@ CONFIRM = {"send_email", "reply_email", "forward_email", "send_draft", "delete_e
 # Built-in tools that change something but don't need approval in manual mode. Plan mode hides
 # these and CONFIRM: it may only read.
 WRITES = CONFIRM | {"mark_email", "create_draft", "create_page", "update_page_title", "append_text_to_page",
-                    "schedule_task", "snooze_scheduled_task"}
+                    "schedule_task", "snooze_scheduled_task", "generate_image"}
 # External tools whose names look like writes get the same treatment.
 WRITE_WORDS = re.compile(r"(write|edit|delete|remove|move|rename|commit|push|drop|insert|update|create|send|post|put|exec|run)", re.I)
 

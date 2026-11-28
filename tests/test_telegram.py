@@ -89,3 +89,18 @@ async def test_bad_token_and_identities():
     assert ch.identity_for("123456789") == ("123456789", "")
     with pytest.raises(ChannelError):
         ch.identity_for("@asha")
+
+
+async def test_picture_is_uploaded_with_send_photo():
+    vault.set(vault.TELEGRAM_TOKEN, TOKEN)
+    seen = []
+
+    def api(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.path, request.headers["content-type"], request.content))
+        return httpx.Response(200, json={"ok": True, "result": {"message_id": 12}})
+    ch, _ = channel(api)
+    res = await ch.send_image("42", b"\x89PNGdata", "image/png", "donna-img_0123456789ab.png")
+    assert res.ok and res.external_id == "42:12"
+    path, ctype, body = seen[0]
+    assert path.endswith("/sendPhoto") and ctype.startswith("multipart/form-data")
+    assert b'name="chat_id"' in body and b"\x89PNGdata" in body and b'filename="donna-img_0123456789ab.png"' in body

@@ -296,6 +296,8 @@ async def _fake_turn(messages: list, tools: list):
         yield call("get_weather", {"city": m.group(1).strip()})
     elif (m := re.search(r"square (?:of )?(-?\d+)", low)) and "square" in names:
         yield call("square", {"n": int(m.group(1))})
+    elif (m := re.search(r"(?:picture|image) of (.+)", user, re.I)) and "generate_image" in names:
+        yield call("generate_image", {"prompt": m.group(1).strip()})
     elif "create event" in low and "create_event" in names:
         yield call("create_event", {"summary": "Prep", "start_time": "2026-10-01T09:00", "end_time": "2026-10-01T09:30"})
     elif "book a meet" in low and "create_event" in names:

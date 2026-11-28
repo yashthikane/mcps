@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbit loader concept</title>
+<style>
+html,body{height:100%;margin:0;background:#000}
+body{display:grid;place-items:center;overflow:hidden}
+#main{width:min(68vmin,640px);height:min(68vmin,640px);display:block}
+.small{position:fixed;left:0;right:0;bottom:3.5vmin;display:flex;justify-content:center;align-items:center;gap:30px}
+.small canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="main" role="img" aria-label="Loading animation: small glowing particles orbiting in five rings"></canvas>
+<!-- the same loop at 64, 32 and 20 px, to check it still reads when small -->
+<div class="small" aria-hidden="true"><canvas data-size="64"></canvas><canvas data-size="32"></canvas><canvas data-size="20"></canvas></div>
+
+<script>
+(() => {
+  "use strict";
+  const TAU = Math.PI * 2;
+  const T = 12;      // seconds in one loop; every motion below repeats a whole number of times in T, so the loop has no seam
+  const DRIFT = .3;  // the share of a drifter's cycle it spends away from its orbit
+
+  // Five orbits, 57 particles. `turns` = revolutions per loop (the sign is the direction); `sizes` repeats around the
+  // ring, so each ring stays rotationally symmetric; `blue` marks which slot of that pattern is an electric-blue highlight.
+  const ORBITS = [
+    { r: .30, n: 6,  turns:  3, size: 2.6, sizes: [1, .6],            blue: -1 },
+    { r: .46, n: 9,  turns: -2, size: 2.2, sizes: [1, .55, .75],      blue: 1 },
+    { r: .62, n: 12, turns:  2, size: 1.9, sizes: [1, .5, .7, .6],    blue: 2 },
+    { r: .78, n: 14, turns: -1, size: 1.6, sizes: [1, .6, .8, .5, .9, .55, .7], blue: 3 },
+    { r: .94, n: 16, turns:  1, size: 1.4, sizes: [1, .5, .75, .5],   blue: 0 },
+  ];
+  // The few that wander: [orbit, particle, cycles per loop, where in the loop it starts, how far (in radii; minus = inwards)]
+  const DRIFTERS = [[1, 2, 1, .05, .20], [2, 5, 1, .38, .24], [2, 11, 2, .15, -.14], [3, 3, 1, .62, .22],
+                    [3, 10, 2, .80, -.12], [4, 7, 1, .25, .16], [4, 15, 1, .70, -.15]];
+  const WHITE = [255, 255, 255], SILVER = [188, 197, 210], BLUE = [64, 156, 255], BLUE_CORE = [208, 232, 255];
+
+  const PARTICLES = [];
+  ORBITS.forEach((o, oi) => {
+    for (let i = 0; i < o.n; i++) {
+      const slot = i % o.sizes.length, scale = o.sizes[slot], blue = slot === o.blue;
+      const d = DRIFTERS.find(([a, b]) => a === oi && b === i);
+      PARTICLES.push({
+        orbit: o, oi, a0: (i / o.n) * TAU + oi * .37, scale, blue,
+        core: blue ? BLUE_CORE : scale > .7 ? WHITE : SILVER, glow: blue ? BLUE : SILVER,
+        alpha: .5 + .5 * scale, twinkle: 4 + oi, phase: i * 2.399,
+        drift: d ? { cycles: d[2], offset: d[3], amp: d[4] } : null,
+      });
+    }
+  });
+
+  const pulse = (x) => { x = ((x % 1) + 1) % 1; return x < DRIFT ? Math.sin(Math.PI * x / DRIFT) ** 2 : 0; };
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+  /** Draw one frame of the loop into a square of `size` CSS pixels. The background stays transparent. */
+  function draw(ctx, size, time) {
+    const u = (time % T) / T, c = size / 2, detail = size >= 96, tiny = size < 40;
+    const R = size * .4 * (1 + .018 * Math.sin(TAU * 2 * u));
+    ctx.clearRect(0, 0, size, size);
+    ctx.globalCompositeOperation = "lighter";
+    if (detail) {  // a barely visible haze, so the rings sit in space rather than on a flat black
+      const haze = ctx.createRadialGradient(c, c, 0, c, c, R * 1.15);
+      haze.addColorStop(0, "rgba(64,150,255,.06)"); haze.addColorStop(.6, "rgba(64,150,255,.022)"); haze.addColorStop(1, "rgba(64,150,255,0)");
+      ctx.fillStyle = haze; ctx.fillRect(0, 0, size, size);
+    }
+    const place = (p, uu) => {
+      const b = p.drift ? pulse(uu * p.drift.cycles + p.drift.offset) : 0;
+      const ang = p.a0 + TAU * p.orbit.turns * uu + (p.drift ? b * .3 * Math.sign(p.drift.amp) : 0);
+      const rad = R * (p.orbit.r + (p.drift ? p.drift.amp * b : 0));
+      return [c + Math.cos(ang) * rad, c + Math.sin(ang) * rad, b];
+    };
+    for (const p of PARTICLES) {
+      if (tiny && p.oi % 2) continue;  // at icon size, three rings read better than five
+      const radius = Math.max(tiny ? .7 : .55, p.orbit.size * p.scale * R * .008);
+      const alpha = p.alpha * (.72 + .28 * Math.sin(TAU * p.twinkle * u + p.phase));
+      if (detail) {  // a short tail of fainter dots behind each particle
+        for (let g = 5; g >= 1; g--) {
+          const [x, y] = place(p, u - g * .0035), f = 1 - g / 6;
+          ctx.fillStyle = rgba(p.glow, alpha * .3 * f * f);
+          ctx.beginPath(); ctx.arc(x, y, radius * (.45 + .5 * f), 0, TAU); ctx.fill();
+        }
+      }
+      const [x, y, b] = place(p, u), lift = 1 + b * .5;  // a drifter brightens while it is away
+      if (!tiny) {
+        const spread = radius * (p.blue ? 5.2 : 3.8) * lift;
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, spread);
+        glow.addColorStop(0, rgba(p.glow, Math.min(1, alpha * (p.blue ? .55 : .3) * lift)));
+        glow.addColorStop(1, rgba(p.glow, 0));
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, spread, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = rgba(p.core, Math.min(1, alpha * lift * (detail ? 1 : 1.25)));
+      ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  const views = [document.getElementById("main"), ...document.querySelectorAll(".small canvas")].map((canvas) => ({ canvas, ctx: canvas.getContext("2d"), size: 0 }));
+  function fit() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    for (const v of views) {
+      const fixed = Number(v.canvas.dataset.size);
+      if (fixed) { v.canvas.style.width = v.canvas.style.height = `${fixed}px`; }
+      v.size = fixed || v.canvas.clientWidth;
+      v.canvas.width = v.canvas.height = Math.round(v.size * dpr);
+      v.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+  }
+  const still = matchMedia("(prefers-reduced-motion: reduce)");
+  const paint = (time) => { for (const v of views) draw(v.ctx, v.size, time); };
+  function frame(now) {
+    paint(now / 1000);
+    if (!still.matches) requestAnimationFrame(frame);
+  }
+  const start = () => { fit(); if (still.matches) paint(1.5); else requestAnimationFrame(frame); };
+  addEventListener("resize", () => { fit(); if (still.matches) paint(1.5); });
+  still.addEventListener("change", start);
+  window.orbitLoader = { draw, period: T, particles: PARTICLES.length };  // for reuse and for checking the loop
+  start();
+})();
+</script>
+</body>
+</html>

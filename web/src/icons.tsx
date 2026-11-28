@@ -4,7 +4,7 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   AlarmClockIcon, Alert02Icon, ArrowDown01Icon, ArrowRight01Icon, ArrowRight02Icon, ArrowUp02Icon, Brain01Icon, Calendar03Icon,
   Call02Icon, Cancel01Icon, CommandIcon, ComputerTerminal01Icon, Copy01Icon, Database01Icon, Delete02Icon, Download01Icon, File01Icon,
-  Folder01Icon, GitBranchIcon, Globe02Icon, InboxIcon, Key01Icon, Mail01Icon, Menu01Icon, Message01Icon, NoteEditIcon, Notion01Icon,
+  Folder01Icon, GitBranchIcon, Globe02Icon, Image01Icon, InboxIcon, Key01Icon, Mail01Icon, Menu01Icon, Message01Icon, NoteEditIcon, Notion01Icon,
   PencilEdit02Icon, PinIcon, PlugSocketIcon, PlusSignIcon, RefreshIcon, ReplyIcon, Search01Icon, SentIcon, Settings01Icon, ShieldCheckIcon,
   SidebarLeftIcon, SlashIcon, SmileIcon, SparklesIcon, StopIcon, SunCloud01Icon, TaskDaily01Icon, Tick02Icon, Upload01Icon,
   UserGroupIcon, UserMultipleIcon, WhatsappIcon, Wrench01Icon, ZapIcon,
@@ -20,7 +20,7 @@ const ICONS: Record<string, IconSvgElement> = {
   terminal: ComputerTerminal01Icon, upload: Upload01Icon, download: Download01Icon, db: Database01Icon, git: GitBranchIcon,
   smile: SmileIcon, refresh: RefreshIcon, arrow: ArrowRight02Icon, clock: AlarmClockIcon, brain: Brain01Icon, chevron: ArrowRight01Icon,
   chevdown: ArrowDown01Icon, alert: Alert02Icon, command: CommandIcon, slash: SlashIcon, copy: Copy01Icon, reply: ReplyIcon,
-  whatsapp: WhatsappIcon, callback: Call02Icon, meeting: UserGroupIcon,
+  whatsapp: WhatsappIcon, callback: Call02Icon, meeting: UserGroupIcon, image: Image01Icon,
 };
 
 export function Icon({ name, size = 15, className, strokeWidth = 1.6 }: { name: string; size?: number; className?: string; strokeWidth?: number }) {
@@ -87,6 +87,7 @@ export function toolIcon(name: string): string {
   if (/event/.test(name)) return "cal";
   if (/page|notion|database/.test(name)) return "doc";
   if (/weather/.test(name)) return "sun";
+  if (name === "generate_image") return "image";
   if (name.includes("__")) return "terminal";
   return "bolt";
 }

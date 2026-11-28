@@ -51,6 +51,14 @@ class FakeChannel(BaseChannel):
         FakeChannel.sent.append(message)
         return SendResult(ok=True, external_id=f"out-{len(FakeChannel.sent)}")
 
+    async def send_image(self, recipient_id, data, mimetype, filename, caption="", idempotency_key=""):
+        if FakeChannel.fail_sends:
+            return SendResult(ok=False, error="Disconnected", retryable=False)
+        FakeChannel.pictures.append({"to": recipient_id, "bytes": len(data), "mimetype": mimetype, "filename": filename})
+        return SendResult(ok=True, external_id=f"pic-{len(FakeChannel.pictures)}")
+
+    pictures: list = []
+
 
 class Notes:
     def __init__(self):
@@ -65,7 +73,7 @@ class Notes:
 async def mgr(store, hub, fake_llm, monkeypatch):
     monkeypatch.setitem(registry.REGISTRY, "fake", FakeChannel)
     monkeypatch.setattr("donna.channels.manager.REGISTRY", registry.REGISTRY)
-    FakeChannel.sent, FakeChannel.fail_sends = [], False
+    FakeChannel.sent, FakeChannel.pictures, FakeChannel.fail_sends = [], [], False
     store.set_settings(owner_name="Yashraj", require_trigger=False)  # trigger tests turn it back on
     m = ChannelManager(store, hub, Notes())
     await m.connect("fake")
@@ -448,3 +456,63 @@ def test_trigger_matching():
     assert not identity.mentions_trigger("donna hi", s) and not identity.mentions_trigger("me@donna.com", s)
     assert not identity.mentions_trigger("@donnas", s)
     assert identity.strip_trigger("@donna, call me", s) == "call me"
+
+
+# ------------------------------------------------------------------------------ pictures for contacts
+@pytest.fixture
+def pictures_on():
+    from donna import vault
+    vault.set(vault.CLOUDFLARE_ACCOUNT, "0123456789abcdef0123456789abcdef")
+    vault.set(vault.CLOUDFLARE_TOKEN, "cf_token_" + "x" * 40)
+
+
+async def test_contact_gets_a_picture_only_with_the_permission(mgr, store, monkeypatch, pictures_on):
+    calls = count_llm_calls(monkeypatch)
+    contact(store)  # default permissions: no pictures
+    await deliver(mgr, incoming("make a picture of a red kite"))
+    assert "generate_image" not in calls[0]["tools"] and FakeChannel.pictures == []
+
+    contacts.set_policy(store, contacts.list_all(store)[0]["id"], "", {"images": "on"})
+    await deliver(mgr, incoming("make a picture of a red kite"))
+    assert "generate_image" in calls[-1]["tools"]
+    assert len(FakeChannel.pictures) == 1 and FakeChannel.pictures[0]["to"] == "111"
+    assert FakeChannel.pictures[0]["mimetype"] == "image/png" and FakeChannel.pictures[0]["filename"].startswith("donna-img_")
+    sent = store.rows("SELECT message_type, attachments, status FROM channel_messages WHERE direction='out' ORDER BY created_at")
+    assert sent[-1]["message_type"] == "image" and sent[-1]["status"] == "sent" and "img_" in sent[-1]["attachments"]
+
+
+async def test_pictures_have_a_daily_limit_per_contact(mgr, store, pictures_on):
+    store.set_settings(contact_images_per_day=1)
+    contact(store, images="on")
+    await deliver(mgr, incoming("make a picture of a red kite"))
+    await deliver(mgr, incoming("make a picture of a blue kite"))
+    assert len(FakeChannel.pictures) == 1
+    assert store.row("SELECT COUNT(*) AS n FROM audit_log WHERE action='tool.denied' AND detail LIKE '%daily picture limit%'")["n"] == 1
+
+
+async def test_drafted_reply_carries_its_picture_until_the_owner_sends_it(mgr, store, pictures_on):
+    contact(store, mode="suggest", images="on")
+    await deliver(mgr, incoming("make a picture of a red kite"))
+    assert FakeChannel.sent == [] and FakeChannel.pictures == []  # nothing reaches them before the owner approves
+    draft = store.row("SELECT id, args, description FROM approvals WHERE kind='reply'")
+    assert "img_" in draft["args"] and "+ 1 picture" in draft["description"]
+    final = await mgr.approve(draft["id"])
+    assert final["status"] == "executed" and len(FakeChannel.pictures) == 1
+
+
+async def test_picture_asked_with_approval_is_sent_once_the_owner_approves(mgr, store, pictures_on):
+    contact(store, images="approval")
+    await deliver(mgr, incoming("make a picture of a red kite"))
+    assert FakeChannel.pictures == []
+    code = store.row("SELECT id FROM approvals WHERE tool='generate_image'")["id"]
+    assert (await mgr.approve(code))["status"] == "executed"
+    await mgr.idle()
+    assert len(FakeChannel.pictures) == 1
+
+
+async def test_owner_phone_chat_doesnt_make_pictures(mgr, store, monkeypatch, pictures_on):
+    calls = count_llm_calls(monkeypatch)
+    owner = contact(store, sender="555", name="Me")
+    contacts.set_owner(store, owner["id"])
+    await deliver(mgr, incoming("make a picture of a red kite", sender="555", name="Me"))
+    assert "generate_image" not in calls[0]["tools"] and FakeChannel.pictures == []

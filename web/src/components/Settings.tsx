@@ -248,6 +248,13 @@ export default function SettingsPage({ settings, onChange, onWiped, onRunSetup }
                 onBlur={(e) => Number(e.target.value) !== settings.global_rate_per_hour && save({ global_rate_per_hour: Number(e.target.value) }, "Saved.")} /></div>
           </div>
           <div className="two">
+            <div className="field"><label htmlFor="ms-pics">Pictures per contact / day</label>
+              <input className="input mono" id="ms-pics" type="number" min={0} max={100} defaultValue={settings.contact_images_per_day}
+                aria-describedby="ms-pics-help"
+                onBlur={(e) => Number(e.target.value) !== settings.contact_images_per_day && save({ contact_images_per_day: Number(e.target.value) }, "Saved.")} />
+              <span className="meta" id="ms-pics-help">For contacts with “Make pictures” on. Your free Cloudflare allowance is about 95 a day in all.</span></div>
+          </div>
+          <div className="two">
             <div className="field"><label htmlFor="ms-ttl">Approvals expire after (hours)</label>
               <input className="input mono" id="ms-ttl" type="number" min={1} max={168} defaultValue={settings.approval_ttl_hours}
                 onBlur={(e) => Number(e.target.value) !== settings.approval_ttl_hours && save({ approval_ttl_hours: Number(e.target.value) }, "Saved.")} /></div>

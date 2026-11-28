@@ -298,6 +298,13 @@ async def _fake_turn(messages: list, tools: list):
         yield call("square", {"n": int(m.group(1))})
     elif (m := re.search(r"(?:picture|image) of (.+)", user, re.I)) and "generate_image" in names:
         yield call("generate_image", {"prompt": m.group(1).strip()})
+    elif (m := re.search(r"\b(pdf|markdown) (?:of|about) (.+)", user, re.I)) and "create_document" in names:
+        yield call("create_document", {"title": m.group(2).strip()[:60], "content": f"## Notes\n- {m.group(2).strip()}",
+                                       "format": "md" if m.group(1).lower() == "markdown" else "pdf"})
+    elif (m := re.search(r"\bnews (?:on|about) (.+)", user, re.I)) and "get_news" in names:
+        yield call("get_news", {"topics": m.group(1).strip()})
+    elif (m := re.search(r"\b([A-Z][A-Z0-9]{1,9}-\d+)\b", user)) and "get_jira_issue" in names:
+        yield call("get_jira_issue", {"key": m.group(1)})
     elif "create event" in low and "create_event" in names:
         yield call("create_event", {"summary": "Prep", "start_time": "2026-10-01T09:00", "end_time": "2026-10-01T09:30"})
     elif "book a meet" in low and "create_event" in names:

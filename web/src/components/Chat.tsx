@@ -109,6 +109,7 @@ const BotMsg = memo(function BotMsg({ m }: { m: Message }) {
       <div className="who">Donna <span className="ts">{clock(m.created_at)}</span></div>
       {m.tool_events.length > 0 && <ToolList tools={m.tool_events} />}
       <Pictures tools={m.tool_events} />
+      <Files tools={m.tool_events} />
       {m.content && <div className="bot-text md"><Suspense fallback={<p style={{ whiteSpace: "pre-wrap" }}>{m.content}</p>}><Markdown text={m.content} /></Suspense></div>}
       {m.content && (
         <div className="msg-acts">
@@ -133,6 +134,7 @@ function LiveTurn({ live, mode, reduced, onDecide }: { live: Live; mode: Permiss
       </div>
       {shown.length > 0 && <ToolList tools={shown} />}
       <Pictures tools={shown} />
+      <Files tools={shown} />
       {waiting.map((t) => <Approval key={t.call_id} t={t} onDecide={onDecide} />)}
       {(live.text || !waiting.length) && (
         <div className="bot-text md">
@@ -263,6 +265,40 @@ function Picture({ t }: { t: ToolEvent }) {
         </figcaption>
       )}
     </figure>
+  );
+}
+
+const DOCUMENT = /\bdoc_[0-9a-f]{12}(?:-[a-z0-9-]{1,60})?\.(pdf|md)\b/;
+
+/** Documents made by create_document: a file card per call, found by the file name in the tool result. */
+function Files({ tools }: { tools: ToolEvent[] }) {
+  const docs = tools.filter((t) => t.name === "create_document" && (t.status === "running" || (t.status === "done" && DOCUMENT.test(t.preview))));
+  if (!docs.length) return null;
+  return <div className="files">{docs.map((t) => <FileCard key={t.call_id} t={t} />)}</div>;
+}
+
+function FileCard({ t }: { t: ToolEvent }) {
+  const match = t.status === "done" ? t.preview.match(DOCUMENT) : null;
+  const file = match?.[0];
+  const ext = (match?.[1] ?? (String(t.args.format ?? "pdf").toLowerCase().startsWith("m") ? "md" : "pdf")) as "pdf" | "md";
+  const title = (typeof t.args.title === "string" && t.args.title.trim()) || "Document";
+  const facts = t.preview.match(/\(([^)]*\b(?:B|KB|MB))\)/)?.[1].replace(/, /g, " · ");
+  const src = file ? `/api/v1/files/${file}` : undefined;
+  const body = (
+    <>
+      <span className={`ficon ${ext}`} aria-hidden="true">{ext === "pdf" ? "PDF" : "MD"}</span>
+      <span className="fmeta">
+        <span className="fname">{title}.{ext}</span>
+        <span className="fsub">{file ? (facts ?? (ext === "pdf" ? "PDF" : "Markdown")) : `Making the ${ext === "pdf" ? "PDF" : "file"}…`}</span>
+        {!file && <span className="fbar" aria-hidden="true"><i /></span>}
+      </span>
+    </>
+  );
+  return (
+    <div className={`file-card${file ? "" : " busy"}`} role={file ? undefined : "status"}>
+      {src ? <a className="file-open" href={src} target="_blank" rel="noopener noreferrer" title="Open">{body}</a> : <span className="file-open">{body}</span>}
+      {src && <a className="btn btn-primary btn-sm" href={`${src}?download=1`} download><Icon name="download" size={14} />Download</a>}
+    </div>
   );
 }
 

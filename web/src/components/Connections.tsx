@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { api, ApiError, type Connection, type ImageModel, type ServerConfig, type ToolInfo } from "../api";
+import { api, ApiError, type Connection, type ImageModel, type JiraProject, type ServerConfig, type ToolInfo } from "../api";
 import { Icon } from "../icons";
 import { Dialog, DialogHead, Result, StatePill, Switch, useToast } from "./ui";
 
-export type WizardKind = "google" | "notion" | "images" | "mcp";
+export type WizardKind = "google" | "notion" | "images" | "jira" | "mcp";
 
 /* ============================================================================ page */
 export default function ConnectionsPage({ connections, reload, openWizard, onTools, channels }: {
@@ -83,7 +83,7 @@ function ConnCard({ c, reload, openWizard, onTools }: {
         <button className="btn btn-danger btn-sm" onClick={() => {
           setConfirm(false);
           act("remove", () => (c.kind === "mcp" ? api.removeServer(c.id) : google ? api.disconnectGoogle()
-            : c.setup === "images" ? api.disconnectImages() : api.disconnectNotion()),
+            : c.setup === "images" ? api.disconnectImages() : c.setup === "jira" ? api.disconnectJira() : api.disconnectNotion()),
             c.kind === "mcp" ? `Removed ${c.name}.` : `${google ? "Google" : c.name} disconnected.`);
         }}>{c.kind === "mcp" ? "Remove" : "Disconnect"}</button>
       </>
@@ -126,7 +126,10 @@ function ConnCard({ c, reload, openWizard, onTools }: {
         {c.setup === "images" && c.state === "connected" && (
           <button className="btn btn-secondary btn-sm" onClick={() => openWizard("images")}>Model</button>
         )}
-        {(c.setup === "google" || c.setup === "notion" || c.setup === "images" || c.kind === "mcp") && (
+        {c.setup === "jira" && c.state === "connected" && (
+          <button className="btn btn-secondary btn-sm" onClick={() => openWizard("jira")}>Projects</button>
+        )}
+        {((c.setup === "google" && c.id !== "drive") || c.setup === "notion" || c.setup === "images" || c.setup === "jira" || c.kind === "mcp") && (
           <button className="btn btn-ghost btn-sm" onClick={() => setConfirm(true)}>{c.kind === "mcp" ? "Remove" : "Disconnect"}</button>
         )}
       </>
@@ -244,7 +247,7 @@ const ext = (href: string, label: string) => <a href={href} target="_blank" rel=
 export function GoogleWizard({ startAt, onDone, onClose }: { startAt: number; onDone: () => void; onClose: () => void }) {
   const toast = useToast();
   const [i, setI] = useState(startAt);
-  const [checks, setChecks] = useState({ g1: startAt > 0, g2: startAt > 0, g3: startAt > 0, g4: startAt > 1 });
+  const [checks, setChecks] = useState({ g1: startAt > 0, g2: startAt > 0, g3: startAt > 0, g5: startAt > 0, g4: startAt > 1 });
   const [upload, setUpload] = useState<{ state: "idle" | "busy" | "ok" | "err"; text?: string }>({ state: startAt > 2 ? "ok" : "idle", text: startAt > 2 ? "credentials.json already uploaded" : "" });
   const [auth, setAuth] = useState<{ state: "idle" | "busy" | "ok" | "err"; text?: string }>({ state: "idle" });
   const [test, setTest] = useState<{ state: "busy" | "ok" | "err"; events?: string[]; emails?: string[]; text?: string } | null>(null);
@@ -276,11 +279,11 @@ export function GoogleWizard({ startAt, onDone, onClose }: { startAt: number; on
   }, [i, test]);
 
   const steps = ["Project", "Sign-in client", "Upload", "Authorize", "Test"];
-  const can = [checks.g1 && checks.g2 && checks.g3, checks.g4, upload.state === "ok", auth.state === "ok", test?.state !== "busy"][i];
+  const can = [checks.g1 && checks.g2 && checks.g3 && checks.g5, checks.g4, upload.state === "ok", auth.state === "ok", test?.state !== "busy"][i];
   const set = (k: keyof typeof checks) => (v: boolean) => setChecks({ ...checks, [k]: v });
 
   return (
-    <Wizard eyebrow="■ Connect // Google" title="Gmail + Google Calendar" steps={steps} index={i}
+    <Wizard eyebrow="■ Connect // Google" title="Gmail, Calendar + Drive" steps={steps} index={i}
       onBack={() => setI(i - 1)} onClose={onClose} canNext={!!can} busy={upload.state === "busy" || auth.state === "busy"}
       nextLabel={i === 4 ? "Finish" : "Continue"}
       onNext={() => { if (i < 4) setI(i + 1); else { toast("Google connected. Gmail and Calendar tools are ready."); onDone(); } }}>
@@ -291,6 +294,7 @@ export function GoogleWizard({ startAt, onDone, onClose }: { startAt: number; on
           <Check checked={checks.g1} onChange={set("g1")}>Open {ext("https://console.cloud.google.com/projectcreate", "console.cloud.google.com")} and create a project (any name, e.g. “Donna”).</Check>
           <Check checked={checks.g2} onChange={set("g2")}>Enable the {ext("https://console.cloud.google.com/apis/library/gmail.googleapis.com", "Gmail API")}.</Check>
           <Check checked={checks.g3} onChange={set("g3")}>Enable the {ext("https://console.cloud.google.com/apis/library/calendar-json.googleapis.com", "Google Calendar API")}.</Check>
+          <Check checked={checks.g5} onChange={set("g5")}>Enable the {ext("https://console.cloud.google.com/apis/library/drive.googleapis.com", "Google Drive API")}.</Check>
         </ul>
       </>)}
       {i === 1 && (<>
@@ -319,10 +323,12 @@ export function GoogleWizard({ startAt, onDone, onClose }: { startAt: number; on
       {i === 3 && (<>
         <h3 className="wz-h">Sign in with Google</h3>
         <p>Your browser opens Google's consent screen. Choose your account and allow access, then come back here.</p>
+        <span className="help">Signing in again to allow Google Drive? First enable the {ext("https://console.cloud.google.com/apis/library/drive.googleapis.com", "Google Drive API")} in
+          the same Cloud project. Donna only gets the files she creates, never the rest of your Drive.</span>
         <button className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={authorize} disabled={auth.state === "busy" || auth.state === "ok"}>
           <Icon name="key" />{auth.state === "busy" ? "Waiting for Google…" : "Authorize with Google"}</button>
         {auth.state === "busy" && <Result kind="busy"><span className="help">Approve access in the browser tab that opened. If Google says the app isn't verified, click <b>Continue</b>: it's your own app.</span></Result>}
-        {auth.state === "ok" && <Result><span className="okline">✓ Signed in as {auth.text}</span><div className="chips"><span className="tag">gmail.modify</span><span className="tag">gmail.send</span><span className="tag">calendar</span></div></Result>}
+        {auth.state === "ok" && <Result><span className="okline">✓ Signed in as {auth.text}</span><div className="chips"><span className="tag">gmail.modify</span><span className="tag">gmail.send</span><span className="tag">calendar</span><span className="tag">drive.file</span></div></Result>}
         {auth.state === "err" && <Result kind="err"><span className="st-err mono" style={{ fontSize: 12 }}>✕ {auth.text}</span></Result>}
       </>)}
       {i === 4 && (<>
@@ -482,6 +488,102 @@ export function ImagesWizard({ startAt, onDone, onClose }: { startAt: number; on
           ))}
         </div>
         <span className="help">The daily numbers are estimates for Cloudflare's free allowance, which resets at 00:00 UTC. Donna writes the detailed prompt from what you ask; you can also name a model in chat for a single picture.</span>
+      </>)}
+    </Wizard>
+  );
+}
+
+/* ============================================================================ Jira */
+export function JiraWizard({ startAt, onDone, onClose }: { startAt: number; onDone: () => void; onClose: () => void }) {
+  const toast = useToast();
+  const [i, setI] = useState(startAt);
+  const [have, setHave] = useState(startAt > 0);
+  const [site, setSite] = useState("");
+  const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
+  const [res, setRes] = useState<{ state: "busy" | "ok" | "err"; text?: string } | null>(startAt > 1 ? { state: "ok" } : null);
+  const [projects, setProjects] = useState<JiraProject[]>([]);
+  const [shared, setShared] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {  // reopened when already connected: straight to the project list
+    if (startAt < 2) return;
+    api.jiraProjects().then((r) => { setProjects(r.projects); setShared(r.shared); }).catch((e) => toast((e as Error).message, "err"));
+  }, [startAt, toast]);
+
+  const ready = site.trim() !== "" && email.trim() !== "" && token.trim() !== "";
+  const connect = async () => {
+    setRes({ state: "busy" });
+    try {
+      const r = await api.connectJira(site.trim(), email.trim(), token.trim());
+      setProjects(r.projects);
+      setRes({ state: "ok", text: `Signed in as ${r.name} · ${r.projects.length} project${r.projects.length === 1 ? "" : "s"}: ${r.projects.map((p) => p.key).join(", ")}` });
+    } catch (e) {
+      setRes({ state: "err", text: (e as Error).message });
+    }
+  };
+  const finish = async () => {
+    setSaving(true);
+    try {
+      await api.saveSettings({ jira_projects: shared });
+      toast(shared.length ? `Jira is connected. Contacts you allow can ask about ${shared.join(", ")}.` : "Jira is connected. Only you can use it.");
+      onDone();
+    } catch (e) {
+      toast((e as Error).message, "err");
+      setSaving(false);
+    }
+  };
+  const toggle = (key: string) => setShared(shared.includes(key) ? shared.filter((k) => k !== key) : [...shared, key]);
+  const can = [have, res?.state === "ok", true][i];
+  return (
+    <Wizard eyebrow="■ Connect // Jira" title="Jira" steps={["API token", "Connect", "Projects"]} index={i}
+      onBack={() => setI(i - 1)} onClose={onClose} canNext={!!can} busy={res?.state === "busy" || saving}
+      nextLabel={i === 2 ? (saving ? "Saving…" : "Finish") : "Continue"} onNext={() => { if (i < 2) setI(i + 1); else finish(); }}>
+      {i === 0 && (<>
+        <h3 className="wz-h">Create an Atlassian API token</h3>
+        <p>Donna reads Jira Cloud with your own account, so she sees exactly what you can see.</p>
+        <ol className="steps-list">
+          <li>Open {ext("https://id.atlassian.com/manage-profile/security/api-tokens", "id.atlassian.com → Security → API tokens")}.</li>
+          <li>Select <b>Create API token</b>, name it <b>Donna</b>, pick an expiry date and copy the token.</li>
+          <li>Note your Jira site address, e.g. <span className="mono">yourteam.atlassian.net</span>.</li>
+        </ol>
+        <ul className="checks"><Check checked={have} onChange={setHave}>I have the site address and the API token</Check></ul>
+      </>)}
+      {i === 1 && (<>
+        <h3 className="wz-h">Your Jira site and API token</h3>
+        <div className="field">
+          <label htmlFor="jira-site">Jira site</label>
+          <input className="input mono" id="jira-site" autoComplete="off" placeholder="yourteam.atlassian.net" value={site}
+            onChange={(e) => { setSite(e.target.value); setRes(null); }} />
+        </div>
+        <div className="field">
+          <label htmlFor="jira-email">Your Atlassian email</label>
+          <input className="input" id="jira-email" type="email" autoComplete="email" value={email}
+            onChange={(e) => { setEmail(e.target.value); setRes(null); }} />
+        </div>
+        <div className="field">
+          <label htmlFor="jira-token">API token</label>
+          <div className="srow">
+            <input className="input mono grow" id="jira-token" type="password" autoComplete="off" value={token}
+              onChange={(e) => { setToken(e.target.value); setRes(null); }} onKeyDown={(e) => { if (e.key === "Enter" && ready) connect(); }} />
+            <button className="btn btn-secondary" onClick={connect} disabled={!ready || res?.state === "busy"}>Connect</button>
+          </div>
+          <span className="help">Saved in Windows Credential Manager, never in a file.</span>
+        </div>
+        {res?.state === "busy" && <Result kind="busy"><span className="help">Checking with Jira…</span></Result>}
+        {res?.state === "err" && <Result kind="err"><span className="st-err mono" style={{ fontSize: 12 }}>✕ {res.text}</span></Result>}
+        {res?.state === "ok" && <Result><span className="okline">✓ {res.text ?? "Already connected"}</span></Result>}
+      </>)}
+      {i === 2 && (<>
+        <h3 className="wz-h">Which projects may contacts ask about?</h3>
+        <p>You always see everything. Contacts with the “See Jira progress” permission only get answers about the projects ticked here.</p>
+        <ul className="checks">
+          {projects.map((p) => (
+            <Check key={p.key} checked={shared.includes(p.key)} onChange={() => toggle(p.key)}><span className="mono">{p.key}</span> · {p.name}</Check>
+          ))}
+        </ul>
+        {!projects.length && <span className="help">No projects found for this account.</span>}
+        <span className="help">Turn on “See Jira progress” (and, if you like, “Comment on Jira”, which always asks you first) per person in Contacts.</span>
       </>)}
     </Wizard>
   );

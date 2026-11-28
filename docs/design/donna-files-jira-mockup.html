@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Donna · Files, scheduled jobs &amp; Jira · mockup v1</title>
+<style>
+@font-face{font-family:"Geist";src:url("https://cdn.jsdelivr.net/fontsource/fonts/geist-sans@latest/latin-400-normal.woff2") format("woff2");font-weight:400}
+@font-face{font-family:"Geist";src:url("https://cdn.jsdelivr.net/fontsource/fonts/geist-sans@latest/latin-500-normal.woff2") format("woff2");font-weight:500}
+@font-face{font-family:"Geist";src:url("https://cdn.jsdelivr.net/fontsource/fonts/geist-sans@latest/latin-600-normal.woff2") format("woff2");font-weight:600}
+@font-face{font-family:"Geist Mono";src:url("https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-400-normal.woff2") format("woff2");font-weight:400}
+:root{
+  --bg:#08090D; --surface:#101018; --elev:#171722; --hover:#20202D; --panel:#0B0C12;
+  --primary:#800E8B; --accent:#5424A8; --bright:#A855F7; --lav:#C9A7FF;
+  --t1:#F5F5F8; --t2:#A5A5B5; --t3:#777786;
+  --border:rgba(255,255,255,.08); --border2:rgba(255,255,255,.13);
+  --ok:#34D399; --warn:#FBBF24; --err:#F87171; --blue:#93C5FD;
+  --mono:"Geist Mono",ui-monospace,Consolas,monospace; --ease:cubic-bezier(.2,.8,.2,1);
+  --wa-bg:#0b141a; --wa-in:#202c33; --wa-out:#005c4b; --wa-t:#e9edef; --wa-t2:#8696a0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t1);font:13px/1.5 "Geist",system-ui,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+h1{font-size:20px;font-weight:500;letter-spacing:-.02em;margin:0}
+h2{font-size:14px;font-weight:600;margin:0 0 4px}
+h3{font-size:12px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 16px 60px}
+.intro p{margin:4px 0 18px;color:var(--t3)}
+.tabs{display:flex;gap:6px;margin:0 0 18px;flex-wrap:wrap}
+.tab{height:32px;padding:0 13px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--t2);cursor:pointer}
+.tab.on{background:var(--elev);color:var(--t1);border-color:rgba(168,85,247,.45)}
+.screen{display:none}.screen.on{display:block}
+.note{margin:14px 0 0;padding:10px 12px;border-radius:12px;border:1px dashed rgba(168,85,247,.35);color:var(--t2);font-size:12px;background:rgba(84,36,168,.06)}
+.note b{color:var(--lav);font-weight:500}
+.note ul{margin:4px 0 0;padding-left:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.panel{border:1px solid var(--border);border-radius:16px;background:var(--panel);padding:18px}
+
+/* ---------- web chat ---------- */
+.chat{display:flex;flex-direction:column;gap:14px;max-width:680px}
+.u{align-self:flex-end;max-width:80%;background:var(--elev);border:1px solid var(--border);border-radius:14px 14px 4px 14px;padding:9px 12px}
+.bot{display:flex;flex-direction:column;gap:8px}
+.toolcall{display:flex;align-items:center;gap:8px;border-radius:11px;border:1px solid var(--border);background:rgba(14,14,21,.85);padding:7px 10px;color:var(--t2);font-size:12px;width:fit-content}
+.toolcall .nm{font-family:var(--mono);color:var(--t1)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.dot.run{background:var(--bright);animation:pulse 1s ease-in-out infinite alternate}
+@keyframes pulse{to{opacity:.3}}
+.ms{color:var(--t3);font-family:var(--mono);font-size:11px}
+
+.file{display:flex;align-items:center;gap:12px;width:380px;max-width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface)}
+.file:hover{border-color:var(--bright)}
+.ficon{flex:none;width:40px;height:48px;border-radius:7px;display:grid;place-items:end center;padding-bottom:6px;font:600 10px/1 var(--mono);letter-spacing:.04em;position:relative}
+.ficon::before{content:"";position:absolute;top:0;right:0;width:12px;height:12px;background:linear-gradient(225deg,var(--bg) 50%,rgba(255,255,255,.25) 50%);border-radius:0 7px 0 3px}
+.ficon.pdf{background:linear-gradient(160deg,#7f1d3a,#4c0f24);color:#fecdd3}
+.ficon.md{background:linear-gradient(160deg,#3b2a78,#22174a);color:#ddd6fe}
+.fmeta{flex:1;min-width:0}
+.fname{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsub{color:var(--t3);font-size:12px}
+.btn{height:30px;padding:0 11px;border-radius:9px;border:1px solid var(--border2);background:var(--elev);display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap}
+.btn.primary{background:linear-gradient(135deg,var(--primary),var(--accent));border-color:transparent}
+.btn.ghost{background:transparent}
+.btn svg{width:14px;height:14px}
+.file.busy .fname{color:var(--t2)}
+.bar{height:3px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:7px}
+.bar i{display:block;height:100%;width:40%;background:linear-gradient(90deg,transparent,var(--bright),transparent);animation:slide 1.4s ease-in-out infinite}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+.say{max-width:640px;color:var(--t1)}
+.say a{color:var(--lav)}
+
+/* ---------- WhatsApp phones ---------- */
+.phones{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.phone{border-radius:22px;border:1px solid var(--border2);background:var(--wa-bg);overflow:hidden;display:flex;flex-direction:column;min-height:520px}
+.wa-h{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#202c33;color:var(--wa-t)}
+.av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:12px;background:#6b7280}
+.wa-h small{display:block;color:var(--wa-t2);font-size:11px}
+.wa-b{flex:1;padding:12px;display:flex;flex-direction:column;gap:6px;color:var(--wa-t);font-size:13px}
+.wb{max-width:86%;padding:6px 8px 4px;border-radius:8px;white-space:pre-wrap;line-height:1.4}
+.wb.in{align-self:flex-start;background:var(--wa-in)}
+.wb.out{align-self:flex-end;background:var(--wa-out)}
+.wb .t{display:block;text-align:right;color:rgba(233,237,239,.6);font-size:10px;margin-top:2px}
+.wb b{font-weight:600}
+.day{align-self:center;background:#182229;color:var(--wa-t2);font-size:11px;padding:3px 9px;border-radius:7px;margin:4px 0}
+.doc{display:flex;align-items:center;gap:9px;background:rgba(0,0,0,.18);border-radius:6px;padding:8px;margin-bottom:4px}
+.doc .ficon{width:28px;height:34px;font-size:8px;padding-bottom:4px}
+.doc .ficon::before{width:8px;height:8px}
+.doc small{display:block;color:rgba(233,237,239,.65);font-size:11px}
+.sys{align-self:center;color:var(--wa-t2);font-size:11px;font-style:italic}
+.cap{margin:8px 0 0;color:var(--t3);font-size:12px}
+
+/* ---------- tasks ---------- */
+.task{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:10px}
+.task-top{display:flex;align-items:center;gap:10px}
+.task-top b{font-weight:500;flex:1}
+.pill{height:22px;padding:0 9px;border-radius:99px;display:inline-flex;align-items:center;font-size:11px;border:1px solid var(--border2);color:var(--t2)}
+.pill.ok{color:var(--ok);border-color:rgba(52,211,153,.35)}
+.pill.ai{color:var(--lav);border-color:rgba(168,85,247,.4)}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:12px}
+.kv span:nth-child(odd){color:var(--t3)}
+.steps{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.step{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:8px;background:var(--elev);border:1px solid var(--border);font-size:12px}
+.arrow{color:var(--t3)}
+.prompt{font-family:var(--mono);font-size:12px;color:var(--t2);background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 10px}
+.runs{display:flex;flex-direction:column;gap:5px;font-size:12px}
+.run{display:flex;gap:10px;align-items:center;color:var(--t2)}
+.run .ms{width:120px}
+
+/* ---------- connections / wizard ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.card{border:1px solid var(--border);border-radius:14px;background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:8px}
+.card-h{display:flex;align-items:center;gap:10px}
+.ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--elev);border:1px solid var(--border)}
+.ic svg{width:17px;height:17px}
+.card-h b{font-weight:500;display:block}
+.card-h small{color:var(--t3)}
+.tools{color:var(--t3);font-size:12px;font-family:var(--mono)}
+.card .row{display:flex;gap:6px;margin-top:auto}
+.wizard{border:1px solid var(--border2);border-radius:16px;background:var(--elev);padding:18px;max-width:520px}
+.wsteps{display:flex;gap:6px;margin-bottom:14px}
+.wsteps span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.1)}
+.wsteps span.on{background:var(--bright)}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.field label{font-size:12px;color:var(--t2)}
+.input{height:34px;border-radius:9px;border:1px solid var(--border2);background:var(--bg);padding:0 10px}
+.input.mono{font-family:var(--mono);font-size:12px}
+.help{color:var(--t3);font-size:12px}
+.help a{color:var(--lav)}
+.okline{display:flex;gap:8px;align-items:center;color:var(--ok);font-size:12px;margin:2px 0 12px}
+ol.how{margin:0 0 12px;padding-left:18px;color:var(--t2);font-size:12px}
+.perm{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--border)}
+.perm:first-of-type{border-top:0}
+.perm small{display:block;color:var(--t3);font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden}
+.seg span{padding:4px 10px;font-size:12px;color:var(--t3)}
+.seg span.on{background:rgba(168,85,247,.18);color:var(--t1)}
+.seg span.dis{opacity:.35}
+.new{font-size:10px;color:var(--lav);border:1px solid rgba(168,85,247,.4);border-radius:5px;padding:0 5px;margin-left:6px;vertical-align:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <h1>Files, scheduled jobs &amp; Jira</h1>
+    <p>Mockup v1 · how the three new pieces look in Donna's web chat, on WhatsApp, on the Tasks page and in Connections. Nothing here is built yet.</p>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab on" data-s="files" role="tab">1 · Files in chat</button>
+    <button class="tab" data-s="sched" role="tab">2 · Scheduled jobs</button>
+    <button class="tab" data-s="wa" role="tab">3 · On WhatsApp</button>
+    <button class="tab" data-s="jira" role="tab">4 · Jira connection</button>
+    <button class="tab" data-s="perm" role="tab">5 · Team access</button>
+  </div>
+
+  <!-- ============================== 1 · files ============================== -->
+  <section class="screen on" id="files">
+    <div class="grid2">
+      <div class="panel">
+        <h3>Being made</h3>
+        <div class="chat">
+          <div class="u">Make a PDF of the EDTR sprint notes from Notion</div>
+          <div class="bot">
+            <div class="toolcall"><span class="dot"></span><span class="nm">read_page_content</span><span class="ms">0.8 s</span></div>
+            <div class="toolcall"><span class="dot run"></span><span class="nm">create_document</span><span class="ms">PDF…</span></div>
+            <div class="file busy">
+              <div class="ficon pdf">PDF</div>
+              <div class="fmeta"><div class="fname">EDTR sprint notes.pdf</div><div class="fsub">Making the PDF…</div><div class="bar"><i></i></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Done</h3>
+        <div class="chat">
+          <div class="u">Make a PDF of the EDTR sprint notes from Notion</div>
+          <div class="bot">
+            <div class="toolcall"><span class="dot"></span><span class="nm">read_page_content</span><span class="ms">0.8 s</span></div>
+            <div class="toolcall"><span class="dot"></span><span class="nm">create_document</span><span class="ms">0.4 s</span></div>
+            <div class="file">
+              <div class="ficon pdf">PDF</div>
+              <div class="fmeta"><div class="fname">EDTR sprint notes.pdf</div><div class="fsub">3 pages · 84 KB</div></div>
+              <button class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Download</button>
+            </div>
+            <div class="say">Here's the PDF of the sprint notes, with the headings, the task table and the open questions.</div>
+          </div>
+          <div class="u">Also give me it as Markdown</div>
+          <div class="bot">
+            <div class="file">
+              <div class="ficon md">MD</div>
+              <div class="fmeta"><div class="fname">EDTR sprint notes.md</div><div class="fsub">Markdown · 6 KB</div></div>
+              <button class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Download</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="note"><b>How it works.</b>
+      <ul>
+        <li>New tool <code>create_document(title, content, format)</code>: Donna writes the content in Markdown (headings, lists, tables, bold), and the tool turns it into a PDF or keeps it as <code>.md</code>. Same pattern as pictures: the file lives in <code>data/files</code>, the chat only gets its name.</li>
+        <li>The card replaces the old "just pasted the text" answer. Clicking the card (not the button) opens a PDF in a new tab.</li>
+        <li>PDFs use a bundled open font (Noto Sans), so Hindi/Marathi text and ₹ come out right, also on the Linux server.</li>
+        <li>While it's being made: a thin moving bar. PDFs take under a second, so no percentage like the pictures.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================== 2 · scheduled jobs ============================== -->
+  <section class="screen" id="sched">
+    <div class="grid2">
+      <div class="panel">
+        <h3>Set up in chat (web or your WhatsApp)</h3>
+        <div class="chat">
+          <div class="u">Every day at 10 am, take the content plan from Notion, make it a PDF, upload it to Drive and send me the link on WhatsApp</div>
+          <div class="bot">
+            <div class="toolcall"><span class="dot"></span><span class="nm">schedule_task</span><span class="ms">approved once</span></div>
+            <div class="say">Done. Every day at <b>10:00</b> I'll read <i>Content plan</i> from Notion, turn it into a PDF, upload it to your Drive folder <i>Donna</i> and send you the link on WhatsApp. First run: tomorrow 10:00.</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Tasks page</h3>
+        <div class="task">
+          <div class="task-top"><b>Content plan → PDF → Drive</b><span class="pill ai">AI task</span><span class="pill ok">Scheduled</span></div>
+          <div class="kv">
+            <span>When</span><span>Every day at 10:00 (Asia/Kolkata) · next: tomorrow 10:00</span>
+            <span>Result goes to</span><span><b>My WhatsApp</b> <span class="new">new</span></span>
+            <span>Permissions</span><span>Auto (approved once)</span>
+          </div>
+          <div class="steps">
+            <span class="step">Notion</span><span class="arrow">→</span><span class="step">PDF</span><span class="arrow">→</span><span class="step">Google Drive</span><span class="arrow">→</span><span class="step">WhatsApp</span>
+          </div>
+          <div class="prompt">Read the Notion page "Content plan", make a PDF of it, upload it to Drive, and send me the Drive link.</div>
+          <div class="runs">
+            <div class="run"><span class="ms">Today 10:00</span><span class="pill ok">Done</span><span>Sent you the link · 4 tool steps · 6 s</span></div>
+            <div class="run"><span class="ms">Yesterday 10:00</span><span class="pill ok">Done</span><span>Sent you the link</span></div>
+          </div>
+        </div>
+        <div class="task" style="margin-top:12px">
+          <div class="task-top"><b>Morning news</b><span class="pill ai">AI task</span><span class="pill ok">Scheduled</span></div>
+          <div class="kv">
+            <span>When</span><span>Every day at 10:00</span>
+            <span>Result goes to</span><span><b>My WhatsApp</b> and the web</span>
+          </div>
+          <div class="prompt">Get today's top news on AI, Indian startups and edtech (5 each), one line per story with the source.</div>
+        </div>
+      </div>
+    </div>
+    <div class="note"><b>What changes.</b>
+      <ul>
+        <li><code>schedule_task</code> gets a <code>deliver_to</code> argument (<i>my WhatsApp</i>, <i>web only</i>, or a contact), so "send it to me on WhatsApp" works when you set it up by chatting, from the web or from your phone. The Tasks page shows it as "Result goes to".</li>
+        <li>New tools the task can use: <code>get_news(topics)</code> (Google News RSS, free, no key) and <code>upload_to_drive(file)</code>.</li>
+        <li>Drive needs one more Google sign-in, with access only to files Donna creates (<code>drive.file</code>), not your whole Drive.</li>
+        <li>A file made during a scheduled run is sent to WhatsApp as a document, the same way pictures are sent now.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================== 3 · WhatsApp ============================== -->
+  <section class="screen" id="wa">
+    <div class="phones">
+      <div>
+        <div class="phone">
+          <div class="wa-h"><div class="av" style="background:#7c3aed">Y</div><div>You (Donna)<small>your own chat</small></div></div>
+          <div class="wa-b">
+            <span class="day">TODAY</span>
+            <div class="wb out"><b>☀️ Morning news · Thu 27 Nov</b>
+
+<b>AI</b>
+• Google opens Gemini 3 to free users (The Verge)
+• India's AI mission funds 8 new GPU clusters (Mint)
+
+<b>Edtech</b>
+• PhysicsWallah posts first profitable quarter (ET)<span class="t">10:00</span></div>
+            <div class="wb out"><div class="doc"><div class="ficon pdf">PDF</div><div>Content plan · 27 Nov.pdf<small>2 pages · PDF</small></div></div>Today's content plan. Also in Drive: drive.google.com/file/d/1aB…<span class="t">10:00</span></div>
+          </div>
+        </div>
+        <p class="cap">Scheduled results arrive in your own chat: text for news, a document plus the Drive link for PDFs.</p>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="wa-h"><div class="av" style="background:#0e7490">J</div><div>Jyotiraditya<small>contact · Jira: read + comment</small></div></div>
+          <div class="wa-b">
+            <div class="wb in">@donna where is EDTR-142? is the login revamp done?<span class="t">16:02</span></div>
+            <div class="wb out">Hi Jyotiraditya, I'm Donna, Yashraj's AI assistant.
+<b>EDTR-142 · Login revamp</b>
+Status: In Review · assigned to Priya
+Last update (today 13:40): "OTP flow done, waiting on QA for the Android build."
+2 of 3 subtasks done.<span class="t">16:02</span></div>
+            <div class="wb in">@donna add a comment that QA can start tomorrow morning<span class="t">16:04</span></div>
+            <div class="wb out">I've passed it to Yashraj to approve. I'll tell you once the comment is added.<span class="t">16:04</span></div>
+            <span class="sys">— later —</span>
+            <div class="wb out">The comment is on EDTR-142 now: "QA can start tomorrow morning."<span class="t">16:31</span></div>
+          </div>
+        </div>
+        <p class="cap">Reading Jira is instant; a comment waits for your OK (Inbox → Approvals, or "approve CODE" from your phone).</p>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="wa-h"><div class="av" style="background:#7c3aed">Y</div><div>You (Donna)<small>your own chat</small></div></div>
+          <div class="wa-b">
+            <div class="wb out">Approval needed (K7QF)
+Jyotiraditya on WhatsApp: comment on EDTR-142: "QA can start tomorrow morning."
+Reply "approve K7QF" or "reject K7QF" (expires in 24h).<span class="t">16:04</span></div>
+            <div class="wb out" style="background:#1f3a33">approve K7QF<span class="t">16:30</span></div>
+            <div class="wb out">Done (K7QF): comment added to EDTR-142.<span class="t">16:31</span></div>
+            <div class="wb out" style="background:#1f3a33">every friday 6pm send me a pdf of what moved in EDTR this week<span class="t">18:12</span></div>
+            <div class="wb out">Scheduled: every Friday at 18:00 I'll make a PDF of the EDTR issues that changed this week and send it here.<span class="t">18:12</span></div>
+          </div>
+        </div>
+        <p class="cap">Everything works from your own WhatsApp: approvals, new scheduled jobs, PDFs.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 4 · Jira connection ============================== -->
+  <section class="screen" id="jira">
+    <div class="grid2">
+      <div>
+        <h3>Connections</h3>
+        <div class="cards">
+          <div class="card">
+            <div class="card-h"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="2"><path d="M12 3 4 11l8 8 8-8z"/><path d="m12 8-3 3 3 3 3-3z"/></svg></span><div><b>Jira</b><small>Atlassian Cloud · built-in</small></div></div>
+            <span class="pill ok" style="width:fit-content">Connected · edtr.atlassian.net</span>
+            <div class="tools">search_issues · get_issue · list_projects · my_open_issues · add_comment</div>
+            <div class="row"><button class="btn">Settings</button><button class="btn ghost">Disconnect</button></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2"><path d="M8 3h8l5 9-4 7H7l-4-7z"/></svg></span><div><b>Google Drive</b><small>Google · built-in</small></div></div>
+            <span class="pill" style="width:fit-content;color:var(--warn);border-color:rgba(251,191,36,.35)">Needs one more Google sign-in</span>
+            <div class="tools">upload_to_drive · list_drive_files</div>
+            <div class="row"><button class="btn primary">Allow Drive</button></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#C9A7FF" stroke-width="2"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/></svg></span><div><b>Files</b><small>Built-in · no setup</small></div></div>
+            <span class="pill ok" style="width:fit-content">Ready</span>
+            <div class="tools">create_document (PDF · Markdown)</div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#A5A5B5" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><div><b>News</b><small>Google News RSS · built-in</small></div></div>
+            <span class="pill ok" style="width:fit-content">Ready</span>
+            <div class="tools">get_news</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3>Connect Jira (wizard)</h3>
+        <div class="wizard">
+          <div class="wsteps"><span class="on"></span><span class="on"></span><span></span></div>
+          <h2>Your Jira site and API token</h2>
+          <ol class="how">
+            <li>Open <a style="color:var(--lav)">id.atlassian.com → Security → API tokens</a> and click <b>Create API token</b>.</li>
+            <li>Name it "Donna", pick an expiry, copy it.</li>
+          </ol>
+          <div class="field"><label for="m-site">Jira site</label><input class="input mono" id="m-site" value="edtr.atlassian.net"></div>
+          <div class="field"><label for="m-mail">Your Atlassian email</label><input class="input" id="m-mail" value="you@company.com"></div>
+          <div class="field"><label for="m-tok">API token</label><input class="input mono" id="m-tok" type="password" value="xxxxxxxxxxxxxxxxxxxxxxxx"><span class="help">Saved in Windows Credential Manager, never in a file. Donna sees exactly what you can see in Jira.</span></div>
+          <div class="okline">✓ Signed in as Yashraj · 3 projects: EDTR, OPS, WEB</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost">Back</button><button class="btn primary">Next: projects</button></div>
+        </div>
+        <div class="wizard" style="margin-top:12px">
+          <div class="wsteps"><span class="on"></span><span class="on"></span><span class="on"></span></div>
+          <h2>Which projects may Donna talk about?</h2>
+          <p class="help" style="margin:0 0 10px">You always see everything. This limits what contacts can ask about.</p>
+          <label style="display:flex;gap:8px;margin-bottom:6px"><input type="checkbox" checked> EDTR · Edtech platform</label>
+          <label style="display:flex;gap:8px;margin-bottom:6px"><input type="checkbox"> OPS · Operations</label>
+          <label style="display:flex;gap:8px;margin-bottom:12px"><input type="checkbox"> WEB · Website</label>
+          <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn primary">Done</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="note"><b>Notes.</b> Jira Cloud's REST API with your email + API token (free; it's your own account, so no paid app). The token can't be limited to one project, which is why the project list on step 3 is enforced by Donna in code for contacts.</div>
+  </section>
+
+  <!-- ============================== 5 · team access ============================== -->
+  <section class="screen" id="perm">
+    <div class="grid2">
+      <div class="panel">
+        <h3>Contacts → Jyotiraditya → Permissions</h3>
+        <div class="perm"><div>General help<small>Small talk, weather and simple utilities.</small></div><div class="seg"><span>Off</span><span class="on">On</span><span>Approval</span></div></div>
+        <div class="perm"><div>See Jira progress <span class="new">new</span><small>Status, assignee, subtasks and comments, in the projects you allowed.</small></div><div class="seg"><span>Off</span><span class="on">On</span><span>Approval</span></div></div>
+        <div class="perm"><div>Comment on Jira <span class="new">new</span><small>Adds a comment as you. Always needs your approval.</small></div><div class="seg"><span>Off</span><span class="dis">On</span><span class="on">Approval</span></div></div>
+        <div class="perm"><div>Make pictures<small>Generates pictures and sends them in the chat.</small></div><div class="seg"><span class="on">Off</span><span>On</span><span>Approval</span></div></div>
+        <div class="perm"><div>Take requests for you<small>Callbacks, meeting requests, enquiries and messages.</small></div><div class="seg"><span>Off</span><span class="on">On</span><span>Approval</span></div></div>
+      </div>
+      <div class="note" style="margin:0"><b>Rules, enforced in code (not by the model).</b>
+        <ul>
+          <li>Both Jira permissions are <b>off</b> for every contact until you switch them on.</li>
+          <li>"Comment on Jira" can never be plain On: each comment waits for your approval, like booking a meeting.</li>
+          <li>Contacts only see issues in the projects ticked in the Jira wizard; asking about OPS-12 gets "I can't share that".</li>
+          <li>Comments are posted from your Jira account, with a footer: <i>"(added by Donna for Jyotiraditya)"</i>, so the history is honest.</li>
+          <li>You (web or your own WhatsApp) can also search, comment and move issues; moving one asks you first like other changes.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x === t));
+  document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === t.dataset.s));
+}));
+</script>
+</body>
+</html>

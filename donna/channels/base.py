@@ -143,6 +143,11 @@ class BaseChannel(ABC):
         """Deliver one picture (Donna's generated images). Channels that can't send pictures keep this default."""
         return SendResult(ok=False, error=f"{self.label} can't send pictures yet.")
 
+    async def send_document(self, recipient_id: str, data: bytes, mimetype: str, filename: str, caption: str = "",
+                            idempotency_key: str = "") -> SendResult:
+        """Deliver one file (a PDF or Markdown document Donna made)."""
+        return SendResult(ok=False, error=f"{self.label} can't send files yet.")
+
     def identity_for(self, value: str) -> tuple[str, str]:
         """(external_id, phone digits) for what the owner typed when adding a contact."""
         return value.strip(), ""

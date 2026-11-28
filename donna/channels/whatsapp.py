@@ -6,7 +6,7 @@ OpenWA runs WhatsApp Web (whatsapp-web.js) and owns the session; Donna talks to 
 - POST /api/sessions, /start, GET /api/sessions/{id}[/qr]                session "donna" and its QR
 - POST /api/sessions/{id}/webhooks {url, events, secret}                 events to /api/v1/webhooks/whatsapp
 - POST /api/sessions/{id}/messages/send-text {chatId, text}              replies (Idempotency-Key header)
-- POST /api/sessions/{id}/messages/send-image {chatId, base64, mimetype}  generated pictures
+- POST /api/sessions/{id}/messages/send-image|send-document {chatId, base64, mimetype, filename}  pictures, PDFs
 - deliveries carry X-OpenWA-Signature: sha256=<HMAC-SHA256(raw body, secret)>
 
 Only private chats are handled: groups, status updates, broadcasts and our own messages are dropped.
@@ -269,6 +269,15 @@ class WhatsAppChannel(BaseChannel):
     async def send_image(self, recipient_id: str, data: bytes, mimetype: str, filename: str, caption: str = "",
                          idempotency_key: str = "") -> SendResult:
         """POST send-image with the picture as base64 (OpenWA accepts up to 25 MB; Donna's are about 1 MB)."""
+        return await self._send_media("send-image", recipient_id, data, mimetype, filename, caption, idempotency_key)
+
+    async def send_document(self, recipient_id: str, data: bytes, mimetype: str, filename: str, caption: str = "",
+                            idempotency_key: str = "") -> SendResult:
+        """POST send-document: the file name is what the recipient sees."""
+        return await self._send_media("send-document", recipient_id, data, mimetype, filename, caption, idempotency_key)
+
+    async def _send_media(self, endpoint: str, recipient_id: str, data: bytes, mimetype: str, filename: str, caption: str,
+                          idempotency_key: str) -> SendResult:
         sid = self.config.get("session_id")
         if not sid:
             return SendResult(ok=False, error="WhatsApp isn't connected.")
@@ -277,7 +286,7 @@ class WhatsAppChannel(BaseChannel):
         if caption:
             body["caption"] = caption[:1024]
         try:
-            r = await self._req("POST", f"/api/sessions/{sid}/messages/send-image", json=body, headers=headers)
+            r = await self._req("POST", f"/api/sessions/{sid}/messages/{endpoint}", json=body, headers=headers)
         except ChannelError as e:
             return SendResult(ok=False, error=str(e), retryable=e.retryable, uncertain=e.status in (409, 502))
         return SendResult(ok=True, external_id=str(r.get("messageId", "")))

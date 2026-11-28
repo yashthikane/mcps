@@ -48,6 +48,13 @@ def image_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(images, "DIR", tmp_path / "images")
 
 
+@pytest.fixture(autouse=True)
+def files_dir(tmp_path, monkeypatch):
+    """Documents from create_document go to a throwaway folder too (never data/files)."""
+    from donna import files
+    monkeypatch.setattr(files, "DIR", tmp_path / "files")
+
+
 @pytest.fixture
 def store(tmp_path):
     from donna.store import Store

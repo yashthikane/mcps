@@ -11,9 +11,11 @@ local SQLite file, and keys and sign-ins are kept in Windows Credential Manager.
 - **Approval before side effects.** Sending, replying, forwarding, deleting and calendar changes pause for your **Approve / Reject**.
 - **Saved conversations** with full-text search, pin, rename and delete.
 - **Connections page** with guided setup:
-  - **Google** (Gmail + Calendar): upload `credentials.json`, sign in once, one-click **Re-authorize** when the 7-day testing token expires.
+  - **Google** (Gmail, Calendar and Drive): upload `credentials.json`, sign in once, one-click **Re-authorize** when the 7-day testing token expires. Drive access is limited to the files Donna creates.
   - **Notion**: paste the integration secret, and Donna checks it and lists your shared pages.
   - **Image generation**: paste a free Cloudflare Workers AI token, pick a model, and ask for a picture in chat. Donna writes the detailed prompt and shows the result in the conversation.
+  - **Jira** (Cloud): your site, Atlassian email and an API token. You pick which projects contacts may ask about.
+  - **Files** and **News** need no setup: Donna makes PDFs and Markdown files (a file card with **Download**) and reads Google News headlines.
   - **Any MCP server**: presets for Filesystem, Fetch, Git and Memory, or a custom command/URL. Donna tests the server, lists its tools, and lets you switch each one on or off.
 - **Settings**: Groq key (tested before saving), model, reasoning effort, timezone, pixel grid and reduced motion, **Export** (JSON download) and **Wipe**.
 - **Scheduled tasks**: reminders (no AI, no Groq quota) and AI tasks ("every weekday at 9, summarize my unread email"), once, every N minutes, or on a cron schedule in your timezone.
@@ -41,9 +43,10 @@ Open **Connections** and follow the wizards. Links and exact clicks are shown in
 
 | Connection | What you need | Time |
 |---|---|---|
-| Gmail + Calendar | A free Google Cloud project with the Gmail and Calendar APIs enabled, an OAuth client of type **Desktop app**, and yourself as a test user | ~5 min |
+| Gmail, Calendar + Drive | A free Google Cloud project with the Gmail, Calendar and Drive APIs enabled, an OAuth client of type **Desktop app**, and yourself as a test user | ~5 min |
 | Notion | An internal integration at notion.so/profile/integrations, shared with the pages Donna may use | ~2 min |
 | Image generation | A free Cloudflare account, its Account ID and a Workers AI API token (Workers AI page → **Use REST API**) | ~3 min |
+| Jira | Your Jira Cloud site (yourteam.atlassian.net) and an API token from id.atlassian.com → Security → API tokens | ~2 min |
 | MCP servers | The server's command (`npx …` needs Node.js; `uvx …` needs [uv](https://docs.astral.sh/uv/)) or its HTTP URL | ~1 min |
 
 Image generation uses Cloudflare's free daily allowance (10,000 Neurons, reset at 00:00 UTC). Your prompts are sent
@@ -51,6 +54,17 @@ to Cloudflare; the pictures are saved in `data\images`. Change the model with th
 You make pictures in the web chat. Contacts can get them on WhatsApp or Telegram too, once you switch on **Make pictures**
 in their permissions (Contacts → the person). Each contact gets 5 a day by default (Settings → Messaging → Pictures per
 contact / day), so nobody uses up the allowance. A drafted reply with a picture waits in Inbox → Approvals like any draft.
+
+Already connected Google before Drive existed? Enable the Google Drive API in the same Cloud project, then click
+**Sign in** on the Google Drive card once.
+
+**Jira for your team.** In Contacts, give a person **See Jira progress** (status, assignee, subtasks and comments) and, if
+you like, **Comment on Jira**, which always waits for your approval and is signed "(added by Donna for <name>)". They
+only get answers about the projects you ticked in the Jira wizard; Donna enforces that in code, whatever is asked.
+
+**Scheduled jobs that send things.** Ask in chat (web or your own WhatsApp), e.g. "every day at 10 am read the Notion
+page Content plan, make a PDF, upload it to Drive and send me the link on WhatsApp". Donna sets where the result goes
+(your WhatsApp, Donna's notifications, or a contact), and PDFs and pictures made during the run arrive as files.
 
 ### Scheduled tasks (optional, one-time setup)
 
@@ -99,6 +113,10 @@ Then in **Contacts**:
 | Utilities (2) | `square`, `get_jokes` |
 | Scheduled tasks (4) | `schedule_task`, `list_scheduled_tasks`, `cancel_scheduled_task` ✋, `snooze_scheduled_task` |
 | Image generation (1) | `generate_image` (hidden in Plan mode) |
+| Files (1) | `create_document` (PDF or Markdown, hidden in Plan mode) |
+| News (1) | `get_news` (Google News RSS, topics, region) |
+| Google Drive (2) | `upload_to_drive` (into a "Donna" folder), `list_drive_files` |
+| Jira (6) | `list_jira_projects`, `search_jira_issues`, `get_jira_issue`, `my_jira_issues`, `add_jira_comment` ✋, `move_jira_issue` ✋ |
 | Memory and messaging (6) | `remember`, `list_memories`, `forget_memory`, `list_contacts`, `read_chat`, `send_message` ✋ (WhatsApp/Telegram) |
 | Your MCP servers | Every tool the server exposes. Tools whose names look like writes (write, delete, move, commit, …) ask first. |
 

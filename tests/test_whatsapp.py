@@ -45,6 +45,8 @@ class FakeOpenWA:
             return httpx.Response(200, json={"id": "sess-1", "status": "initializing"})
         if path == "/api/sessions/sess-1/messages/send-text":
             return httpx.Response(201, json={"messageId": "true_91999@c.us_ABC", "timestamp": 1})
+        if path == "/api/sessions/sess-1/messages/send-document":
+            return httpx.Response(201, json={"messageId": "true_91999@c.us_DOC", "timestamp": 1})
         if path == "/api/sessions/sess-1/messages/send-image":
             return httpx.Response(201, json={"messageId": "true_91999@c.us_IMG", "timestamp": 1})
         if path == "/api/sessions/sess-1/messages/send-poll":
@@ -329,3 +331,13 @@ async def test_picture_is_sent_as_base64_with_an_idempotency_key(secret):
     assert path == "/api/sessions/sess-1/messages/send-image" and headers["idempotency-key"] == "p1"
     assert body == {"chatId": "91999@c.us", "base64": "/9j/cGljdHVyZQ==", "mimetype": "image/jpeg",
                     "filename": "donna-img_0123456789ab.jpg"}
+
+
+async def test_document_is_sent_with_its_file_name(secret):
+    openwa = FakeOpenWA()
+    ch, _ = channel(openwa, {"session_id": "sess-1"})
+    res = await ch.send_document("91999@c.us", b"%PDF-1.7", "application/pdf", "sprint-notes.pdf", idempotency_key="d1")
+    assert res.ok and res.external_id == "true_91999@c.us_DOC"
+    _, path, body, headers = openwa.requests[-1]
+    assert path.endswith("/send-document") and body["filename"] == "sprint-notes.pdf" and body["mimetype"] == "application/pdf"
+    assert body["base64"] == "JVBERi0xLjc=" and headers["idempotency-key"] == "d1"

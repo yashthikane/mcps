@@ -26,7 +26,7 @@ import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from .. import approvals, audit, availability, contact_requests, contacts, identity, images, llm, memory, openwa, runtime_tools
+from .. import approvals, audit, availability, contact_requests, contacts, files, identity, images, llm, memory, openwa, runtime_tools
 from ..agent import call_tool, find_tool
 from ..notify import Note
 from ..permissions import TurnContext
@@ -48,14 +48,17 @@ def _a(word: str) -> str:
     return f"an {word}" if word[:1] in "aeiou" else f"a {word}"
 
 
-def pictures_in(text: str) -> list[str]:
-    return [m.group(0) for m in images.NAME.finditer(text or "")][:1]  # a tool result names one picture
+MAKERS = {"generate_image": images.NAME, "create_document": files.NAME}  # tools whose result names a file to send
 
 
-def pictures(tool_events: list[dict]) -> list[str]:
-    """Pictures generate_image made during a turn, from the file name in each successful result."""
-    return [p for e in tool_events or [] if e.get("name") == "generate_image" and e.get("status") == "done"
-            for p in pictures_in(e.get("preview") or "")]
+def outputs_in(tool: str, text: str) -> list[str]:
+    pattern = MAKERS.get(tool)
+    return [m.group(0) for m in pattern.finditer(text or "")][:1] if pattern else []  # a result names one file
+
+
+def outputs(tool_events: list[dict]) -> list[str]:
+    """Pictures and documents made during a turn, from the file name in each successful result, in order."""
+    return [f for e in tool_events or [] if e.get("status") == "done" for f in outputs_in(e.get("name", ""), e.get("preview") or "")]
 
 
 class ChannelManager:
@@ -424,7 +427,7 @@ class ChannelManager:
             await self._alert_approval(code)
         if flow:
             self._advance_flow(conv["id"], turn_started)
-        pics = pictures(res.tool_events)  # made by generate_image during the turn: sent after the text
+        pics = outputs(res.tool_events)  # pictures and documents made during the turn: sent after the text
         if mode == "auto":
             if reply or pics:
                 sent = await self.send_reply(conv, reply, pics)
@@ -433,7 +436,7 @@ class ChannelManager:
             done("done", "Answered.", "answered")
         else:
             if reply or pics:
-                extra = f" (+ {len(pics)} picture{'s' if len(pics) > 1 else ''})" if pics else ""
+                extra = f" (+ {len(pics)} file{'s' if len(pics) > 1 else ''})" if pics else ""
                 req = approvals.create(self.store, ctx, "reply", args={"text": reply, **({"images": pics} if pics else {})},
                                        description=f"Reply to {name}{extra}: {reply[:160]}")
                 await self.notify_owner(
@@ -480,8 +483,9 @@ class ChannelManager:
         for code in res.approvals:
             a = approvals.get(self.store, code)
             reply += f"\n\nNeeds your OK ({code}): {a['description']}\nReply \"approve {code}\" or \"reject {code}\"."
-        if reply.strip():
-            await self.send_text(conv, reply.strip(), author="donna")
+        made = outputs(res.tool_events)  # documents made from the phone arrive as files
+        if reply.strip() or made:
+            await self.send_reply(conv, reply.strip(), made)
         self._finish(event_id, "failed" if res.error else "done", res.error or "Answered.", inbound,
                      "failed" if res.error else "answered")
         self.spawn(self._summarize(conv["id"]))
@@ -717,42 +721,51 @@ class ChannelManager:
                 else f"{self.label(conv['channel_id'])} is paused." if channel["paused"] else "")
 
     async def send_reply(self, conv: dict, text: str, pics: list[str] = (), author: str = "donna") -> SendResult:
-        """A reply with Donna's generated pictures: the text first, then each picture."""
+        """A reply with the pictures and documents Donna made: the text first, then each file."""
         result = SendResult(ok=True)
         if text:
             result = await self.send_text(conv, text, author=author)
             if not result.ok:
                 return result
         for name in pics:
-            result = await self.send_picture(conv, name, author=author)
+            result = await self.send_file(conv, name, author=author)
             if not result.ok:
                 break
         return result
 
-    async def send_picture(self, conv: dict, name: str, author: str = "donna") -> SendResult:
-        """Send one picture from data/images and record it like any other outgoing message."""
-        file = images.path(name)
-        block = self._blocked(conv) or ("" if file else "The picture was deleted.")
+    async def send_file(self, conv: dict, name: str, author: str = "donna") -> SendResult:
+        """Send one picture (data/images) or document (data/files) and record it like any other outgoing message."""
+        picture = images.path(name)
+        file = picture or files.path(name)
+        kind = "image" if picture else "document"
+        block = self._blocked(conv) or ("" if file else "The file was deleted.")
         mid = uuid.uuid4().hex[:12]
         self.store.execute(
             "INSERT INTO channel_messages (id, channel_conversation_id, direction, author, message_type, content, attachments, "
-            "status, error, created_at) VALUES (?,?,'out',?,'image','',?,?,?,?)",
-            (mid, conv["id"], author, json.dumps([{"type": "image", "file": name}]), "failed" if block else "queued", block, time.time()))
+            "status, error, created_at) VALUES (?,?,'out',?,?,'',?,?,?,?)",
+            (mid, conv["id"], author, kind, json.dumps([{"type": kind, "file": name}]), "failed" if block else "queued", block,
+             time.time()))
         if block:
             return SendResult(ok=False, error=block)
         adapter = self.adapter(conv["channel_id"])
         data = await asyncio.to_thread(file.read_bytes)
-        mimetype = images.MIMETYPES[file.suffix.lstrip(".")]
-        result = await adapter.send_image(conv["external_chat_id"], data, mimetype, f"donna-{name}", idempotency_key=mid)
+        ext = file.suffix.lstrip(".")
+        if picture:
+            send = lambda: adapter.send_image(conv["external_chat_id"], data, images.MIMETYPES[ext], f"donna-{name}",  # noqa: E731
+                                              idempotency_key=mid)
+        else:
+            send = lambda: adapter.send_document(conv["external_chat_id"], data, files.MIMETYPES[ext],  # noqa: E731
+                                                 files.download_name(name), idempotency_key=mid)
+        result = await send()
         if not result.ok and result.retryable:
             await asyncio.sleep(2)
-            result = await adapter.send_image(conv["external_chat_id"], data, mimetype, f"donna-{name}", idempotency_key=mid)
+            result = await send()
         status = "sent" if result.ok else "unconfirmed" if result.uncertain else "failed"
         self.store.execute("UPDATE channel_messages SET status=?, external_id=?, error=? WHERE id=?",
                            (status, result.external_id, result.error[:500], mid))
         if not result.ok:
             audit.record(self.store, f"channel:{conv['channel_id']}", "message.send", conv["id"], outcome="failed",
-                         kind="image", error=result.error)
+                         kind=kind, error=result.error)
         self.store.execute("UPDATE channel_conversations SET last_message_at=?, updated_at=? WHERE id=?",
                            (time.time(), time.time(), conv["id"]))
         return result
@@ -800,13 +813,15 @@ class ChannelManager:
         usable.sort(key=lambda i: i["channel_id"] != prefer)
         return usable[0] if usable else None
 
-    async def send_to_contact(self, contact_id: str, text: str, author: str = "donna", prefer: str = "") -> dict:
-        """Start or continue a conversation with a contact (owner tool, automations, owner alerts)."""
+    async def send_to_contact(self, contact_id: str, text: str, author: str = "donna", prefer: str = "",
+                              attachments: list[str] = ()) -> dict:
+        """Start or continue a conversation with a contact (owner tool, automations, owner alerts). `attachments`:
+        pictures and documents Donna made, sent after the text."""
         contact = contacts.get(self.store, contact_id)
         if not contact:
             return {"ok": False, "detail": "Error: unknown contact."}
         text = (text or "").strip()
-        if not text:
+        if not text and not attachments:
             return {"ok": False, "detail": "Error: the message is empty."}
         ident = self._identity_for_sending(contact, prefer or self.store.settings().get("owner_channel", ""))
         if not ident:
@@ -814,8 +829,9 @@ class ChannelManager:
         conv = self.conversation_for(ident["channel_id"], contact, ident["external_id"])
         if author == "donna" and not contact["is_owner"] and identity.needs_introduction(self.store, conv):
             text = identity.with_introduction(text, identity.introduction(contact, self.store.settings(), self.store))
-        self.store.add_message(conv["conversation_id"], "assistant", text)
-        sent = await self.send_text(conv, text, author=author)
+        if text:
+            self.store.add_message(conv["conversation_id"], "assistant", text)
+        sent = await self.send_reply(conv, text, list(attachments), author=author)
         if sent.uncertain:
             # Not "ok", but never say it failed: retrying would send it twice.
             return {"ok": True, "detail": f"Probably sent to {contact['display_name']}: WhatsApp didn't confirm it "
@@ -824,11 +840,12 @@ class ChannelManager:
             return {"ok": False, "detail": f"Error: not sent ({sent.error})."}
         return {"ok": True, "detail": f"Sent to {contact['display_name']} on {self.label(ident['channel_id'])}."}
 
-    async def send_to_owner(self, text: str) -> bool:
+    async def send_to_owner(self, text: str, attachments: list[str] = ()) -> bool:
         owner = contacts.owner(self.store)
         if not owner:
             return False
-        return (await self.send_to_contact(owner["id"], text, prefer=self.store.settings().get("owner_channel", "")))["ok"]
+        return (await self.send_to_contact(owner["id"], text, prefer=self.store.settings().get("owner_channel", ""),
+                                           attachments=attachments))["ok"]
 
     async def notify_owner(self, title: str, body: str = "", level: str = "info", conversation_id: str | None = None,
                            chat: bool = True) -> None:
@@ -884,7 +901,7 @@ class ChannelManager:
     async def _send_approved_reply(self, row: dict, decided_by: str, edited_text: str | None) -> dict:
         draft = str(row["args"].get("text", ""))
         text = (edited_text or draft).strip()
-        pics = [p for p in row["args"].get("images") or [] if images.NAME.fullmatch(str(p))]  # pictures made while drafting
+        pics = [p for p in row["args"].get("images") or [] if images.NAME.fullmatch(str(p)) or files.NAME.fullmatch(str(p))]
         why = approvals.still_allowed(self.store, row, None)
         conv = self.conversation(row["channel_conversation_id"] or "")
         if why or not conv or not (text or pics):
@@ -1007,5 +1024,5 @@ class ChannelManager:
         async with self._lock(conv["id"]), self._llm:
             res = await run_agent_turn(self.store, self.hub, conv["conversation_id"], note, ctx)
         # an approved picture request: the picture itself goes along with the note
-        pics = pictures_in(row["result"] or "") if row["tool"] == "generate_image" and row["status"] == "executed" else []
+        pics = outputs_in(row["tool"], row["result"] or "") if row["status"] == "executed" else []
         await self.send_reply(conv, res.text.strip() if not res.error else "", pics)

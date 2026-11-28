@@ -6,7 +6,7 @@ import { StatusCard, StatusPill } from "./components/Availability";
 import ChannelsSection from "./components/Channels";
 import ContactsPage from "./components/Contacts";
 import InboxPage from "./components/Inbox";
-import ConnectionsPage, { GoogleWizard, ImagesWizard, McpWizard, NotionWizard, ToolsDialog, type WizardKind } from "./components/Connections";
+import ConnectionsPage, { GoogleWizard, ImagesWizard, JiraWizard, McpWizard, NotionWizard, ToolsDialog, type WizardKind } from "./components/Connections";
 import Onboarding from "./components/Onboarding";
 import Palette, { type Command } from "./components/Palette";
 import SettingsPage from "./components/Settings";
@@ -217,9 +217,14 @@ export default function App() {
   /* ------------------------------------------------------------------ commands */
   const openWizard = useCallback((kind: WizardKind) => {
     const g = connections.find((c) => c.id === "gmail");
+    const drive = connections.find((c) => c.id === "drive");
     const img = connections.find((c) => c.id === "images");
-    const startAt = kind === "google" && g && ["needs_auth", "needs_reauth"].includes(g.auth_state ?? g.state) ? 3
-      : kind === "images" && img?.auth_state === "connected" ? 2 : 0;  // already connected: straight to the model picker
+    const jira = connections.find((c) => c.id === "jira");
+    const signIn = (c?: Connection) => !!c && ["needs_auth", "needs_reauth"].includes(c.auth_state ?? c.state);
+    // Google with a saved client (or only Drive missing): straight to the sign-in step
+    const startAt = kind === "google" && (signIn(g) || (g?.auth_state === "connected" && signIn(drive))) ? 3
+      : kind === "images" && img?.auth_state === "connected" ? 2  // already connected: straight to the model picker
+      : kind === "jira" && jira?.auth_state === "connected" ? 2 : 0;  // straight to the shared projects
     setWizard({ kind, startAt });
   }, [connections]);
 
@@ -255,6 +260,7 @@ export default function App() {
     { id: "google", label: "Connect Google (Gmail + Calendar)", icon: "mail", run: () => openWizard("google") },
     { id: "notion", label: "Connect Notion", icon: "doc", run: () => openWizard("notion") },
     { id: "images", label: "Image generation: connect or change the model", icon: "image", run: () => openWizard("images") },
+    { id: "jira", label: "Connect Jira", icon: "jira", run: () => openWizard("jira") },
     { id: "mcp", label: "Add MCP server", icon: "terminal", run: () => openWizard("mcp") },
     { id: "tools", label: "Show all tools", icon: "wrench", run: () => setToolsDlg({ open: true }) },
     { id: "sidebar", label: "Collapse or expand the sidebar", icon: "panel", run: toggleRail },
@@ -367,6 +373,7 @@ export default function App() {
       <ToolsDialog open={toolsDlg.open} only={toolsDlg.only} connections={connections} reload={reloadConnections} onClose={() => setToolsDlg({ open: false })} />
       {wizard?.kind === "google" && <GoogleWizard startAt={wizard.startAt} onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {wizard?.kind === "notion" && <NotionWizard onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
+      {wizard?.kind === "jira" && <JiraWizard startAt={wizard.startAt} onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {wizard?.kind === "images" && <ImagesWizard startAt={wizard.startAt} onClose={() => { setWizard(null); reloadConnections(); }} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {wizard?.kind === "mcp" && <McpWizard home={settings?.home ?? "C:\\Users\\you"} onClose={() => setWizard(null)} onDone={() => { setWizard(null); reloadConnections(); }} />}
       {onboarding && settings && !wizard && (

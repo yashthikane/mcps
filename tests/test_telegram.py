@@ -104,3 +104,15 @@ async def test_picture_is_uploaded_with_send_photo():
     path, ctype, body = seen[0]
     assert path.endswith("/sendPhoto") and ctype.startswith("multipart/form-data")
     assert b'name="chat_id"' in body and b"\x89PNGdata" in body and b'filename="donna-img_0123456789ab.png"' in body
+
+
+async def test_document_is_uploaded_with_send_document():
+    vault.set(vault.TELEGRAM_TOKEN, TOKEN)
+    seen = []
+
+    def api(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.path, request.content))
+        return httpx.Response(200, json={"ok": True, "result": {"message_id": 13}})
+    ch, _ = channel(api)
+    res = await ch.send_document("42", b"%PDF-1.7", "application/pdf", "sprint-notes.pdf")
+    assert res.ok and seen[0][0].endswith("/sendDocument") and b'name="document"; filename="sprint-notes.pdf"' in seen[0][1]

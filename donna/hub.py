@@ -35,16 +35,27 @@ BUILTIN = [
      "tools": ["schedule_task", "list_scheduled_tasks", "cancel_scheduled_task", "snooze_scheduled_task"]},
     {"id": "images", "name": "Image generation", "icon": "image", "source": "Cloudflare Workers AI · built-in", "setup": "images",
      "tools": ["generate_image"]},
+    {"id": "files", "name": "Files", "icon": "file", "source": "Built-in", "setup": None,
+     "tools": ["create_document"]},
+    {"id": "news", "name": "News", "icon": "news", "source": "Google News RSS · built-in", "setup": None,
+     "tools": ["get_news"]},
+    {"id": "drive", "name": "Google Drive", "icon": "drive", "source": "Google · built-in", "setup": "google",
+     "tools": ["upload_to_drive", "list_drive_files"]},
+    {"id": "jira", "name": "Jira", "icon": "jira", "source": "Atlassian Cloud · built-in", "setup": "jira",
+     "tools": ["list_jira_projects", "search_jira_issues", "get_jira_issue", "my_jira_issues", "add_jira_comment",
+               "move_jira_issue"]},
 ]
 TOOL_GROUP = {t: c["id"] for c in BUILTIN for t in c["tools"]}
 
 # Built-in tools that send, change or delete something always wait for the user's approval.
 CONFIRM = {"send_email", "reply_email", "forward_email", "send_draft", "delete_email",
-           "create_event", "update_event", "delete_event", "delete_page", "cancel_scheduled_task"}
+           "create_event", "update_event", "delete_event", "delete_page", "cancel_scheduled_task",
+           "add_jira_comment", "move_jira_issue"}
 # Built-in tools that change something but don't need approval in manual mode. Plan mode hides
 # these and CONFIRM: it may only read.
 WRITES = CONFIRM | {"mark_email", "create_draft", "create_page", "update_page_title", "append_text_to_page",
-                    "schedule_task", "snooze_scheduled_task", "generate_image"}
+                    "schedule_task", "snooze_scheduled_task", "generate_image", "create_document",
+                    "upload_to_drive"}
 # External tools whose names look like writes get the same treatment.
 WRITE_WORDS = re.compile(r"(write|edit|delete|remove|move|rename|commit|push|drop|insert|update|create|send|post|put|exec|run)", re.I)
 

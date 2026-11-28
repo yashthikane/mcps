@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import DATA_DIR, ROOT, approvals, audit, availability, contact_requests, contacts, identity, images, inbox, llm, memory, permissions, pg, runtime_tools, tasks, vault
+from . import DATA_DIR, ROOT, approvals, audit, availability, contact_requests, contacts, files, identity, images, inbox, jira, llm, memory, permissions, pg, runtime_tools, tasks, vault
 from .agent import MODES, RUNS, Run, run_chat
 from .channels.base import ChannelError, WebhookRejected
 from .channels.manager import ChannelManager
@@ -289,7 +289,7 @@ async def connections(request: Request):
     settings = store.settings()
     off_conn, off_tools = set(settings["disabled_connections"]), set(settings["disabled_tools"])
     google, notion = await _google_state(), await _notion_state()
-    by_setup = {"google": google, "notion": notion, "images": _images_state()}
+    by_setup = {"google": google, "notion": notion, "images": _images_state(), "jira": _jira_state(settings)}
     tools_by_group: dict[str, list] = {}
     for t in hub.builtin_tools:
         tools_by_group.setdefault(t.group, []).append(
@@ -297,13 +297,15 @@ async def connections(request: Request):
              "enabled": t.name not in off_tools})
     out = []
     for c in BUILTIN:
-        auth = by_setup.get(c["setup"], {"state": "connected"})
+        auth = _drive_state(google) if c["id"] == "drive" else by_setup.get(c["setup"], {"state": "connected"})
         state = "off" if c["id"] in off_conn else auth["state"]
         detail = {"gmail": f"Signed in as {auth.get('email')}" if auth.get("email") else "",
                   "calendar": "Primary calendar" if auth["state"] == "connected" else "",
                   "weather": "No setup needed. Current weather for any city from Open-Meteo.",
                   "utils": "square and get_jokes. Handy for checking that Donna works.",
-                  "schedule": "Reminders and AI tasks from chat. Manage them on the Tasks page."}.get(c["id"], auth.get("detail", ""))
+                  "schedule": "Reminders and AI tasks from chat. Manage them on the Tasks page.",
+                  "files": "No setup needed. PDFs and Markdown files Donna writes, with a Download button.",
+                  "news": "No setup needed. Headlines from Google News, free and without a key."}.get(c["id"], auth.get("detail", ""))
         out.append({"id": c["id"], "kind": "builtin", "name": c["name"], "icon": c["icon"], "source": c["source"],
                     "setup": c["setup"], "state": state, "auth_state": auth["state"], "detail": detail or "",
                     "tools": tools_by_group.get(c["id"], [])})
@@ -476,6 +478,82 @@ def image_file(name: str):
     if not target:
         raise HTTPException(404, "No such image")
     return FileResponse(target, headers={"Cache-Control": "private, max-age=31536000, immutable"})
+
+
+@app.get("/api/v1/files/{name}")
+def document_file(name: str, download: bool = False):
+    """A document from create_document: shown inline (a PDF opens in the browser) or, with ?download=1, saved."""
+    target = files.path(name)
+    if not target:
+        raise HTTPException(404, "No such file")
+    ext = target.suffix.lstrip(".")
+    return FileResponse(target, media_type=files.MIMETYPES[ext] + ("; charset=utf-8" if ext == "md" else ""),
+                        filename=files.download_name(name), content_disposition_type="attachment" if download else "inline",
+                        headers={"Cache-Control": "private, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff"})
+
+
+# ----------------------------------------------------------------------------- Jira
+class JiraIn(BaseModel):
+    site: str
+    email: str
+    token: str
+
+
+async def _jira_projects(**creds) -> list[dict]:
+    try:
+        return await jira.list_projects(None, **creds)
+    except jira.JiraError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.post("/api/v1/connections/jira")
+async def jira_connect(body: JiraIn):
+    """Checks the site, email and token by asking Jira who they belong to, then saves them in the vault."""
+    try:
+        site = jira.normalize_site(body.site)
+        email, token = body.email.strip(), body.token.strip()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) or len(token) < 20:
+            raise jira.JiraError("Enter your Atlassian account email and the whole API token.")
+        me = await jira.myself(site=site, email=email, token=token)
+    except jira.JiraError as e:
+        raise HTTPException(400, str(e)) from e
+    projects = await _jira_projects(site=site, email=email, token=token)
+    vault.set(vault.JIRA_SITE, site)
+    vault.set(vault.JIRA_EMAIL, email)
+    vault.set(vault.JIRA_TOKEN, token)
+    return {"ok": True, "site": site, "name": me.get("displayName", ""), "projects": projects}
+
+
+@app.get("/api/v1/jira/projects")
+async def jira_project_list(request: Request):
+    if not jira.connected():
+        raise HTTPException(400, jira.NOT_CONNECTED)
+    return {"projects": await _jira_projects(), "shared": S(request).settings().get("jira_projects", [])}
+
+
+@app.delete("/api/v1/connections/jira")
+def jira_disconnect():
+    for k in (vault.JIRA_SITE, vault.JIRA_EMAIL, vault.JIRA_TOKEN):
+        vault.delete(k)
+    return {"ok": True}
+
+
+def _jira_state(settings: dict) -> dict:
+    if not jira.connected():
+        return {"state": "not_set_up"}
+    shared = settings.get("jira_projects") or []
+    return {"state": "connected", "detail": f"{vault.get(vault.JIRA_SITE)} · contacts can ask about: "
+            + (", ".join(shared) if shared else "no projects (only you)")}
+
+
+def _drive_state(google: dict) -> dict:
+    from tools import google_auth
+    if google["state"] != "connected":
+        return google
+    if not google_auth.has_scope(google_auth.DRIVE):
+        return {"state": "needs_auth", "detail": "Sign in to Google once more to allow Drive (only files Donna creates). "
+                "Enable the Google Drive API in your Cloud project first."}
+    return {**google, "detail": "Uploads go to the “Donna” folder. Donna only sees files she created."}
 
 
 # ----------------------------------------------------------------------------- MCP servers
@@ -1240,6 +1318,7 @@ class SettingsIn(BaseModel):
     onboarded: bool | None = None
     permission_mode: str | None = None
     image_model: str | None = None
+    jira_projects: list[str] | None = None
     messaging_enabled: bool | None = None
     require_trigger: bool | None = None
     trigger_word: str | None = None
@@ -1319,6 +1398,8 @@ def put_settings(body: SettingsIn, request: Request):
         raise HTTPException(400, "permission_mode must be plan, manual or auto")
     if values.get("llm_provider", "groq") not in llm.PROVIDERS:
         raise HTTPException(400, "llm_provider must be groq or claude_code")
+    if "jira_projects" in values:
+        values["jira_projects"] = jira.projects_of(values["jira_projects"])
     if "image_model" in values and values["image_model"] not in images.MODELS:
         raise HTTPException(400, f"image_model must be one of: {', '.join(images.MODELS)}")
     if "claude_model" in values and not re.fullmatch(r"[a-z0-9.\-]{2,60}", values["claude_model"]):
@@ -1442,6 +1523,7 @@ def wipe(request: Request):
     for run in list(RUNS.values()):
         run.cancel()
     images.clear()  # the pictures belonged to the conversations being deleted
+    files.clear()
     return {"ok": True, "deleted": S(request).wipe()}
 
 

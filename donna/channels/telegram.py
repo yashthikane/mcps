@@ -138,13 +138,21 @@ class TelegramChannel(BaseChannel):
                          idempotency_key: str = "") -> SendResult:
         """sendPhoto as a multipart upload (Telegram has no idempotency key; the manager never retries an
         uncertain send)."""
+        return await self._upload("sendPhoto", "photo", recipient_id, data, mimetype, filename, caption)
+
+    async def send_document(self, recipient_id: str, data: bytes, mimetype: str, filename: str, caption: str = "",
+                            idempotency_key: str = "") -> SendResult:
+        return await self._upload("sendDocument", "document", recipient_id, data, mimetype, filename, caption)
+
+    async def _upload(self, method: str, field: str, recipient_id: str, data: bytes, mimetype: str, filename: str,
+                      caption: str) -> SendResult:
         token = vault.get(vault.TELEGRAM_TOKEN)
         if not token:
             return SendResult(ok=False, error="Add your Telegram bot token in Connections first.")
         fields = {"chat_id": recipient_id, **({"caption": caption[:1024]} if caption else {})}
         try:
             async with httpx.AsyncClient(timeout=60, transport=self._transport) as c:
-                r = await c.post(f"{API}/bot{token}/sendPhoto", data=fields, files={"photo": (filename, data, mimetype)})
+                r = await c.post(f"{API}/bot{token}/{method}", data=fields, files={field: (filename, data, mimetype)})
             body = r.json()
         except httpx.TimeoutException as e:  # the upload may have arrived
             return SendResult(ok=False, error=f"Telegram didn't answer ({type(e).__name__}).", uncertain=True)

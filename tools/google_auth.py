@@ -1,4 +1,4 @@
-# tools/google_auth.py — One Google sign-in shared by the Gmail and Calendar tools.
+# tools/google_auth.py — One Google sign-in shared by the Gmail, Calendar and Drive tools.
 #
 # The OAuth client (from credentials.json) and the refresh token live in Windows
 # Credential Manager via donna.vault. Only the refresh token is stored (not the
@@ -20,7 +20,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",   # read, drafts, labels, trash
     "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/drive.file",     # only files Donna creates, never the rest of Drive
 ]
+DRIVE = "https://www.googleapis.com/auth/drive.file"
+NO_DRIVE = ("Google Drive isn't allowed yet. Enable the Google Drive API in your Google Cloud project, then open "
+            "Donna → Connections → Google Drive and sign in again.")
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 
 NOT_CONNECTED = "Google isn't connected yet. Open Donna → Connections → Google to sign in."
@@ -131,6 +135,12 @@ def credentials() -> Credentials:
             raise GoogleAuthError(EXPIRED) from e
         _creds = creds
         return creds
+
+
+def has_scope(scope: str) -> bool:
+    """Whether the saved sign-in was granted `scope` (sign-ins from before Drive was added weren't)."""
+    token = _token()
+    return bool(token) and scope in token.get("scopes", [])
 
 
 def service(api: str, version: str):

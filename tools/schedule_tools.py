@@ -3,7 +3,7 @@
 # The tools call the app's TaskService (donna.tasks.service), which the FastAPI lifespan sets up,
 # so creating a task from chat and from the Tasks page go through the same code.
 
-from donna import tasks
+from donna import contacts, tasks
 from mcp_instance import mcp
 
 NOT_READY = ("Error: scheduling isn't available. Donna's scheduler needs PostgreSQL and Redis: "
@@ -24,9 +24,31 @@ async def _call(coro_fn):
         return f"Error: scheduling isn't available right now ({str(e)[:200] or type(e).__name__})."
 
 
+ME = {"me", "my whatsapp", "whatsapp", "telegram", "my telegram", "phone", "my phone", "my chat", "owner", "myself"}
+WEB = {"", "web", "donna", "app", "notification", "notifications", "computer", "laptop"}
+
+
+def _deliver(svc, deliver_to: str) -> dict:
+    """deliver_to → the task's notification_channels / deliver_contact_id. Raises TaskError."""
+    want = " ".join((deliver_to or "").lower().split())
+    if want in WEB:
+        return {}
+    if want in ME:
+        return {"notification_channels": ["owner_chat", "in_app"]}
+    found = [c for c in contacts.list_all(svc.store, q=deliver_to.strip(), discovered=False)]
+    exact = [c for c in found if c["display_name"].lower() == want] or found
+    if len(exact) != 1:
+        names = ", ".join(c["display_name"] for c in found[:5])
+        raise tasks.TaskError(f"Couldn't tell which contact '{deliver_to}' is" + (f" (matches: {names})." if names else
+                              ": no contact has that name.") + " Use the exact name from Contacts.")
+    if exact[0]["is_owner"]:
+        return {"notification_channels": ["owner_chat", "in_app"]}
+    return {"deliver_contact_id": exact[0]["id"]}
+
+
 @mcp.tool()
 async def schedule_task(title: str, when: str, kind: str = "reminder", prompt: str = "",
-                        recurrence: str = "once", rule: str = "", permission_mode: str = "manual") -> str:
+                        recurrence: str = "once", rule: str = "", permission_mode: str = "manual", deliver_to: str = "") -> str:
     """
     Schedule a reminder or an AI task.
     - title: short name, e.g. "Call Mom". For a reminder it is the notification text.
@@ -39,12 +61,18 @@ async def schedule_task(title: str, when: str, kind: str = "reminder", prompt: s
       approves this once now) or "plan" (the task only writes a plan).
     - recurrence: "once", "interval" (rule like 30m, 2h, 1d) or "cron" (5-field rule in local time,
       e.g. "0 9 * * *" daily 09:00, "0 9 * * 1" Mondays 09:00, "30 18 * * 1-5" weekdays 18:30).
+    - deliver_to: where the result goes. "me" = the user's own WhatsApp/Telegram (plus Donna's notifications),
+      "web" = Donna's notifications only (the default), or a contact's name to message that person.
+      Files the task makes (PDFs, pictures) are sent along.
+    - prompt (ai_task): every step, as an instruction to yourself, e.g. "Read the Notion page 'Content plan', make a
+      PDF of it with create_document, upload it with upload_to_drive and reply with the Drive link."
     Returns the task with its ID and next run.
     """
     async def go(svc):
+        target = _deliver(svc, deliver_to)
         task = await svc.create({"title": title, "type": kind, "prompt": prompt, "message": "" if kind == "ai_task" else title,
                                  "run_at": when, "recurrence_type": recurrence, "recurrence_rule": rule or None,
-                                 "permission_mode": permission_mode})
+                                 "permission_mode": permission_mode, **target})
         note = f"\nNote: {task['warning']}" if task.get("warning") else ""
         return "Scheduled:\n" + tasks.describe(task) + note
     return await _call(go)

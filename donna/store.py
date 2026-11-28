@@ -73,6 +73,7 @@ DEFAULT_SETTINGS = {
     "contact_rate_per_hour": 10,      # automatic replies per contact per hour (then drafts for approval)
     "global_rate_per_hour": 60,       # automatic replies across all contacts per hour
     "contact_images_per_day": 5,      # pictures per contact per 24 h (their "Make pictures" permission); 0 = none
+    "jira_projects": [],              # Jira project keys contacts may ask about (Connections → Jira); you see all
     "approval_ttl_hours": 24,
     "unknown_contact_action": "ignore",  # ignore | notify: message from someone not in Contacts
     "openwa_url": "http://127.0.0.1:2785",

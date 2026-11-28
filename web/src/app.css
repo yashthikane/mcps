@@ -189,3 +189,6 @@ img.qr{width:264px;height:264px;image-rendering:pixelated;background:#fff;paddin
 .req-row.u-high{border-color:rgba(251,191,36,.4)}
 .book-box{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:var(--radius-md)}
 .book-box .input{width:auto;flex:1;min-width:160px}
+.b-doc{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:9px;border:1px solid var(--border-subtle);background:var(--surface-soft);color:inherit;text-decoration:none;font-size:12.5px;max-width:100%}
+.b-doc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b-doc:hover,.b-doc:focus-visible{border-color:rgba(168,85,247,.55)}

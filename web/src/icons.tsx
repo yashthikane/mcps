@@ -7,7 +7,7 @@ import {
   Folder01Icon, GitBranchIcon, Globe02Icon, Image01Icon, InboxIcon, Key01Icon, Mail01Icon, Menu01Icon, Message01Icon, NoteEditIcon, Notion01Icon,
   PencilEdit02Icon, PinIcon, PlugSocketIcon, PlusSignIcon, RefreshIcon, ReplyIcon, Search01Icon, SentIcon, Settings01Icon, ShieldCheckIcon,
   SidebarLeftIcon, SlashIcon, SmileIcon, SparklesIcon, StopIcon, SunCloud01Icon, TaskDaily01Icon, Tick02Icon, Upload01Icon,
-  UserGroupIcon, UserMultipleIcon, WhatsappIcon, Wrench01Icon, ZapIcon,
+  UserGroupIcon, UserMultipleIcon, WhatsappIcon, Wrench01Icon, ZapIcon, News01Icon, GoogleDriveIcon, CheckListIcon, FileAttachmentIcon,
 } from "@hugeicons/core-free-icons";
 
 /* Short names used across the app → Hugeicons. Unknown names fall back to the sparkle. */
@@ -21,6 +21,7 @@ const ICONS: Record<string, IconSvgElement> = {
   smile: SmileIcon, refresh: RefreshIcon, arrow: ArrowRight02Icon, clock: AlarmClockIcon, brain: Brain01Icon, chevron: ArrowRight01Icon,
   chevdown: ArrowDown01Icon, alert: Alert02Icon, command: CommandIcon, slash: SlashIcon, copy: Copy01Icon, reply: ReplyIcon,
   whatsapp: WhatsappIcon, callback: Call02Icon, meeting: UserGroupIcon, image: Image01Icon,
+  file: FileAttachmentIcon, news: News01Icon, drive: GoogleDriveIcon, jira: CheckListIcon,
 };
 
 export function Icon({ name, size = 15, className, strokeWidth = 1.6 }: { name: string; size?: number; className?: string; strokeWidth?: number }) {
@@ -88,6 +89,10 @@ export function toolIcon(name: string): string {
   if (/page|notion|database/.test(name)) return "doc";
   if (/weather/.test(name)) return "sun";
   if (name === "generate_image") return "image";
+  if (name === "create_document") return "file";
+  if (name === "get_news") return "news";
+  if (/drive/.test(name)) return "drive";
+  if (/jira/.test(name)) return "jira";
   if (name.includes("__")) return "terminal";
   return "bolt";
 }

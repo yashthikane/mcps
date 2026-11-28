@@ -495,7 +495,7 @@ async def test_drafted_reply_carries_its_picture_until_the_owner_sends_it(mgr, s
     await deliver(mgr, incoming("make a picture of a red kite"))
     assert FakeChannel.sent == [] and FakeChannel.pictures == []  # nothing reaches them before the owner approves
     draft = store.row("SELECT id, args, description FROM approvals WHERE kind='reply'")
-    assert "img_" in draft["args"] and "+ 1 picture" in draft["description"]
+    assert "img_" in draft["args"] and "+ 1 file" in draft["description"]
     final = await mgr.approve(draft["id"])
     assert final["status"] == "executed" and len(FakeChannel.pictures) == 1
 
@@ -516,3 +516,24 @@ async def test_owner_phone_chat_doesnt_make_pictures(mgr, store, monkeypatch, pi
     contacts.set_owner(store, owner["id"])
     await deliver(mgr, incoming("make a picture of a red kite", sender="555", name="Me"))
     assert "generate_image" not in calls[0]["tools"] and FakeChannel.pictures == []
+
+
+# ------------------------------------------------------------------------------ documents on channels
+async def test_documents_are_sent_as_files_to_contacts_and_the_owner(mgr, store, monkeypatch):
+    sent_docs = []
+
+    async def send_document(self, recipient_id, data, mimetype, filename, caption="", idempotency_key=""):
+        sent_docs.append({"to": recipient_id, "mimetype": mimetype, "filename": filename, "pdf": data.startswith(b"%PDF")})
+        return SendResult(ok=True, external_id=f"doc-{len(sent_docs)}")
+    monkeypatch.setattr(FakeChannel, "send_document", send_document, raising=False)
+    contact(store, documents="on")
+    await deliver(mgr, incoming("make a pdf of the sprint notes"))
+    assert sent_docs == [{"to": "111", "mimetype": "application/pdf", "filename": "the-sprint-notes.pdf", "pdf": True}]
+    row = store.row("SELECT message_type, attachments FROM channel_messages WHERE message_type='document'")
+    assert row and "doc_" in row["attachments"]
+
+    owner = contact(store, sender="555", name="Me")
+    contacts.set_owner(store, owner["id"])
+    await deliver(mgr, incoming("make a markdown of my week", sender="555", name="Me"))
+    assert sent_docs[-1]["to"] == "555" and sent_docs[-1]["filename"] == "my-week.md"
+    assert await mgr.send_to_owner("Your plan", attachments=[]) is True

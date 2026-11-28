@@ -34,6 +34,10 @@ KEYWORDS = {
     "utils": r"square|joke|funny",
     "schedule": r"remind|schedul|snooze|recurring|\btasks?\b|every (day|morning|evening|night|week|hour|\d+ ?(min|hour))|every (mon|tue|wed|thu|fri|sat|sun)",
     "images": r"\bimages?\b|pictures?\b|\bphotos?\b|\bdraw|illustrat|\blogo\b|poster|wallpaper|sketch|artwork|\bpaint",
+    "files": r"\bpdfs?\b|\bdocuments?\b|\breports?\b|markdown|\.md\b|\bfiles?\b|download|export|\bdocx?\b",
+    "news": r"\bnews\b|headlines?|what'?s happening|latest on|khabar|samachar|batmya",
+    "drive": r"\bdrive\b|upload|google docs?|\bshare (it|the|a) (file|pdf|doc)",
+    "jira": r"\bjira\b|\bissues?\b|\btickets?\b|\bsprint|\bstory\b|\bepic|\bbacklog|\bbug\b|\b[a-z][a-z0-9]{1,9}-\d+\b|progress|status of|kahan tak|update on",
     "memory": r"remember|forget|memor|\byaad\b|note (that|this)",
     "requests": r"callback|call (me|back)|phone|request|enquir|inquir|meeting|message for|tell \w+|urgent",
     "messaging": r"whatsapp|telegram|\bcontacts?\b|\btext (him|her|them)\b|message (him|her|them|to)|send (a |an )?message|"
@@ -130,8 +134,10 @@ def system_prompt(settings: dict, mode: str = "manual") -> str:
     return (
         "You are Donna, a capable personal assistant running locally for one user. "
         f"Current date and time: {now.strftime('%A, %d %B %Y, %H:%M')} ({tz}).\n"
-        "You can act on the user's Gmail, Google Calendar, Notion, the weather, image generation and any connected MCP servers through tools.\n"
+        "You can act on the user's Gmail, Google Calendar, Notion, Google Drive, Jira, the weather, news, image generation, "
+        "PDF/Markdown documents and any connected MCP servers through tools.\n"
         "Rules:\n"
+        "- When the user asks for a PDF, document or file, make it with create_document; never just paste the content.\n"
         "- Use IDs returned by tools (email, draft, event, page, database IDs). Never invent IDs; look them up first.\n"
         "- For calendar times use local time without an offset, e.g. 2026-10-01T09:00; all-day events use dates.\n"
         "- Tools that send, change or delete things ask the user for approval automatically. Just call them; don't ask for confirmation in text first.\n"
@@ -340,6 +346,19 @@ async def _run_tool(store, hub: MCPHub, run: Run, settings: dict, call_id: str, 
         for ev in finish("error", f"Error: invalid JSON arguments ({bad_args}). Call the tool again with valid arguments."):
             yield ev
         return
+    if ctx and ctx.is_contact and tool.group == "jira" and tool.server == "donna":
+        # Set in code, whatever the model wrote: a contact only reaches the projects the owner shared.
+        shared = [p for p in settings.get("jira_projects") or [] if p]
+        if not shared:
+            for ev in finish("rejected", "No Jira projects are shared with contacts. Don't retry; say you'll pass the "
+                             "question on.", "No Jira projects shared"):
+                yield ev
+            return
+        args = {**args, "projects": ",".join(shared), "jql": ""} if "jql" in (tool.schema.get("properties") or {}) \
+            else {**args, "projects": ",".join(shared)}
+        if tool.name == "add_jira_comment":
+            args["text"] = f"{str(args.get('text', '')).strip()}\n\n(added by Donna for {ctx.contact['display_name']})"
+        record["args"] = args
     decision = permissions.decide(ctx, tool, args)
     if decision == "deny":  # re-checked here: the model may name a tool it was never offered
         actor = f"contact:{ctx.contact['id']}" if ctx and ctx.contact else "donna"

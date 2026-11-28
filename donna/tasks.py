@@ -349,18 +349,20 @@ class TaskService:
         if res.busy:
             return {"success": False, "status": "failed", "retryable": True, "result": "That conversation is busy."}
         reply, error = res.text, res.error
+        from .channels.manager import outputs  # late import: the manager imports this module's callers
+        made = outputs(res.tool_events)  # pictures and documents the run made: sent as files to WhatsApp/Telegram
 
         if error:
             transient = any(w in error.lower() for w in ("limit", "can't reach", "server error", "try again"))
             return {"success": False, "status": "failed", "retryable": transient, "result": error, "conversation_id": cid}
         status = "approval_required" if res.approval_needed else "succeeded"
         title = f"{task['title']} · needs your approval" if res.approval_needed else task["title"]
-        if task["deliver_contact_id"] and reply.strip() and not res.approval_needed:
-            sent = await self._to_contact(task, reply)
+        if task["deliver_contact_id"] and (reply.strip() or made) and not res.approval_needed:
+            sent = await self._to_contact(task, reply, made)
             if not sent["ok"]:
                 return {"success": False, "status": "failed", "retryable": True, "result": sent["detail"], "conversation_id": cid}
         await self.notifier.send(Note(title, _plain(reply)[:200] or "Done.", "warn" if res.approval_needed else "info",
-                                      conversation_id=cid, full_text=reply, **note), channels)
+                                      conversation_id=cid, full_text=reply, attachments=made, **note), channels)
         return {"success": True, "status": status, "result": reply[:RESULT_CHARS], "conversation_id": cid}
 
     def _contact_problem(self, contact_id: str) -> str | None:
@@ -374,10 +376,10 @@ class TaskService:
                     "\"Message them first\" for them in Contacts.")
         return None
 
-    async def _to_contact(self, task: dict, text: str) -> dict:
+    async def _to_contact(self, task: dict, text: str, attachments: list[str] = ()) -> dict:
         if not self.channels:
             return {"ok": False, "detail": "Messaging channels aren't running."}
-        return await self.channels.send_to_contact(task["deliver_contact_id"], text)
+        return await self.channels.send_to_contact(task["deliver_contact_id"], text, attachments=attachments)
 
 
 def _plain(markdown: str) -> str:

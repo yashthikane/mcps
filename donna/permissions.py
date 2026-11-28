@@ -42,6 +42,14 @@ CAPABILITIES: dict[str, dict] = {
     "images": {"label": "Make pictures", "help": "Generates pictures they ask for and sends them in the chat. Uses your "
                "free Cloudflare allowance, so each contact gets a few a day (Settings → Messaging).",
                "tools": {"generate_image"}},
+    "documents": {"label": "Make documents", "help": "PDFs and Markdown files they ask for, sent in the chat.",
+                  "tools": {"create_document"}},
+    "news": {"label": "News", "help": "Latest headlines on topics they ask about.", "tools": {"get_news"}},
+    "jira.read": {"label": "See Jira progress", "help": "Status, assignee, subtasks and comments, only in the projects "
+                  "you shared (Connections → Jira).",
+                  "tools": {"list_jira_projects", "search_jira_issues", "get_jira_issue", "my_jira_issues"}},
+    "jira.comment": {"label": "Comment on Jira", "help": "Adds a comment from your account, marked as from them. "
+                     "Always needs your approval.", "tools": {"add_jira_comment"}},
     "memory": {"label": "Remember things about them", "help": "Notes about this contact only.", "tools": {"remember"}},
     "requests": {"label": "Take requests for you", "help": "Callbacks, meeting requests, enquiries and messages: Donna "
                  "records them and tells you. Which types is set in their profile.",
@@ -57,7 +65,7 @@ OWNER_ONLY = {"list_memories", "forget_memory", "list_contacts", "read_chat", "s
 CONTACT_ONLY = {"record_request", "update_request", "suggest_meeting_slots"}
 # Tools that write only on this computer and whose result rides along with the reply: they may run while Donna
 # drafts a reply for approval, because nothing reaches the contact until the owner sends the draft.
-DRAFTABLE = {"generate_image"}
+DRAFTABLE = {"generate_image", "create_document"}
 
 
 @dataclass
@@ -128,7 +136,8 @@ def decide(ctx: TurnContext | None, tool, args: dict | None = None) -> str:
     if tool.name == "schedule_task" and args is not None:
         # A contact may leave the owner a reminder, never an AI task: its prompt would run later,
         # unattended, with the owner's permissions.
-        if str(args.get("kind", "reminder")).lower() != "reminder" or str(args.get("permission_mode", "manual")).lower() != "manual":
+        if (str(args.get("kind", "reminder")).lower() != "reminder" or str(args.get("permission_mode", "manual")).lower() != "manual"
+                or str(args.get("deliver_to", "")).strip()):  # nor message someone else on the owner's behalf
             return "deny"
     if level == "approval" or tool.confirm:
         return "approve"

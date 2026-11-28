@@ -13,7 +13,7 @@ import logging
 import os
 import subprocess
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from xml.sax.saxutils import escape
 
 from .pg import Postgres
@@ -42,6 +42,7 @@ class Note:
     execution_id: str | None = None
     conversation_id: str | None = None
     full_text: str = ""  # chat channels get the whole text (an AI task's full reply), not the short body
+    attachments: list = field(default_factory=list)  # pictures/documents the task made: chat channels send them as files
 
 
 class WindowsToast:
@@ -76,7 +77,7 @@ class OwnerChat:
         self.channels = channels  # channels.manager.ChannelManager
 
     async def send(self, note: Note) -> None:
-        if not await self.channels.send_to_owner(f"{note.title}\n{note.full_text or note.body}".strip()):
+        if not await self.channels.send_to_owner(f"{note.title}\n{note.full_text or note.body}".strip(), note.attachments):
             raise RuntimeError("the owner's chat isn't available (set yourself as the owner in Contacts)")
 
 

@@ -11,7 +11,11 @@ import tools.gmail_tools       # Gmail management
 import tools.weather_tools     # Weather forecast
 import tools.misc_tools        # Square, jokes, etc.
 import tools.schedule_tools    # Scheduled tasks and reminders
-import tools.image_tools       # Image generation
+import tools.image_tools
+import tools.file_tools
+import tools.news_tools
+import tools.drive_tools
+import tools.jira_tools       # Image generation
 
 if __name__ == "__main__":
     mcp.run()

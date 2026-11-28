@@ -47,7 +47,7 @@ export interface Connection {
   name: string;
   icon: string;
   source: string;
-  setup: "google" | "notion" | "images" | "mcp" | null;
+  setup: "google" | "notion" | "images" | "jira" | "mcp" | null;
   state: ConnState;
   auth_state?: ConnState;
   detail: string;
@@ -56,6 +56,8 @@ export interface Connection {
 }
 
 /** An image generation model from the backend registry (donna/images.py). `daily` is an estimate. */
+export interface JiraProject { key: string; name: string }
+
 export interface ImageModel {
   id: string;
   label: string;
@@ -84,6 +86,7 @@ export interface Settings {
   onboarded: boolean;
   permission_mode: PermissionMode;
   image_model: string;
+  jira_projects: string[];
   groq_key_set: boolean;
   groq_key_hint: string;
   usage: Usage;
@@ -464,6 +467,10 @@ export const api = {
     request<{ ok: boolean; image: string; model: string; seconds: number }>("POST", "/connections/images", { account_id, token }),
   disconnectImages: () => request("DELETE", "/connections/images"),
   imageModels: () => request<{ current: string; models: ImageModel[] }>("GET", "/images/models"),
+  connectJira: (site: string, email: string, token: string) =>
+    request<{ ok: boolean; site: string; name: string; projects: JiraProject[] }>("POST", "/connections/jira", { site, email, token }),
+  disconnectJira: () => request("DELETE", "/connections/jira"),
+  jiraProjects: () => request<{ projects: JiraProject[]; shared: string[] }>("GET", "/jira/projects"),
   testServer: (cfg: ServerConfig) => request<{ ok: boolean; tools: ToolInfo[] }>("POST", "/mcp-servers/test", cfg),
   addServer: (cfg: ServerConfig) => request<{ id: string; state: string; error: string }>("POST", "/mcp-servers", cfg),
   removeServer: (id: string) => request("DELETE", `/mcp-servers/${id}`),

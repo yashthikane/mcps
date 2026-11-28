@@ -20,10 +20,14 @@ const Pill = ({ map, s }: { map: Record<string, [string, string]>; s: string }) 
   const [cls, label] = map[s] ?? ["off", s];
   return <span className={`pill ${cls}`}>{label}</span>;
 };
-/** Pictures Donna made for a contact (sent, or attached to a drafted reply); each opens full size. */
+/** Pictures and documents Donna made for a contact (sent, or attached to a drafted reply); each opens in a new tab. */
 const SentPictures = ({ names }: { names: string[] }) => (
   <div className="b-pics">
-    {names.map((n) => (
+    {names.map((n) => n.startsWith("doc_") ? (
+      <a key={n} className="b-doc" href={`/api/v1/files/${n}`} target="_blank" rel="noopener noreferrer" title="Open">
+        <Icon name="file" size={16} /><span>{n.replace(/^doc_[0-9a-f]{12}-?/, "") || n}</span>
+      </a>
+    ) : (
       <a key={n} href={`/api/v1/images/${n}`} target="_blank" rel="noopener noreferrer" title="Open full size">
         <img src={`/api/v1/images/${n}`} alt="Picture Donna made" width={160} height={160} loading="lazy" />
       </a>
